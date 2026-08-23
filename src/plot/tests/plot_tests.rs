@@ -33,6 +33,15 @@ fn fallible_render_rejects_hostile_frame_geometry() {
 }
 
 #[test]
+fn extreme_finite_time_domains_render_without_panicking() {
+    let plot = Plot::new()
+        .layer(Line::xy(&[-f64::MAX, f64::MAX][..], &[1.0, 2.0][..]))
+        .time_x();
+    assert!(plot.validate().is_ok());
+    let _ = plot.render(&Frame::plain(40, 10));
+}
+
+#[test]
 fn the_scatter_preset_equals_its_grammar_expansion() {
     let x = [1.0, 2.0, 3.0];
     let y = [2.0, 1.0, 3.0];

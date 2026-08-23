@@ -1,5 +1,5 @@
 use super::super::Ticks;
-use super::{civil_from_days, days_from_civil};
+use super::{MAX_TIME_TICKS, civil_from_days, days_from_civil, supported_seconds};
 
 const DAY: i64 = 86_400;
 
@@ -79,4 +79,32 @@ fn second_ticks_show_full_clock_time() {
     let start = days_from_civil(2026, 8, 2) * DAY + 3_600;
     let ticks = Ticks::time(start as f64, start as f64 + 90.0, 6);
     assert_eq!(ticks.as_slice()[0].label, "01:00:00");
+}
+
+#[test]
+fn finite_values_outside_the_calendar_range_fall_back_without_panicking() {
+    let one = Ticks::time(f64::MAX, f64::MAX, 5);
+    assert_eq!(one.len(), 1);
+    assert_eq!(one.as_slice()[0].value, f64::MAX);
+
+    let both = Ticks::time(-f64::MAX, f64::MAX, usize::MAX);
+    assert_eq!(both.len(), 2);
+    assert_eq!(both.as_slice()[0].value, -f64::MAX);
+    assert_eq!(both.as_slice()[1].value, f64::MAX);
+}
+
+#[test]
+fn supported_calendar_generation_is_bounded_for_hostile_targets() {
+    let (low, high) = supported_seconds();
+    let ticks = Ticks::time(low as f64, high as f64, usize::MAX);
+    assert!(!ticks.is_empty());
+    assert!(ticks.len() <= MAX_TIME_TICKS);
+    assert!(ticks.iter().all(|tick| tick.value.is_finite()));
+}
+
+#[test]
+fn subsecond_domains_still_produce_ticks() {
+    let ticks = Ticks::time(0.1, 0.2, 5);
+    assert!(!ticks.is_empty());
+    assert!(ticks.len() <= MAX_TIME_TICKS);
 }
