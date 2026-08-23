@@ -127,3 +127,72 @@ fn caller_selected_histogram_geometry_is_bounded() {
         Err(crate::Error::DimensionTooLarge { .. })
     ));
 }
+
+#[test]
+fn uniform_bins_cover_the_requested_extent_and_include_the_last_edge() {
+    let bins = Bins::try_uniform(&[0.0, 0.25, 0.5, 0.75, 1.0], 2)
+        .unwrap()
+        .unwrap();
+    assert_eq!(bins.start(), 0.0);
+    assert_eq!(bins.width(), 0.5);
+    assert_eq!(bins.counts(), [2, 3]);
+}
+
+#[test]
+fn uniform_bins_handle_constant_and_opposite_extreme_samples() {
+    let constant = Bins::try_uniform(&[f64::MAX; 3], 4).unwrap().unwrap();
+    assert_eq!(constant.counts().len(), 4);
+    assert_eq!(constant.counts().iter().sum::<u64>(), 3);
+
+    let extremes = Bins::try_uniform(&[-f64::MAX, f64::MAX], 2)
+        .unwrap()
+        .unwrap();
+    assert_eq!(extremes.counts(), [1, 1]);
+    assert!(matches!(
+        Bins::try_uniform(&[-f64::MAX, f64::MAX], 1),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+}
+
+#[test]
+fn uniform_bins_validate_the_count_even_without_finite_data() {
+    assert!(Bins::try_uniform(&[f64::NAN], 2).unwrap().is_none());
+    assert!(matches!(
+        Bins::try_uniform(&[], 0),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    assert!(matches!(
+        Bins::try_uniform(&[], usize::MAX),
+        Err(crate::Error::DimensionTooLarge { .. })
+    ));
+}
+
+#[test]
+fn accepted_uniform_geometry_never_drops_its_finite_endpoints() {
+    // Deterministic bit-pattern coverage across signs, exponents, and adjacent
+    // values. Some one-bin spans are mathematically wider than f64 and correctly
+    // return an error; every accepted geometry must retain both endpoints.
+    let mut state = 0x6a09_e667_f3bc_c909_u64;
+    for _ in 0..2_000 {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let first = f64::from_bits(state);
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let second = f64::from_bits(state);
+        if !(first.is_finite() && second.is_finite() && first != second) {
+            continue;
+        }
+        for count in [1, 2, 3, 7, 31] {
+            if let Ok(Some(bins)) = Bins::try_uniform(&[first, second], count) {
+                assert_eq!(
+                    bins.counts().iter().sum::<u64>(),
+                    2,
+                    "dropped an endpoint for {first:?}..{second:?} in {count} bins"
+                );
+            }
+        }
+    }
+}

@@ -28,7 +28,7 @@ fn emit(arguments: &[&str], text: &str) -> String {
             .collect();
         table = input::select(&table, &keep).expect("indices resolve");
     }
-    program(&arguments, &table, categories.as_deref())
+    program(&arguments, &table, categories.as_deref()).expect("chart inputs are representable")
 }
 
 #[test]

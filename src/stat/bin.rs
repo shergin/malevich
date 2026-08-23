@@ -36,18 +36,7 @@ impl Bins {
                 detail: "Bins needs a finite start and a finite positive width",
             });
         }
-        if bins == 0 {
-            return Err(crate::Error::EmptyDimension {
-                what: "Bins buckets",
-            });
-        }
-        if bins > super::MAX_STAT_ELEMENTS {
-            return Err(crate::Error::DimensionTooLarge {
-                what: "Bins bucket count",
-                requested: bins,
-                limit: super::MAX_STAT_ELEMENTS,
-            });
-        }
+        Self::validate_count(bins)?;
         let mut counts = Vec::new();
         counts
             .try_reserve_exact(bins)
@@ -60,6 +49,66 @@ impl Bins {
             width,
             counts,
         })
+    }
+
+    /// A histogram with exactly `count` equal-width bins over the finite values'
+    /// extent. Returns `None` when there are no finite values. A constant sample
+    /// receives a small finite extent around its value.
+    ///
+    /// Unlike manually subtracting the endpoints, this keeps opposite-sign finite
+    /// extremes representable whenever the requested per-bin width is representable.
+    ///
+    /// ```
+    /// use malevich::stat::Bins;
+    ///
+    /// let bins = Bins::try_uniform(&[0.0, 0.5, 1.0], 2).unwrap().unwrap();
+    /// assert_eq!(bins.counts(), [1, 2]);
+    /// ```
+    pub fn try_uniform(values: &[f64], count: usize) -> crate::Result<Option<Bins>> {
+        Self::validate_count(count)?;
+        let extent = values
+            .iter()
+            .copied()
+            .filter(|value| value.is_finite())
+            .fold(None, |extent, value| {
+                Some(extent.map_or((value, value), |(min, max): (f64, f64)| {
+                    (min.min(value), max.max(value))
+                }))
+            });
+        let Some((min, max)) = extent else {
+            return Ok(None);
+        };
+        let (start, end) = if min == max {
+            crate::numeric::extent_around(min)
+        } else {
+            (min, max)
+        };
+        let width = crate::numeric::covering_span_per(start, end, count).ok_or(
+            crate::Error::InvalidParameter {
+                detail: "histogram extent cannot be represented with the requested bin count",
+            },
+        )?;
+        let mut histogram = Self::try_new(start, width, count)?;
+        for &value in values {
+            histogram.add(value);
+        }
+        Ok(Some(histogram))
+    }
+
+    fn validate_count(bins: usize) -> crate::Result<()> {
+        if bins == 0 {
+            return Err(crate::Error::EmptyDimension {
+                what: "Bins buckets",
+            });
+        }
+        if bins > super::MAX_STAT_ELEMENTS {
+            return Err(crate::Error::DimensionTooLarge {
+                what: "Bins bucket count",
+                requested: bins,
+                limit: super::MAX_STAT_ELEMENTS,
+            });
+        }
+        Ok(())
     }
 
     /// Bins sized to the data: bin count by the larger of Sturges' rule and
@@ -86,14 +135,7 @@ impl Bins {
                 (lo.min(v), hi.max(v))
             });
         if min == max {
-            let (start, end) = crate::numeric::extent_around(min);
-            let width =
-                crate::numeric::span_per(start, end, 1).ok_or(crate::Error::InvalidParameter {
-                    detail: "histogram extent is not representable",
-                })?;
-            let mut bins = Bins::try_new(start, width, 1)?;
-            bins.counts[0] = n as u64;
-            return Ok(Some(bins));
+            return Self::try_uniform(&finite, 1);
         }
 
         let sturges = (n as f64).log2().ceil() as usize + 1;
@@ -118,10 +160,11 @@ impl Bins {
         // so bin boundaries land on readable numbers.
         let cap = limit.clamp(1, super::MAX_STAT_ELEMENTS);
         let ticks = Ticks::linear(min, max, target.min(50));
-        let fallback_width =
-            crate::numeric::span_per(min, max, target).ok_or(crate::Error::InvalidParameter {
+        let fallback_width = crate::numeric::covering_span_per(min, max, target).ok_or(
+            crate::Error::InvalidParameter {
                 detail: "histogram span cannot be represented at the requested bin cap",
-            })?;
+            },
+        )?;
         let mut width = ticks
             .step()
             .filter(|step| step.is_finite() && *step > 0.0)
@@ -143,10 +186,11 @@ impl Bins {
         // requiring the complete span to be representable first.
         if bins > cap {
             start = min;
-            width =
-                crate::numeric::span_per(min, max, cap).ok_or(crate::Error::InvalidParameter {
+            width = crate::numeric::covering_span_per(min, max, cap).ok_or(
+                crate::Error::InvalidParameter {
                     detail: "histogram span cannot be represented at the requested bin cap",
-                })?;
+                },
+            )?;
             bins = cap;
         }
         let mut result = Bins::try_new(start, width, bins)?;

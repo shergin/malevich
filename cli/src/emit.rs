@@ -17,13 +17,17 @@ use crate::series::{self, Series};
 
 /// The complete program for `args` over `table` (and the `--by` categories,
 /// when present).
-pub fn program(args: &Args, table: &Table, categories: Option<&[String]>) -> String {
+pub fn program(
+    args: &Args,
+    table: &Table,
+    categories: Option<&[String]>,
+) -> malevich::Result<String> {
     let mut body = String::new();
     let plot = match (args.command, categories) {
         (Command::Scatter, Some(groups)) => scatter_by(&mut body, args, table, groups),
         (Command::Line, _) => value(&mut body, args, table, "Line"),
         (Command::Scatter, _) => value(&mut body, args, table, "Points"),
-        (Command::Hist, _) => hist(&mut body, args, table),
+        (Command::Hist, _) => hist(&mut body, args, table)?,
         (Command::Bar, _) => bar(&mut body, table),
         (Command::Count, _) => count(&mut body, table),
         (Command::Density, _) => pooled(&mut body, table, "density"),
@@ -57,7 +61,7 @@ pub fn program(args: &Args, table: &Table, categories: Option<&[String]>) -> Str
         let _ = writeln!(program, "    frame.height = {height};");
     }
     program.push_str("    println!(\"{}\", plot.render(&frame));\n}\n");
-    program
+    Ok(program)
 }
 
 /// Line and scatter: one layer per `--fmt` series, mirroring `chart::value_plot`.
@@ -98,39 +102,24 @@ fn scatter_by(body: &mut String, args: &Args, table: &Table, groups: &[String]) 
 
 /// Histogram: automatic binning re-runs in the program; `--bins N` inlines the
 /// bins kaz computed, as the documented `Bars::spans` expansion.
-fn hist(body: &mut String, args: &Args, table: &Table) -> String {
+fn hist(body: &mut String, args: &Args, table: &Table) -> malevich::Result<String> {
     let (values, _) = series::flatten(table);
     match args.bins {
         None => {
             let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(&values));
-            "malevich::hist(values)".to_string()
+            Ok("malevich::hist(values)".to_string())
         }
         Some(count) => {
-            let (min, max) = values
-                .iter()
-                .filter(|value| value.is_finite())
-                .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &value| {
-                    (lo.min(value), hi.max(value))
-                });
-            if !min.is_finite() {
-                return "malevich::Plot::new()".to_string();
-            }
-            let (start, width) = if min == max {
-                (min - 0.5, 1.0)
-            } else {
-                (min, (max - min) / count as f64)
+            let Some(histogram) = malevich::stat::Bins::try_uniform(&values, count)? else {
+                return Ok("malevich::Plot::new()".to_string());
             };
-            let mut histogram = malevich::stat::Bins::new(start, width, count);
-            for &value in &values {
-                histogram.add(value);
-            }
             let counts: Vec<f64> = histogram.counts().iter().map(|&c| c as f64).collect();
             let _ = writeln!(body, "    let counts: Vec<f64> = {};", floats(&counts));
-            format!(
+            Ok(format!(
                 "malevich::Plot::new()\n        .layer(malevich::Bars::spans({}, {}, counts))",
                 float(histogram.start()),
                 float(histogram.width())
-            )
+            ))
         }
     }
 }

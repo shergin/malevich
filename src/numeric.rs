@@ -64,6 +64,31 @@ pub(crate) fn span_per(start: f64, end: f64, parts: usize) -> Option<f64> {
     (scaled.is_finite() && scaled > 0.0).then_some(scaled)
 }
 
+/// A per-part span rounded upward just enough for `parts` fused steps from
+/// `start` to cover `end`.
+///
+/// Division can round a mathematically exact last edge just below `end`, most
+/// visibly when a tiny endpoint is added to a much larger same-sign span. The
+/// initial quotient is within a few ulps; the bound keeps this adjustment total
+/// if that assumption is ever invalidated by a platform implementation.
+pub(crate) fn covering_span_per(start: f64, end: f64, parts: usize) -> Option<f64> {
+    let mut width = span_per(start, end, parts)?;
+    for _ in 0..8 {
+        let covered = width.mul_add(parts as f64, start);
+        if covered >= end {
+            return Some(width);
+        }
+        if covered.is_nan() {
+            return None;
+        }
+        width = width.next_up();
+        if !width.is_finite() {
+            return None;
+        }
+    }
+    None
+}
+
 /// How many `unit`-sized steps fit between finite endpoints.
 pub(crate) fn span_ratio(start: f64, end: f64, unit: f64) -> Option<f64> {
     if !(start.is_finite() && end.is_finite() && unit.is_finite() && unit > 0.0) {
@@ -100,7 +125,9 @@ pub(crate) fn extent_around(value: f64) -> (f64, f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{extent_around, inverse_lerp, lerp, midpoint, span_per, span_ratio};
+    use super::{
+        covering_span_per, extent_around, inverse_lerp, lerp, midpoint, span_per, span_ratio,
+    };
 
     #[test]
     fn opposite_sign_extremes_keep_their_endpoints_and_midpoint() {
@@ -135,5 +162,16 @@ mod tests {
         assert_eq!(span_per(-f64::MAX, f64::MAX, 2), Some(f64::MAX));
         assert_eq!(span_ratio(-f64::MAX, f64::MAX, f64::MAX), Some(2.0));
         assert_eq!(span_per(-f64::MAX, f64::MAX, 1), None);
+    }
+
+    #[test]
+    fn covering_width_compensates_for_a_rounded_last_edge() {
+        let start = -2.380_536_100_667_193_7e146;
+        let end = -1.080_372_508_640_452_4e-296;
+        let plain = span_per(start, end, 3).unwrap();
+        assert!(plain.mul_add(3.0, start) < end);
+
+        let covering = covering_span_per(start, end, 3).unwrap();
+        assert!(covering.mul_add(3.0, start) >= end);
     }
 }

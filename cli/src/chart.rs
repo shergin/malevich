@@ -15,30 +15,34 @@ pub struct Built {
 
 /// Builds the plot for `args` over `table`. With `categories` (`--by`), the
 /// scatter takes them as its `color_by` channel.
-pub fn build(args: &Args, table: &Table, categories: Option<&[String]>) -> Built {
+pub fn build(args: &Args, table: &Table, categories: Option<&[String]>) -> malevich::Result<Built> {
     let (plot, unparsed) = match (args.command, categories) {
-        (Command::Scatter, Some(groups)) => scatter_by(args, table, groups),
+        (Command::Scatter, Some(groups)) => Ok(scatter_by(args, table, groups)),
         (command, _) => plain_build(command, args, table),
-    };
-    Built {
+    }?;
+    Ok(Built {
         plot: furniture(plot, args),
         unparsed,
-    }
+    })
 }
 
-fn plain_build(command: Command, args: &Args, table: &Table) -> (Plot<'static>, usize) {
+fn plain_build(
+    command: Command,
+    args: &Args,
+    table: &Table,
+) -> malevich::Result<(Plot<'static>, usize)> {
     match command {
-        Command::Line => value_plot(args, table, Kind::Line),
-        Command::Scatter => value_plot(args, table, Kind::Scatter),
+        Command::Line => Ok(value_plot(args, table, Kind::Line)),
+        Command::Scatter => Ok(value_plot(args, table, Kind::Scatter)),
         Command::Hist => hist_plot(table, args.bins),
-        Command::Bar => bar_plot(table),
-        Command::Count => count_plot(table),
-        Command::Density => distribution(table, malevich::density),
-        Command::Ecdf => distribution(table, malevich::ecdf),
-        Command::Box => box_plot(table),
-        Command::Violin => violin_plot(table),
-        Command::Hist2d => hist2d_plot(args, table),
-        Command::Heatmap => heatmap_plot(args, table),
+        Command::Bar => Ok(bar_plot(table)),
+        Command::Count => Ok(count_plot(table)),
+        Command::Density => Ok(distribution(table, malevich::density)),
+        Command::Ecdf => Ok(distribution(table, malevich::ecdf)),
+        Command::Box => Ok(box_plot(table)),
+        Command::Violin => Ok(violin_plot(table)),
+        Command::Hist2d => Ok(hist2d_plot(args, table)),
+        Command::Heatmap => Ok(heatmap_plot(args, table)),
     }
 }
 
@@ -88,44 +92,29 @@ fn named<M>(mark: M, label: Option<String>, set: impl FnOnce(M, String) -> M) ->
 }
 
 /// Histogram: pool every numeric field, then bin. Auto by default; with `--bins N`
-/// the exact documented expansion of `hist` — `stat::Bins::new` + `Bars::spans`.
-fn hist_plot(table: &Table, bins: Option<usize>) -> (Plot<'static>, usize) {
+/// the exact documented expansion of `hist` — checked uniform bins +
+/// `Bars::spans`.
+fn hist_plot(table: &Table, bins: Option<usize>) -> malevich::Result<(Plot<'static>, usize)> {
     let (values, unparsed) = series::flatten(table);
     let plot = match bins {
         None => malevich::hist(values),
-        Some(count) => binned(&values, count),
+        Some(count) => binned(&values, count)?,
     };
-    (plot, unparsed)
+    Ok((plot, unparsed))
 }
 
 /// The `--bins N` expansion: `count` equal-width bins over the finite data range,
 /// counted into a `Bars::spans` layer — exactly what `hist` does, minus the
 /// automatic bin-count choice.
-fn binned(values: &[f64], count: usize) -> Plot<'static> {
+fn binned(values: &[f64], count: usize) -> malevich::Result<Plot<'static>> {
     use malevich::Bars;
     use malevich::stat::Bins;
 
-    let (min, max) = values
-        .iter()
-        .filter(|value| value.is_finite())
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &value| {
-            (lo.min(value), hi.max(value))
-        });
-    if !min.is_finite() {
-        return Plot::new();
-    }
-    // A degenerate range still yields one honest bin around the value.
-    let (start, width) = if min == max {
-        (min - 0.5, 1.0)
-    } else {
-        (min, (max - min) / count as f64)
+    let Some(histogram) = Bins::try_uniform(values, count)? else {
+        return Ok(Plot::new());
     };
-    let mut histogram = Bins::new(start, width, count);
-    for &value in values {
-        histogram.add(value);
-    }
     let counts: Vec<f64> = histogram.counts().iter().map(|&c| c as f64).collect();
-    Plot::new().layer(Bars::spans(histogram.start(), histogram.width(), counts))
+    Ok(Plot::new().layer(Bars::spans(histogram.start(), histogram.width(), counts)))
 }
 
 /// Density and ecdf: pool every numeric field, then the matching preset.

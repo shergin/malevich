@@ -72,13 +72,15 @@ fn execute(args: &Args) -> Result<i32, Fail> {
             .collect();
         table = input::select(&table, &keep).map_err(Fail)?;
     }
-    let built = chart::build(args, &table, categories.as_deref());
-
     if args.emit_code {
-        let program = emit::program(args, &table, categories.as_deref());
+        let program = emit::program(args, &table, categories.as_deref())
+            .map_err(|error| Fail(format!("code emission: {error}")))?;
         print!("{program}");
         return Ok(0);
     }
+
+    let built = chart::build(args, &table, categories.as_deref())
+        .map_err(|error| Fail(format!("chart: {error}")))?;
 
     match output::emit(args, &built) {
         Ok(code) => Ok(code),
