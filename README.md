@@ -127,7 +127,7 @@ iTerm2) on the right, from the same plot values:
 - **The statistical set no terminal library has.** Box plots with type-7 quartiles
   and Tukey whiskers, violins from a real KDE (Silverman bandwidth), least-squares
   trend lines with R² and a confidence band (`trend`; `stat::Fit` is a mergeable
-  monoid like every other aggregator, so it fits streams and parallel chunks),
+  online accumulator, so it fits streams and parallel reduction trees),
   ECDFs with an optional DKW confidence band, symmetric and asymmetric error
   bars, 2D densities (with a colorbar legending the value scale) — the charts
   science and ML actually need. One `Reducer` vocabulary — count, sum, mean,
@@ -146,8 +146,9 @@ iTerm2) on the right, from the same plot values:
   into, so the reduction is *pixel-identical* to drawing every point. Ten million
   points render end to end in tens of milliseconds single-threaded on the
   [dated baseline](BENCHMARKS.md); `cargo bench --bench render` carries the complete
-  suite. Every aggregator is a mergeable monoid, so host-side parallelism and
-  streaming are compositions, not features.
+  suite. Online accumulators (`Moments`, `Fit`, `Bins`, M4) expose their merge laws;
+  reducers and batch transforms keep distinct execution contracts instead of
+  pretending every statistic has the same algebra.
 - **Axes that are actually good.** Extended-Wilkinson tick placement (Talbot, Lin,
   Hanrahan 2010), exact-decimal labels that parse back to their values, one shared SI
   prefix per axis (`2.5M`, `100µ`), log axes with superscript decades, calendar time

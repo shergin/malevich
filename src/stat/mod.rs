@@ -1,10 +1,11 @@
 //! Statistical transforms: aggregation that runs before scales see the data.
 //!
-//! Every aggregator here is a mergeable monoid — two partial results combine
-//! associatively via `merge` — so host-side parallel chunking (over a fixed
-//! reduction tree) and streaming increments are compositions, not features. The
-//! plot pipeline inserts [`m4`] automatically for large line layers; everything is
-//! also public API for direct use.
+//! The execution model follows the operation: [`Moments`], [`Fit`], [`Bins`], and
+//! [`M4`] are online accumulators with explicit merge contracts; [`Reducer`] maps a
+//! collection to one value and buffers only for order statistics; [`Window`], KDE,
+//! ECDF, LTTB, contours, and stacking are batch transforms. The plot pipeline
+//! inserts [`m4`] automatically for large line layers; everything is also public
+//! API for direct use.
 
 mod agg;
 mod bin;

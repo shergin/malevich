@@ -57,11 +57,10 @@ marks. The core is monomorphic `f64`. Maps to `data::Series` and `data::IntoSeri
 
 ## Stat
 
-A data transform that runs before scales see the data: `Bin`, `Agg`, `Window`, `Stack`,
-`Normalize`, `Density`, `Ecdf`, `BoxStats`, `Downsample`, `Contour`. The word follows
-seaborn.objects (`Stat`) and ggplot (`stat_*`). Stats are mergeable: two partial results
-combine associatively, which is what makes host-side parallelism and streaming
-compositions rather than features. Maps to the `stat` module: `stat::M4` (with
+A data operation that runs before scales see the data. The word follows
+seaborn.objects (`Stat`) and ggplot (`stat_*`). It is the module-level umbrella, not
+one execution algebra: a stat may be an online accumulator, a reducer, keyed
+orchestration, or a batch transform. Maps to the `stat` module: `stat::M4` (with
 `stat::m4`, auto-inserted for large line layers), `stat::Bins`/`stat::bins2`
 (histograms), `stat::Agg` (group-by with the shared reducer vocabulary),
 `stat::BoxStats` (type-7 quartiles, Tukey whiskers), `stat::kde` (Silverman
@@ -71,6 +70,15 @@ least squares — bivariate Welford accumulation with Chan's merge; slope, inter
 R², and the standard error of the mean response, feeding the `trend` preset's line
 and confidence band).
 
+## Online accumulator
+
+A bounded state updated one observation at a time. Some accumulators also merge
+partial states: `stat::Moments` and `stat::Fit` use order-independent summary state;
+`stat::Bins` requires identical geometry; `stat::M4` requires chunks to retain series
+order because gaps and first/last points are path topology. Each type states its own
+identity, merge preconditions, and ordering requirement. Floating-point merge results
+are understood over a fixed reduction tree, not as bitwise-independent reassociation.
+
 ## Reducer
 
 A named aggregation shared by every aggregating stat: `Count`, `Sum`, `Mean`,
@@ -78,8 +86,18 @@ A named aggregation shared by every aggregating stat: `Count`, `Sum`, `Mean`,
 quartiles use). One vocabulary across bins, groups, and windows (the Observable Plot
 convention): `Agg::reduce` and `Window::reduce` take it directly (their named
 methods are sugar over it), `stat::binned` reduces a paired series per histogram
-bin, and `stat::quantiles` evaluates many percentiles over one sort. Maps to
-`stat::Reducer`.
+bin, and `stat::quantiles` evaluates many percentiles over one sort. The common
+reducers compile to streaming state; median and percentile retain and sort their
+finite sample. A reducer promises a result for one collection, not a public merge
+operation. Maps to `stat::Reducer`.
+
+## Batch transform
+
+An operation that consumes a complete ordered collection and emits another
+collection or structured result. `stat::Window`, `stat::kde`, `stat::ecdf`,
+`stat::lttb`, contours, stacking, `bins2`, and `BoxStats` are batch transforms.
+They may use online accumulators internally, but that does not make the transform
+itself mergeable.
 
 ## Scale
 
