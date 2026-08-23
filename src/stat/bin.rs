@@ -414,16 +414,13 @@ pub fn try_bins2(
 /// Panics if the two slices have different lengths.
 pub fn binned(x: &[f64], y: &[f64], bins: &Bins, reducer: super::Reducer) -> Vec<f64> {
     assert_eq!(x.len(), y.len(), "binned requires slices of equal length");
-    let mut buckets: Vec<Vec<f64>> = vec![Vec::new(); bins.counts().len()];
+    let mut buckets = vec![super::reducer::ReducerState::new(reducer); bins.counts().len()];
     for (&position, &value) in x.iter().zip(y) {
         if let Some(index) = bins.bucket(position) {
-            buckets[index].push(value);
+            buckets[index].add(value);
         }
     }
-    buckets
-        .iter()
-        .map(|bucket| reducer.reduce(bucket))
-        .collect()
+    buckets.into_iter().map(|bucket| bucket.finish()).collect()
 }
 
 #[cfg(test)]

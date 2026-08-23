@@ -37,28 +37,95 @@ impl Reducer {
     /// Panics when a [`Percentile`](Reducer::Percentile) position is not in
     /// `[0, 1]`.
     pub fn reduce(&self, values: &[f64]) -> f64 {
-        if let Reducer::Percentile(position) = self {
-            assert!(
-                (0.0..=1.0).contains(position),
-                "Reducer::Percentile requires a position in [0, 1]"
-            );
+        let mut state = ReducerState::new(*self);
+        if let ReducerState::Quantile { values: finite, .. } = &mut state {
+            finite.reserve(values.len());
         }
-        let mut finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
-        match self {
-            Reducer::Count => finite.len() as f64,
-            Reducer::Sum => finite.iter().sum(),
-            Reducer::Mean if finite.is_empty() => f64::NAN,
-            Reducer::Mean => finite.iter().sum::<f64>() / finite.len() as f64,
-            Reducer::Min => finite.iter().copied().fold(f64::NAN, f64::min),
-            Reducer::Max => finite.iter().copied().fold(f64::NAN, f64::max),
-            Reducer::Median | Reducer::Percentile(_) if finite.is_empty() => f64::NAN,
-            Reducer::Median => {
-                finite.sort_by(f64::total_cmp);
-                quantile_sorted(&finite, 0.5)
-            }
+        for &value in values {
+            state.add(value);
+        }
+        state.finish()
+    }
+}
+
+/// The execution state behind a [`Reducer`]. Streaming summaries retain only
+/// their sufficient statistic; order statistics retain their finite sample.
+/// Keeping this private lets bins and windows specialize without turning the
+/// public reducer vocabulary into a trait framework.
+#[derive(Debug, Clone)]
+pub(crate) enum ReducerState {
+    Count(usize),
+    Sum(f64),
+    Mean { count: usize, mean: f64 },
+    Min(Option<f64>),
+    Max(Option<f64>),
+    Quantile { position: f64, values: Vec<f64> },
+}
+
+impl ReducerState {
+    pub(crate) fn new(reducer: Reducer) -> ReducerState {
+        match reducer {
+            Reducer::Count => ReducerState::Count(0),
+            Reducer::Sum => ReducerState::Sum(0.0),
+            Reducer::Mean => ReducerState::Mean {
+                count: 0,
+                mean: 0.0,
+            },
+            Reducer::Min => ReducerState::Min(None),
+            Reducer::Max => ReducerState::Max(None),
+            Reducer::Median => ReducerState::Quantile {
+                position: 0.5,
+                values: Vec::new(),
+            },
             Reducer::Percentile(position) => {
-                finite.sort_by(f64::total_cmp);
-                quantile_sorted(&finite, *position)
+                assert!(
+                    (0.0..=1.0).contains(&position),
+                    "Reducer::Percentile requires a position in [0, 1]"
+                );
+                ReducerState::Quantile {
+                    position,
+                    values: Vec::new(),
+                }
+            }
+        }
+    }
+
+    pub(crate) fn add(&mut self, value: f64) {
+        if !value.is_finite() {
+            return;
+        }
+        match self {
+            ReducerState::Count(count) => *count += 1,
+            ReducerState::Sum(sum) => *sum += value,
+            ReducerState::Mean { count, mean } => {
+                *count += 1;
+                *mean = crate::numeric::lerp(*mean, value, 1.0 / *count as f64);
+            }
+            ReducerState::Min(minimum) => {
+                *minimum = Some(minimum.map_or(value, |current| current.min(value)));
+            }
+            ReducerState::Max(maximum) => {
+                *maximum = Some(maximum.map_or(value, |current| current.max(value)));
+            }
+            ReducerState::Quantile { values, .. } => values.push(value),
+        }
+    }
+
+    pub(crate) fn finish(self) -> f64 {
+        match self {
+            ReducerState::Count(count) => count as f64,
+            ReducerState::Sum(sum) => sum,
+            ReducerState::Mean { count: 0, .. } => f64::NAN,
+            ReducerState::Mean { mean, .. } => mean,
+            ReducerState::Min(minimum) => minimum.unwrap_or(f64::NAN),
+            ReducerState::Max(maximum) => maximum.unwrap_or(f64::NAN),
+            ReducerState::Quantile { values, .. } if values.is_empty() => f64::NAN,
+            ReducerState::Quantile {
+                position,
+                mut values,
+            } => {
+                values.sort_by(f64::total_cmp);
+                quantile_sorted(&values, position)
             }
         }
     }

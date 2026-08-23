@@ -1,4 +1,5 @@
-use super::Bins;
+use super::{Bins, binned};
+use crate::stat::Reducer;
 
 #[test]
 fn values_land_in_their_bins_and_the_last_edge_is_inclusive() {
@@ -194,5 +195,19 @@ fn accepted_uniform_geometry_never_drops_its_finite_endpoints() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn binned_reducers_share_streaming_and_buffered_execution_semantics() {
+    let bins = Bins::new(0.0, 1.0, 3);
+    let x = [0.1, 0.2, 1.1, 1.2, f64::NAN];
+    let y = [1.0, 3.0, 10.0, f64::NAN, 99.0];
+
+    assert_eq!(binned(&x, &y, &bins, Reducer::Count), [2.0, 1.0, 0.0]);
+    for reducer in [Reducer::Mean, Reducer::Median] {
+        let reduced = binned(&x, &y, &bins, reducer);
+        assert_eq!(&reduced[..2], [2.0, 10.0]);
+        assert!(reduced[2].is_nan());
     }
 }

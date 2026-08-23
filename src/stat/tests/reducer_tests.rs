@@ -31,6 +31,12 @@ fn median_of_opposite_finite_extremes_stays_finite() {
 }
 
 #[test]
+fn mean_of_opposite_finite_extremes_stays_inside_their_hull() {
+    assert_eq!(Reducer::Mean.reduce(&[-f64::MAX, f64::MAX]), 0.0);
+    assert_eq!(Reducer::Mean.reduce(&[f64::MAX, -f64::MAX]), 0.0);
+}
+
+#[test]
 fn gaps_are_excluded_and_the_empty_set_answers_honestly() {
     let gappy = [1.0, f64::NAN, 3.0, f64::INFINITY];
     assert_eq!(Reducer::Count.reduce(&gappy), 2.0);
