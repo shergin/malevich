@@ -44,6 +44,19 @@ jobs:
       - run: cargo clippy -p malevich-cli --all-targets -- -D warnings
       - run: cargo test -p malevich-cli
 
+  # Demos are workspace members but intentionally not default members. Keep
+  # their data shaping and ratatui integration under an explicit gate instead
+  # of relying on a developer to remember `--workspace` locally.
+  demos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy -p fred -p sysmon --all-targets -- -D warnings
+      - run: cargo test -p fred -p sysmon --all-targets
+
   # Exercise the non-Unix pixel/detection fallbacks and the CLI's cfg-gated live
   # path on a native Windows toolchain. Generated docs stay on the Unix matrix so
   # newline-sensitive fixtures have one canonical producer.
