@@ -1,6 +1,7 @@
 //! The range mark: vertical intervals, with optional body and marker channels.
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::Categories;
 use crate::render::Color;
 
 /// Vertical intervals at positions: error bars, box plots, candles, event ticks —
@@ -24,7 +25,7 @@ pub struct Range<'a> {
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
-    pub(crate) color_by: Option<Vec<String>>,
+    pub(crate) color_by: Option<Categories>,
 }
 
 /// Where ranges sit on the x axis.
@@ -178,8 +179,7 @@ impl<'a> Range<'a> {
         mut self,
         categories: impl IntoIterator<Item = impl Into<String>>,
     ) -> Range<'a> {
-        let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
-        self.color_by = Some(categories);
+        self.color_by = Some(Categories::new(categories));
         self.validate()
             .expect("Range::color_by requires one category per interval");
         self

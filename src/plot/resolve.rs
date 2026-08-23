@@ -520,23 +520,6 @@ const MARKER_CYCLE: [PointStyle; 5] = [
     PointStyle::Circle,
 ];
 
-/// The distinct categories in first-appearance order, plus each element's
-/// category index. Linear scan: category counts are legend-sized.
-fn categorize(labels: &[String]) -> (Vec<&str>, Vec<usize>) {
-    let mut order: Vec<&str> = Vec::new();
-    let indices = labels
-        .iter()
-        .map(|label| match order.iter().position(|seen| seen == label) {
-            Some(index) => index,
-            None => {
-                order.push(label);
-                order.len() - 1
-            }
-        })
-        .collect();
-    (order, indices)
-}
-
 /// NaN-masks `values` down to the elements of one category — the mask is the
 /// gap convention, so masked-out elements draw nothing, honestly.
 fn masked(values: &[f64], indices: &[usize], category: usize) -> Vec<f64> {
@@ -575,14 +558,14 @@ fn expand_color_by<'p>(
     match mark {
         Mark::Points(points) => {
             let categories = points.color_by.as_ref()?;
-            let (order, indices) = categorize(categories);
             Some(
-                order
+                categories
+                    .labels()
                     .iter()
                     .enumerate()
                     .map(|(category, name)| ResolvedLayer::Series {
                         x: coordinates(points.x.as_ref(), points.y.len()),
-                        y: Cow::Owned(masked(points.y.as_slice(), &indices, category)),
+                        y: Cow::Owned(masked(points.y.as_slice(), categories.ids(), category)),
                         color: categorical.color(category),
                         kind: Kind::Points(if cycle_markers && points.style == PointStyle::Dot {
                             MARKER_CYCLE[category % MARKER_CYCLE.len()]
@@ -599,14 +582,14 @@ fn expand_color_by<'p>(
             let Source::Points { x, y } = &line.source else {
                 return None;
             };
-            let (order, indices) = categorize(categories);
             let x_slice = x.as_ref().map(|series| series.as_slice());
             Some(
-                order
+                categories
+                    .labels()
                     .iter()
                     .enumerate()
                     .map(|(category, name)| {
-                        let masked_y = masked(y.as_slice(), &indices, category);
+                        let masked_y = masked(y.as_slice(), categories.ids(), category);
                         match reduced(x_slice, &masked_y, reduce) {
                             Some((dx, dy)) => ResolvedLayer::Series {
                                 x: Coordinates::Values(Cow::Owned(dx)),
@@ -629,14 +612,18 @@ fn expand_color_by<'p>(
         }
         Mark::Bars(bars) => {
             let categories = bars.color_by.as_ref()?;
-            let (order, indices) = categorize(categories);
             Some(
-                order
+                categories
+                    .labels()
                     .iter()
                     .enumerate()
                     .map(|(category, name)| ResolvedLayer::Bars {
                         placement: &bars.placement,
-                        values: Cow::Owned(masked(bars.values.as_slice(), &indices, category)),
+                        values: Cow::Owned(masked(
+                            bars.values.as_slice(),
+                            categories.ids(),
+                            category,
+                        )),
                         color: categorical.color(category),
                         label: Some(name),
                     })
@@ -645,9 +632,9 @@ fn expand_color_by<'p>(
         }
         Mark::Range(range) => {
             let categories = range.color_by.as_ref()?;
-            let (order, indices) = categorize(categories);
             Some(
-                order
+                categories
+                    .labels()
                     .iter()
                     .enumerate()
                     .map(|(category, name)| {
@@ -662,16 +649,24 @@ fn expand_color_by<'p>(
                         ResolvedLayer::Range {
                             x,
                             categories: band_categories,
-                            low: Cow::Owned(masked(range.low.as_slice(), &indices, category)),
-                            high: Cow::Owned(masked(range.high.as_slice(), &indices, category)),
+                            low: Cow::Owned(masked(
+                                range.low.as_slice(),
+                                categories.ids(),
+                                category,
+                            )),
+                            high: Cow::Owned(masked(
+                                range.high.as_slice(),
+                                categories.ids(),
+                                category,
+                            )),
                             body: range.body.as_ref().map(|(low, high)| {
                                 (
-                                    Cow::Owned(masked(low.as_slice(), &indices, category)),
-                                    Cow::Owned(masked(high.as_slice(), &indices, category)),
+                                    Cow::Owned(masked(low.as_slice(), categories.ids(), category)),
+                                    Cow::Owned(masked(high.as_slice(), categories.ids(), category)),
                                 )
                             }),
                             marker: range.marker.as_ref().map(|marker| {
-                                Cow::Owned(masked(marker.as_slice(), &indices, category))
+                                Cow::Owned(masked(marker.as_slice(), categories.ids(), category))
                             }),
                             color: categorical.color(category),
                             label: Some(name),

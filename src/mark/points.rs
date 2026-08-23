@@ -1,6 +1,7 @@
 //! The points mark: unconnected markers at data positions.
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::Categories;
 use crate::render::Color;
 
 /// The shape used for a [`Points`] layer.
@@ -39,7 +40,7 @@ pub struct Points<'a> {
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
-    pub(crate) color_by: Option<Vec<String>>,
+    pub(crate) color_by: Option<Categories>,
 }
 
 impl<'a> Points<'a> {
@@ -113,8 +114,7 @@ impl<'a> Points<'a> {
         mut self,
         categories: impl IntoIterator<Item = impl Into<String>>,
     ) -> Points<'a> {
-        let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
-        self.color_by = Some(categories);
+        self.color_by = Some(Categories::new(categories));
         self.validate()
             .expect("Points::color_by requires one category per point");
         self

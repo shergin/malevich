@@ -1,6 +1,7 @@
 //! The bars mark: values as filled columns over a categorical axis.
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::Categories;
 use crate::render::Color;
 
 /// Filled vertical bars, one per category, rising (or falling) from a zero
@@ -21,7 +22,7 @@ pub struct Bars<'a> {
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
-    pub(crate) color_by: Option<Vec<String>>,
+    pub(crate) color_by: Option<Categories>,
 }
 
 /// Where bars sit on the x axis: named bands, or contiguous numeric spans.
@@ -102,8 +103,7 @@ impl<'a> Bars<'a> {
     /// Panics if the number of group names differs from the number of bars.
     #[must_use]
     pub fn color_by(mut self, groups: impl IntoIterator<Item = impl Into<String>>) -> Bars<'a> {
-        let groups: Vec<String> = groups.into_iter().map(Into::into).collect();
-        self.color_by = Some(groups);
+        self.color_by = Some(Categories::new(groups));
         self.validate()
             .expect("Bars::color_by requires one group per bar");
         self

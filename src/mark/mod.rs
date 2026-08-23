@@ -7,6 +7,7 @@
 
 mod area;
 mod bars;
+mod categories;
 mod cells;
 mod line;
 mod points;
@@ -17,6 +18,7 @@ mod text;
 pub use area::Area;
 pub use bars::Bars;
 pub(crate) use bars::Placement;
+pub(crate) use categories::Categories;
 pub use cells::Cells;
 pub(crate) use line::Source;
 pub use line::{Line, LineStyle};

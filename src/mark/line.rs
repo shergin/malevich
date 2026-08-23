@@ -4,6 +4,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::Categories;
 use crate::render::Color;
 
 /// How a line renders.
@@ -30,7 +31,7 @@ pub struct Line<'a> {
     pub(crate) color: Option<Color>,
     pub(crate) label: Option<String>,
     pub(crate) style: LineStyle,
-    pub(crate) color_by: Option<Vec<String>>,
+    pub(crate) color_by: Option<Categories>,
 }
 
 #[derive(Clone)]
@@ -142,8 +143,7 @@ impl<'a> Line<'a> {
     /// per-point categories).
     #[must_use]
     pub fn color_by(mut self, categories: impl IntoIterator<Item = impl Into<String>>) -> Line<'a> {
-        let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
-        self.color_by = Some(categories);
+        self.color_by = Some(Categories::new(categories));
         self.validate()
             .expect("Line::color_by requires one category per point and point data");
         self
@@ -227,7 +227,7 @@ mod serde_impls {
         label: &'s Option<String>,
         style: LineStyle,
         #[serde(skip_serializing_if = "Option::is_none")]
-        color_by: &'s Option<Vec<String>>,
+        color_by: &'s Option<Categories>,
     }
 
     #[derive(serde::Deserialize)]
@@ -238,7 +238,7 @@ mod serde_impls {
         label: Option<String>,
         style: LineStyle,
         #[serde(default)]
-        color_by: Option<Vec<String>>,
+        color_by: Option<Categories>,
     }
 
     impl serde::Serialize for Line<'_> {
