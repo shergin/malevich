@@ -62,3 +62,36 @@ fn junk_and_out_of_range_are_gaps() {
     assert_eq!(parse("2021-01"), None); // no day
     assert_eq!(parse("inf"), None);
 }
+
+#[test]
+fn impossible_calendar_dates_are_gaps_instead_of_being_normalized() {
+    assert_eq!(parse("2023-02-29"), None);
+    assert_eq!(parse("2024-02-29"), Some(1_709_164_800.0));
+    assert_eq!(parse("2024-02-30"), None);
+    assert_eq!(parse("2024-04-31"), None);
+    assert_eq!(parse("2000-02-29"), Some(951_782_400.0));
+    assert_eq!(parse("1900-02-29"), None);
+}
+
+#[test]
+fn timezone_components_are_bounded() {
+    assert!(parse("2024-01-01T00:00:00+23:59").is_some());
+    assert_eq!(parse("2024-01-01T00:00:00+24:00"), None);
+    assert_eq!(parse("2024-01-01T00:00:00-00:60"), None);
+    assert_eq!(parse("2024-01-01T00:00:00+99:99"), None);
+}
+
+#[test]
+fn timestamp_seconds_follow_the_documented_decimal_grammar() {
+    assert_eq!(parse("2024-01-01T00:00:1e1"), None);
+    assert_eq!(parse("2024-01-01T00:00:+1"), None);
+    assert_eq!(parse("2024-01-01T00:00:01."), None);
+    assert!(parse("2024-01-01T00:00:01.000001").is_some());
+}
+
+#[test]
+fn expanded_years_have_a_safe_documented_ceiling() {
+    assert!(parse("999999-12-31T23:59:59Z").is_some());
+    assert_eq!(parse("1000000-01-01"), None);
+    assert_eq!(parse("9223372036854775807-01-01"), None);
+}
