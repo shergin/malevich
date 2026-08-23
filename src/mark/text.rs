@@ -23,16 +23,14 @@ impl Text {
     ///
     /// Panics if the anchor is not finite.
     pub fn at(x: f64, y: f64, text: impl Into<String>) -> Text {
-        assert!(
-            x.is_finite() && y.is_finite(),
-            "Text::at requires a finite anchor"
-        );
-        Text {
+        let text = Text {
             x,
             y,
             text: text.into(),
             color: None,
-        }
+        };
+        text.validate().expect("Text::at requires a finite anchor");
+        text
     }
 
     /// Sets an explicit color; without one, annotations draw in the default
@@ -41,5 +39,16 @@ impl Text {
     pub fn color(mut self, color: Color) -> Text {
         self.color = Some(color);
         self
+    }
+
+    /// Checks the annotation anchor after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if self.x.is_finite() && self.y.is_finite() {
+            Ok(())
+        } else {
+            Err(crate::Error::InvalidParameter {
+                detail: "a Text anchor must be finite",
+            })
+        }
     }
 }

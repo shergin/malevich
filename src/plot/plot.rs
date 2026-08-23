@@ -281,6 +281,9 @@ impl<'a> Plot<'a> {
         for layer in &self.layers {
             layer.validate()?;
         }
+        if let Some(palette) = &self.palette {
+            palette.validate()?;
+        }
         if matches!(self.y, Scale::Bands(_)) {
             return Err(crate::Error::IncompatibleScale {
                 detail: "Bands is supported only on the x axis",
@@ -389,10 +392,15 @@ impl<'a> Plot<'a> {
             }
         }
         for (axis, domain) in [("x", self.x_domain), ("y", self.y_domain)] {
-            if let Some((lo, hi)) = domain
-                && !(lo.is_finite() && hi.is_finite())
-            {
-                return Err(crate::Error::NonFiniteDomain { axis });
+            if let Some((lo, hi)) = domain {
+                if !(lo.is_finite() && hi.is_finite()) {
+                    return Err(crate::Error::NonFiniteDomain { axis });
+                }
+                if lo > hi {
+                    return Err(crate::Error::InvalidParameter {
+                        detail: "manual axis domains must be ascending",
+                    });
+                }
             }
         }
         if matches!(self.x, Scale::Log)

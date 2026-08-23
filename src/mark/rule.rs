@@ -29,12 +29,13 @@ impl Rule {
     ///
     /// Panics if `y` is not finite.
     pub fn h(y: f64) -> Rule {
-        assert!(y.is_finite(), "Rule::h requires a finite position");
-        Rule {
+        let rule = Rule {
             orientation: Orientation::Horizontal(y),
             color: None,
             label: None,
-        }
+        };
+        rule.validate().expect("Rule::h requires a finite position");
+        rule
     }
 
     /// A vertical rule at `x`, spanning the plot's height.
@@ -43,12 +44,13 @@ impl Rule {
     ///
     /// Panics if `x` is not finite.
     pub fn v(x: f64) -> Rule {
-        assert!(x.is_finite(), "Rule::v requires a finite position");
-        Rule {
+        let rule = Rule {
             orientation: Orientation::Vertical(x),
             color: None,
             label: None,
-        }
+        };
+        rule.validate().expect("Rule::v requires a finite position");
+        rule
     }
 
     /// Sets an explicit color; without one, rules draw in the default foreground —
@@ -64,6 +66,20 @@ impl Rule {
     pub fn label(mut self, label: impl Into<String>) -> Rule {
         self.label = Some(label.into());
         self
+    }
+
+    /// Checks the rule position after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        let position = match self.orientation {
+            Orientation::Horizontal(value) | Orientation::Vertical(value) => value,
+        };
+        if position.is_finite() {
+            Ok(())
+        } else {
+            Err(crate::Error::InvalidParameter {
+                detail: "a Rule position must be finite",
+            })
+        }
     }
 }
 

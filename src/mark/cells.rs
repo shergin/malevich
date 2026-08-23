@@ -29,16 +29,16 @@ impl<'a> Cells<'a> {
     /// Panics if `columns` is zero or does not divide the value count evenly.
     pub fn matrix(columns: usize, values: impl IntoSeries<'a>) -> Cells<'a> {
         let values = values.into_series();
-        assert!(
-            columns > 0 && values.len() % columns == 0,
-            "Cells::matrix requires columns to divide the value count evenly"
-        );
-        Cells {
+        let cells = Cells {
             columns,
             values,
             extents: None,
             colormap: Colormap::DEFAULT,
-        }
+        };
+        cells
+            .validate()
+            .expect("Cells::matrix requires columns to divide the value count evenly");
+        cells
     }
 
     /// Maps the grid onto data coordinates: the x axis spans `x`, the y axis `y`.
@@ -49,16 +49,9 @@ impl<'a> Cells<'a> {
     /// endpoints are accepted and flip that grid axis.
     #[must_use]
     pub fn extents(mut self, x: (f64, f64), y: (f64, f64)) -> Cells<'a> {
-        assert!(
-            x.0.is_finite()
-                && x.1.is_finite()
-                && y.0.is_finite()
-                && y.1.is_finite()
-                && x.0 != x.1
-                && y.0 != y.1,
-            "Cells::extents requires finite, non-empty bounds"
-        );
         self.extents = Some((x, y));
+        self.validate()
+            .expect("Cells::extents requires finite, non-empty bounds");
         self
     }
 
@@ -67,6 +60,35 @@ impl<'a> Cells<'a> {
     pub fn colormap(mut self, colormap: Colormap) -> Cells<'a> {
         self.colormap = colormap;
         self
+    }
+
+    /// Checks grid, extent, and colormap invariants after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if self.columns == 0 {
+            return Err(crate::Error::EmptyDimension {
+                what: "Cells columns",
+            });
+        }
+        if !self.values.len().is_multiple_of(self.columns) {
+            return Err(crate::Error::NonRectangular {
+                mark: "Cells",
+                shape: (self.values.len(), self.columns),
+            });
+        }
+        self.colormap.validate()?;
+        if let Some((x, y)) = self.extents {
+            if !(x.0.is_finite() && x.1.is_finite() && y.0.is_finite() && y.1.is_finite()) {
+                return Err(crate::Error::InvalidParameter {
+                    detail: "Cells extents must be finite",
+                });
+            }
+            if x.0 == x.1 || y.0 == y.1 {
+                return Err(crate::Error::InvalidParameter {
+                    detail: "Cells extents must be non-empty",
+                });
+            }
+        }
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.

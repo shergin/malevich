@@ -321,6 +321,50 @@ fn validate_rejects_the_malformed_payloads_render_tolerates() {
 }
 
 #[test]
+fn strict_validation_reuses_constructor_invariants() {
+    let valid = Plot::new().layer(Bars::spans(0.0, 1.0, [1.0]));
+    let mut raw = serde_json::to_value(valid).expect("plot serializes");
+    *raw.pointer_mut("/layers/0/Bars/placement/Spans/width")
+        .expect("span width in wire representation") = serde_json::json!(0.0);
+
+    let invalid: Plot = serde_json::from_value(raw.clone()).expect("raw Plot stays decodable");
+    assert!(matches!(
+        invalid.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+    let _ = invalid.render(&frame());
+
+    let envelope = serde_json::json!({
+        "version": Document::VERSION,
+        "kind": "plot",
+        "spec": raw
+    });
+    let error = serde_json::from_value::<Document>(envelope)
+        .expect_err("a strict Document rejects invalid Bars geometry");
+    assert!(
+        error.to_string().contains("finite positive width"),
+        "{error}"
+    );
+
+    let mut reversed = serde_json::to_value(Plot::new()).unwrap();
+    reversed["x_domain"] = serde_json::json!([2.0, 1.0]);
+    let reversed: Plot = serde_json::from_value(reversed).unwrap();
+    assert!(matches!(
+        reversed.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+
+    let mut empty_palette =
+        serde_json::to_value(Plot::new().palette(crate::scale::Palette::default())).unwrap();
+    empty_palette["palette"]["colors"] = serde_json::json!([]);
+    let empty_palette: Plot = serde_json::from_value(empty_palette).unwrap();
+    assert!(matches!(
+        empty_palette.validate(),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+}
+
+#[test]
 fn a_function_line_refuses_to_serialize() {
     let plot = Plot::new().layer(Line::function(0.0..10.0, f64::sin));
     let error = serde_json::to_string(&plot).expect_err("closures have no data form");

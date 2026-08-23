@@ -63,19 +63,18 @@ impl<'a> Points<'a> {
     pub fn xy(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Points<'a> {
         let x = x.into_series();
         let y = y.into_series();
-        assert_eq!(
-            x.len(),
-            y.len(),
-            "Points::xy requires series of equal length"
-        );
-        Points {
+        let points = Points {
             x: Some(x),
             y,
             color: None,
             label: None,
             style: PointStyle::Dot,
             color_by: None,
-        }
+        };
+        points
+            .validate()
+            .expect("Points::xy requires series of equal length");
+        points
     }
 
     /// Sets the marker shape; [`PointStyle::Dot`] by default.
@@ -115,13 +114,21 @@ impl<'a> Points<'a> {
         categories: impl IntoIterator<Item = impl Into<String>>,
     ) -> Points<'a> {
         let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
-        assert_eq!(
-            categories.len(),
-            self.y.len(),
-            "Points::color_by requires one category per point"
-        );
         self.color_by = Some(categories);
+        self.validate()
+            .expect("Points::color_by requires one category per point");
         self
+    }
+
+    /// Checks the paired channels, including values decoded without a constructor.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if let Some(x) = &self.x {
+            super::pair("Points: x and y", x.len(), self.y.len())?;
+        }
+        if let Some(categories) = &self.color_by {
+            super::pair("Points: color_by and y", categories.len(), self.y.len())?;
+        }
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.

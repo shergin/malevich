@@ -296,17 +296,7 @@ fn check_count(
 }
 
 fn check_colormap(colormap: &Colormap) -> crate::Result<()> {
-    if colormap.stops().len() < 2 {
-        return Err(crate::Error::EmptyDimension {
-            what: "Colormap stops",
-        });
-    }
-    if !colormap.midpoint_is_valid() {
-        return Err(crate::Error::InvalidParameter {
-            detail: "a colormap midpoint must be finite",
-        });
-    }
-    Ok(())
+    colormap.validate()
 }
 
 fn check_contour_coordinates(

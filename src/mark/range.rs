@@ -51,11 +51,7 @@ impl<'a> Range<'a> {
         let x = x.into_series();
         let low = low.into_series();
         let high = high.into_series();
-        assert!(
-            x.len() == low.len() && low.len() == high.len(),
-            "Range::xy requires series of equal length"
-        );
-        Range {
+        let range = Range {
             placement: RangePlacement::Numeric(Some(x)),
             low,
             high,
@@ -64,7 +60,11 @@ impl<'a> Range<'a> {
             color: None,
             label: None,
             color_by: None,
-        }
+        };
+        range
+            .validate()
+            .expect("Range::xy requires series of equal length");
+        range
     }
 
     /// Intervals from `low` to `high` against their indices.
@@ -75,12 +75,7 @@ impl<'a> Range<'a> {
     pub fn y(low: impl IntoSeries<'a>, high: impl IntoSeries<'a>) -> Range<'a> {
         let low = low.into_series();
         let high = high.into_series();
-        assert_eq!(
-            low.len(),
-            high.len(),
-            "Range::y requires series of equal length"
-        );
-        Range {
+        let range = Range {
             placement: RangePlacement::Numeric(None),
             low,
             high,
@@ -89,7 +84,11 @@ impl<'a> Range<'a> {
             color: None,
             label: None,
             color_by: None,
-        }
+        };
+        range
+            .validate()
+            .expect("Range::y requires series of equal length");
+        range
     }
 
     /// One interval per named band — the box-plot arrangement. Bands share the
@@ -106,11 +105,7 @@ impl<'a> Range<'a> {
         let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
         let low = low.into_series();
         let high = high.into_series();
-        assert!(
-            categories.len() == low.len() && low.len() == high.len(),
-            "Range::over requires one category per interval"
-        );
-        Range {
+        let range = Range {
             placement: RangePlacement::Bands(categories),
             low,
             high,
@@ -119,7 +114,11 @@ impl<'a> Range<'a> {
             color: None,
             label: None,
             color_by: None,
-        }
+        };
+        range
+            .validate()
+            .expect("Range::over requires one category per interval");
+        range
     }
 
     /// Adds a thick filled sub-interval — the box of a box plot.
@@ -131,11 +130,9 @@ impl<'a> Range<'a> {
     pub fn body(mut self, low: impl IntoSeries<'a>, high: impl IntoSeries<'a>) -> Range<'a> {
         let low = low.into_series();
         let high = high.into_series();
-        assert!(
-            low.len() == self.low.len() && high.len() == self.low.len(),
-            "Range::body requires series matching the range length"
-        );
         self.body = Some((low, high));
+        self.validate()
+            .expect("Range::body requires series matching the range length");
         self
     }
 
@@ -147,12 +144,9 @@ impl<'a> Range<'a> {
     #[must_use]
     pub fn marker(mut self, values: impl IntoSeries<'a>) -> Range<'a> {
         let values = values.into_series();
-        assert_eq!(
-            values.len(),
-            self.low.len(),
-            "Range::marker requires a series matching the range length"
-        );
         self.marker = Some(values);
+        self.validate()
+            .expect("Range::marker requires a series matching the range length");
         self
     }
 
@@ -185,13 +179,36 @@ impl<'a> Range<'a> {
         categories: impl IntoIterator<Item = impl Into<String>>,
     ) -> Range<'a> {
         let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
-        assert_eq!(
-            categories.len(),
-            self.low.len(),
-            "Range::color_by requires one category per interval"
-        );
         self.color_by = Some(categories);
+        self.validate()
+            .expect("Range::color_by requires one category per interval");
         self
+    }
+
+    /// Checks placement and optional-channel invariants after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        let count = self.low.len();
+        super::pair("Range: low and high", count, self.high.len())?;
+        match &self.placement {
+            RangePlacement::Numeric(Some(x)) => {
+                super::pair("Range: x and low", x.len(), count)?;
+            }
+            RangePlacement::Bands(categories) => {
+                super::pair("Range: categories and low", categories.len(), count)?;
+            }
+            RangePlacement::Numeric(None) => {}
+        }
+        if let Some((low, high)) = &self.body {
+            super::pair("Range: body low and high", low.len(), high.len())?;
+            super::pair("Range: body and low", low.len(), count)?;
+        }
+        if let Some(marker) = &self.marker {
+            super::pair("Range: marker and low", marker.len(), count)?;
+        }
+        if let Some(categories) = &self.color_by {
+            super::pair("Range: color_by and low", categories.len(), count)?;
+        }
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.

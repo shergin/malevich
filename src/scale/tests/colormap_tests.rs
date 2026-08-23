@@ -110,7 +110,7 @@ fn a_deserialized_non_finite_midpoint_degrades_and_fails_validation() {
         stops: Colormap::RED_BLUE.stops().to_vec().into(),
         midpoint: Some(super::Midpoint(f64::NAN)),
     };
-    assert!(!map.midpoint_is_valid());
+    assert!(map.validate().is_err());
     // Rendering paths degrade to the linear mapping instead of spreading NaN.
     assert_eq!(map.position_in(3.0, 2.0, 6.0), 0.25);
 }

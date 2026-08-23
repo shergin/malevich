@@ -68,6 +68,17 @@ impl Palette {
         &self.colors
     }
 
+    /// Checks invariants after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if self.colors.is_empty() {
+            Err(crate::Error::EmptyDimension {
+                what: "Palette colors",
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     /// The color for category `index`, wrapping past the end. An empty palette
     /// (possible only through deserialization) degrades to the default color.
     pub(crate) fn color(&self, index: usize) -> Color {

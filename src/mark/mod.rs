@@ -73,102 +73,15 @@ impl<'a> Mark<'a> {
     /// another way (deserialization) so the fallible API can report bad specs.
     pub(crate) fn validate(&self) -> Result<(), crate::Error> {
         match self {
-            Mark::Line(line) => {
-                if let Source::Points { x: Some(x), y } = &line.source {
-                    pair("Line: x and y", x.len(), y.len())?;
-                }
-                if let (Some(categories), Source::Points { y, .. }) = (&line.color_by, &line.source)
-                {
-                    pair("Line: color_by and y", categories.len(), y.len())?;
-                }
-            }
-            Mark::Points(points) => {
-                if let Some(x) = &points.x {
-                    pair("Points: x and y", x.len(), points.y.len())?;
-                }
-                if let Some(categories) = &points.color_by {
-                    pair("Points: color_by and y", categories.len(), points.y.len())?;
-                }
-            }
-            Mark::Bars(bars) => {
-                if let Placement::Bands(categories) = &bars.placement {
-                    pair(
-                        "Bars: categories and values",
-                        categories.len(),
-                        bars.values.len(),
-                    )?;
-                }
-                if let Some(groups) = &bars.color_by {
-                    pair("Bars: color_by and values", groups.len(), bars.values.len())?;
-                }
-            }
-            Mark::Area(area) => {
-                if let Some(x) = &area.x {
-                    pair("Area: x and high", x.len(), area.high.len())?;
-                }
-                if let Some(low) = &area.low {
-                    pair("Area: low and high", low.len(), area.high.len())?;
-                }
-            }
-            Mark::Cells(cells) => {
-                if cells.columns == 0 {
-                    return Err(crate::Error::EmptyDimension {
-                        what: "Cells columns",
-                    });
-                }
-                if !cells.values.len().is_multiple_of(cells.columns) {
-                    return Err(crate::Error::NonRectangular {
-                        mark: "Cells",
-                        shape: (cells.values.len(), cells.columns),
-                    });
-                }
-                if cells.colormap.stop_count() < 2 {
-                    return Err(crate::Error::EmptyDimension {
-                        what: "Colormap stops",
-                    });
-                }
-                if !cells.colormap.midpoint_is_valid() {
-                    return Err(crate::Error::InvalidParameter {
-                        detail: "a colormap midpoint must be finite",
-                    });
-                }
-                if let Some((x, y)) = cells.extents {
-                    if !(x.0.is_finite() && x.1.is_finite() && y.0.is_finite() && y.1.is_finite()) {
-                        return Err(crate::Error::InvalidParameter {
-                            detail: "Cells extents must be finite",
-                        });
-                    }
-                    if x.0 == x.1 || y.0 == y.1 {
-                        return Err(crate::Error::InvalidParameter {
-                            detail: "Cells extents must be non-empty",
-                        });
-                    }
-                }
-            }
-            Mark::Range(range) => {
-                let n = range.low.len();
-                pair("Range: low and high", n, range.high.len())?;
-                match &range.placement {
-                    RangePlacement::Numeric(Some(x)) => pair("Range: x and low", x.len(), n)?,
-                    RangePlacement::Bands(categories) => {
-                        pair("Range: categories and low", categories.len(), n)?
-                    }
-                    RangePlacement::Numeric(None) => {}
-                }
-                if let Some((low, high)) = &range.body {
-                    pair("Range: body low and high", low.len(), high.len())?;
-                    pair("Range: body and low", low.len(), n)?;
-                }
-                if let Some(marker) = &range.marker {
-                    pair("Range: marker and low", marker.len(), n)?;
-                }
-                if let Some(categories) = &range.color_by {
-                    pair("Range: color_by and low", categories.len(), n)?;
-                }
-            }
-            Mark::Rule(_) | Mark::Text(_) => {}
+            Mark::Line(mark) => mark.validate(),
+            Mark::Points(mark) => mark.validate(),
+            Mark::Bars(mark) => mark.validate(),
+            Mark::Area(mark) => mark.validate(),
+            Mark::Cells(mark) => mark.validate(),
+            Mark::Range(mark) => mark.validate(),
+            Mark::Rule(mark) => mark.validate(),
+            Mark::Text(mark) => mark.validate(),
         }
-        Ok(())
     }
 }
 
@@ -229,5 +142,54 @@ impl<'a> From<Cells<'a>> for Mark<'a> {
 impl<'a> From<Range<'a>> for Mark<'a> {
     fn from(range: Range<'a>) -> Mark<'a> {
         Mark::Range(range)
+    }
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    #[test]
+    fn payload_validation_owns_scalar_constructor_invariants() {
+        let mut bars = Bars::spans(0.0, 1.0, [1.0]);
+        bars.placement = Placement::Spans {
+            start: 0.0,
+            width: 0.0,
+        };
+        assert!(matches!(
+            bars.validate(),
+            Err(crate::Error::InvalidParameter { .. })
+        ));
+
+        let rule = Rule {
+            orientation: Orientation::Horizontal(f64::NAN),
+            color: None,
+            label: None,
+        };
+        assert!(matches!(
+            rule.validate(),
+            Err(crate::Error::InvalidParameter { .. })
+        ));
+
+        let text = Text {
+            x: f64::INFINITY,
+            y: 0.0,
+            text: String::new(),
+            color: None,
+        };
+        assert!(matches!(
+            text.validate(),
+            Err(crate::Error::InvalidParameter { .. })
+        ));
+
+        let mut line = Line::function(0.0..1.0, f64::sin);
+        let Source::Function { domain, .. } = &mut line.source else {
+            unreachable!("the test constructed a function line")
+        };
+        *domain = (1.0, 1.0);
+        assert!(matches!(
+            line.validate(),
+            Err(crate::Error::InvalidParameter { .. })
+        ));
     }
 }

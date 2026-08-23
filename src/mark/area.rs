@@ -39,15 +39,17 @@ impl<'a> Area<'a> {
     pub fn xy(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Area<'a> {
         let x = x.into_series();
         let y = y.into_series();
-        assert_eq!(x.len(), y.len(), "Area::xy requires series of equal length");
-        Area {
+        let area = Area {
             x: Some(x),
             low: None,
             high: y,
             horizontal: false,
             color: None,
             label: None,
-        }
+        };
+        area.validate()
+            .expect("Area::xy requires series of equal length");
+        area
     }
 
     /// A band between `low` and `high` over `x` — confidence intervals, stacked
@@ -64,18 +66,17 @@ impl<'a> Area<'a> {
         let x = x.into_series();
         let low = low.into_series();
         let high = high.into_series();
-        assert!(
-            x.len() == low.len() && low.len() == high.len(),
-            "Area::between requires series of equal length"
-        );
-        Area {
+        let area = Area {
             x: Some(x),
             low: Some(low),
             high,
             horizontal: false,
             color: None,
             label: None,
-        }
+        };
+        area.validate()
+            .expect("Area::between requires series of equal length");
+        area
     }
 
     /// A horizontal band: for each `y`, a fill between `x_low` and `x_high` — the
@@ -92,18 +93,17 @@ impl<'a> Area<'a> {
         let y = y.into_series();
         let x_low = x_low.into_series();
         let x_high = x_high.into_series();
-        assert!(
-            y.len() == x_low.len() && x_low.len() == x_high.len(),
-            "Area::horizontal requires series of equal length"
-        );
-        Area {
+        let area = Area {
             x: Some(y),
             low: Some(x_low),
             high: x_high,
             horizontal: true,
             color: None,
             label: None,
-        }
+        };
+        area.validate()
+            .expect("Area::horizontal requires series of equal length");
+        area
     }
 
     /// Sets an explicit color; without one, layers take colors from the palette.
@@ -118,6 +118,17 @@ impl<'a> Area<'a> {
     pub fn label(mut self, label: impl Into<String>) -> Area<'a> {
         self.label = Some(label.into());
         self
+    }
+
+    /// Checks the paired channels, including values decoded without a constructor.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if let Some(x) = &self.x {
+            super::pair("Area: x and high", x.len(), self.high.len())?;
+        }
+        if let Some(low) = &self.low {
+            super::pair("Area: low and high", low.len(), self.high.len())?;
+        }
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.

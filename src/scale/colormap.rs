@@ -198,16 +198,22 @@ impl Colormap {
         &self.stops
     }
 
-    /// The number of stops. A valid colormap has at least two.
-    pub(crate) fn stop_count(&self) -> usize {
-        self.stops().len()
-    }
-
-    /// Whether the midpoint, if any, is representable. Constructors enforce
-    /// this; a spec that arrived by deserialization is re-checked at the
-    /// validation boundary.
-    pub(crate) fn midpoint_is_valid(&self) -> bool {
-        self.midpoint.is_none_or(|midpoint| midpoint.0.is_finite())
+    /// Checks invariants after any construction path.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        if self.stops.len() < 2 {
+            return Err(crate::Error::EmptyDimension {
+                what: "Colormap stops",
+            });
+        }
+        if self
+            .midpoint
+            .is_some_and(|midpoint| !midpoint.0.is_finite())
+        {
+            return Err(crate::Error::InvalidParameter {
+                detail: "a colormap midpoint must be finite",
+            });
+        }
+        Ok(())
     }
 
     /// The centered midpoint when it is usable; a non-finite one (possible only

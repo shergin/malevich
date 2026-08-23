@@ -68,14 +68,16 @@ impl<'a> Line<'a> {
     pub fn xy(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Line<'a> {
         let x = x.into_series();
         let y = y.into_series();
-        assert_eq!(x.len(), y.len(), "Line::xy requires series of equal length");
-        Line {
+        let line = Line {
             source: Source::Points { x: Some(x), y },
             color: None,
             label: None,
             style: LineStyle::Pixels,
             color_by: None,
-        }
+        };
+        line.validate()
+            .expect("Line::xy requires series of equal length");
+        line
     }
 
     /// A line through `function`, sampled once per subpixel column over `domain`.
@@ -90,11 +92,7 @@ impl<'a> Line<'a> {
         domain: Range<f64>,
         function: impl Fn(f64) -> f64 + Send + Sync + 'static,
     ) -> Line<'a> {
-        assert!(
-            domain.start.is_finite() && domain.end.is_finite() && domain.start < domain.end,
-            "Line::function requires a finite, non-empty domain"
-        );
-        Line {
+        let line = Line {
             source: Source::Function {
                 domain: (domain.start, domain.end),
                 function: Arc::new(function),
@@ -103,7 +101,10 @@ impl<'a> Line<'a> {
             label: None,
             style: LineStyle::Pixels,
             color_by: None,
-        }
+        };
+        line.validate()
+            .expect("Line::function requires a finite, non-empty domain");
+        line
     }
 
     /// Sets the rendering style; [`LineStyle::Pixels`] by default.
@@ -142,18 +143,37 @@ impl<'a> Line<'a> {
     #[must_use]
     pub fn color_by(mut self, categories: impl IntoIterator<Item = impl Into<String>>) -> Line<'a> {
         let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
+        self.color_by = Some(categories);
+        self.validate()
+            .expect("Line::color_by requires one category per point and point data");
+        self
+    }
+
+    /// Checks source and channel invariants, including deserialized values.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
         match &self.source {
-            Source::Points { y, .. } => assert_eq!(
-                categories.len(),
-                y.len(),
-                "Line::color_by requires one category per point"
-            ),
-            Source::Function { .. } => {
-                panic!("Line::color_by requires point data, not a sampled function")
+            Source::Points { x, y } => {
+                if let Some(x) = x {
+                    super::pair("Line: x and y", x.len(), y.len())?;
+                }
+                if let Some(categories) = &self.color_by {
+                    super::pair("Line: color_by and y", categories.len(), y.len())?;
+                }
+            }
+            Source::Function { domain, .. } => {
+                if !(domain.0.is_finite() && domain.1.is_finite() && domain.0 < domain.1) {
+                    return Err(crate::Error::InvalidParameter {
+                        detail: "a function Line needs a finite non-empty domain",
+                    });
+                }
+                if self.color_by.is_some() {
+                    return Err(crate::Error::InvalidParameter {
+                        detail: "a function Line cannot have a color_by channel",
+                    });
+                }
             }
         }
-        self.color_by = Some(categories);
-        self
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.

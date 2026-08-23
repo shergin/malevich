@@ -44,18 +44,16 @@ impl<'a> Bars<'a> {
     ) -> Bars<'a> {
         let categories: Vec<String> = categories.into_iter().map(Into::into).collect();
         let values = values.into_series();
-        assert_eq!(
-            categories.len(),
-            values.len(),
-            "Bars::new requires one category per value"
-        );
-        Bars {
+        let bars = Bars {
             placement: Placement::Bands(categories),
             values,
             color: None,
             label: None,
             color_by: None,
-        }
+        };
+        bars.validate()
+            .expect("Bars::new requires one category per value");
+        bars
     }
 
     /// Bars over contiguous numeric spans: bar `i` covers
@@ -66,17 +64,16 @@ impl<'a> Bars<'a> {
     ///
     /// Panics if `width` is not finite and positive or `start` is not finite.
     pub fn spans(start: f64, width: f64, values: impl IntoSeries<'a>) -> Bars<'a> {
-        assert!(
-            start.is_finite() && width.is_finite() && width > 0.0,
-            "Bars::spans requires a finite start and a positive width"
-        );
-        Bars {
+        let bars = Bars {
             placement: Placement::Spans { start, width },
             values: values.into_series(),
             color: None,
             label: None,
             color_by: None,
-        }
+        };
+        bars.validate()
+            .expect("Bars::spans requires a finite start and a positive width");
+        bars
     }
 
     /// Sets an explicit color; without one, layers take colors from the palette.
@@ -106,13 +103,35 @@ impl<'a> Bars<'a> {
     #[must_use]
     pub fn color_by(mut self, groups: impl IntoIterator<Item = impl Into<String>>) -> Bars<'a> {
         let groups: Vec<String> = groups.into_iter().map(Into::into).collect();
-        assert_eq!(
-            groups.len(),
-            self.values.len(),
-            "Bars::color_by requires one group per bar"
-        );
         self.color_by = Some(groups);
+        self.validate()
+            .expect("Bars::color_by requires one group per bar");
         self
+    }
+
+    /// Checks placement and channel invariants, including deserialized values.
+    pub(crate) fn validate(&self) -> crate::Result<()> {
+        match &self.placement {
+            Placement::Bands(categories) => {
+                super::pair(
+                    "Bars: categories and values",
+                    categories.len(),
+                    self.values.len(),
+                )?;
+            }
+            Placement::Spans { start, width }
+                if !(start.is_finite() && width.is_finite() && *width > 0.0) =>
+            {
+                return Err(crate::Error::InvalidParameter {
+                    detail: "Bars spans need a finite start and finite positive width",
+                });
+            }
+            Placement::Spans { .. } => {}
+        }
+        if let Some(groups) = &self.color_by {
+            super::pair("Bars: color_by and values", groups.len(), self.values.len())?;
+        }
+        Ok(())
     }
 
     /// Detaches from any borrowed storage, making the mark `'static`.
