@@ -68,3 +68,37 @@ fn crlf_and_lf_inputs_frame_identically() {
         frame("name,value\na,1\nb,2\n", Some(','), true)
     );
 }
+
+#[test]
+fn schema_width_includes_both_the_header_and_ragged_rows() {
+    let header_is_wider = frame("a b c\n1 2\n", None, true);
+    assert_eq!(header_is_wider.width(), 3);
+
+    let row_is_wider = frame("a b\n1 2 3\n", None, true);
+    assert_eq!(row_is_wider.width(), 3);
+}
+
+#[test]
+fn numeric_selectors_are_checked_against_the_schema() {
+    let table = frame("a b c\n1 2\n3 4 5\n", None, true);
+    assert_eq!(column_index(&table, "2"), Ok(2));
+    assert!(column_index(&table, "3").unwrap_err().contains("0..=2"));
+    assert!(
+        column_index(&Table::default(), "0")
+            .unwrap_err()
+            .contains("no columns")
+    );
+    assert!(
+        column_index(&table, "999999999999999999999999")
+            .unwrap_err()
+            .contains("too large")
+    );
+}
+
+#[test]
+fn selecting_a_valid_column_preserves_ragged_rows_as_missing_fields() {
+    let table = frame("1 2\n3\n", None, false);
+    let selected = select(&table, &["1".to_owned()]).unwrap();
+    assert_eq!(selected.rows, vec![vec!["2"], vec![""]]);
+    assert!(select(&table, &["2".to_owned()]).is_err());
+}

@@ -22,7 +22,7 @@ fn emit(arguments: &[&str], text: &str) -> String {
     if let Some(selector) = &arguments.by {
         let index = input::column_index(&table, selector).expect("selector resolves");
         categories = Some(input::string_column(&table, index));
-        let keep: Vec<String> = (0..table.rows.iter().map(Vec::len).max().unwrap_or(0))
+        let keep: Vec<String> = (0..table.width())
             .filter(|&column| column != index)
             .map(|column| column.to_string())
             .collect();

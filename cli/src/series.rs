@@ -33,11 +33,6 @@ pub fn default_fmt(columns: usize) -> Fmt {
     if columns <= 1 { Fmt::Y } else { Fmt::Xyy }
 }
 
-/// The width of the table: the longest row.
-fn width(table: &Table) -> usize {
-    table.rows.iter().map(Vec::len).max().unwrap_or(0)
-}
-
 /// Parses one field as a number, tolerating surrounding whitespace. Non-finite
 /// spellings (`inf`, `nan`) are treated as gaps, not values — they carry no
 /// position, and silently plotting them would lie.
@@ -82,9 +77,9 @@ fn build_column(table: &Table, index: usize, time: bool) -> (Vec<f64>, usize) {
 
 /// All columns, column-major, squaring up ragged rows with `NaN`.
 fn numeric_columns(table: &Table) -> (Vec<Vec<f64>>, usize) {
-    let mut columns = Vec::with_capacity(width(table));
+    let mut columns = Vec::with_capacity(table.width());
     let mut unparsed = 0;
-    for index in 0..width(table) {
+    for index in 0..table.width() {
         let (column, count) = build_column(table, index, false);
         unparsed += count;
         columns.push(column);
@@ -149,7 +144,7 @@ fn specs(fmt: Fmt, width: usize) -> Vec<Spec> {
 
 /// Maps columns onto series per `fmt`, parsing x columns as time when `time_x`.
 pub fn dataset(table: &Table, fmt: Fmt, time_x: bool) -> Dataset {
-    let specs = specs(fmt, width(table));
+    let specs = specs(fmt, table.width());
     // Each referenced column is built once; a shared x column (xyy) is counted once.
     let mut cache: HashMap<usize, Vec<f64>> = HashMap::new();
     let mut unparsed = 0;
@@ -180,7 +175,7 @@ pub fn dataset(table: &Table, fmt: Fmt, time_x: bool) -> Dataset {
 /// Resolves the effective `--fmt` for a value-shaped chart (line, scatter),
 /// applying the per-column-count default when none was given.
 pub fn resolve_fmt(table: &Table, requested: Option<Fmt>) -> Fmt {
-    requested.unwrap_or_else(|| default_fmt(width(table)))
+    requested.unwrap_or_else(|| default_fmt(table.width()))
 }
 
 /// Every numeric field, flattened into one sample set — the input shape for the

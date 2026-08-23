@@ -43,6 +43,19 @@ fn stderr(output: &Output) -> String {
     String::from_utf8(output.stderr.clone()).expect("utf-8 stderr")
 }
 
+#[test]
+fn out_of_range_numeric_selectors_are_usage_errors() {
+    for (chart, flag) in [("line", "--cols"), ("scatter", "--by")] {
+        let out = run(&[chart, flag, "999"], "1 2\n3 4\n");
+        assert_eq!(out.status.code(), Some(2));
+        assert!(
+            stderr(&out).contains("column index 999 is out of range"),
+            "{}",
+            stderr(&out)
+        );
+    }
+}
+
 // --- golden plots (plot forced onto stdout with `-o -`, plain and fixed-size) ---
 
 #[test]

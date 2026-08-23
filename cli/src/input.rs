@@ -15,6 +15,19 @@ pub struct Table {
     pub rows: Vec<Vec<String>>,
 }
 
+impl Table {
+    /// The input schema width: whichever is wider, the header or any data row.
+    /// Individual ragged rows may still be shorter and contribute missing fields.
+    pub fn width(&self) -> usize {
+        self.header
+            .iter()
+            .chain(&self.rows)
+            .map(Vec::len)
+            .max()
+            .unwrap_or(0)
+    }
+}
+
 /// Frames `text` into a [`Table`]. Blank lines are skipped everywhere. With
 /// `header`, the first non-blank line supplies column names.
 pub fn frame(text: &str, delimiter: Option<char>, header: bool) -> Table {
@@ -50,8 +63,24 @@ fn split(line: &str, delimiter: Option<char>) -> Vec<String> {
 /// The failure text is actionable — it lists the available names or says why
 /// there are none.
 pub fn column_index(table: &Table, selector: &str) -> Result<usize, String> {
-    if let Ok(index) = selector.parse::<usize>() {
-        return Ok(index);
+    if !selector.is_empty() && selector.bytes().all(|byte| byte.is_ascii_digit()) {
+        let index = selector
+            .parse::<usize>()
+            .map_err(|_| format!("column index `{selector}` is too large"))?;
+        let width = table.width();
+        return if index < width {
+            Ok(index)
+        } else if width == 0 {
+            Err(format!(
+                "column index {index} is out of range: the input has no columns"
+            ))
+        } else {
+            Err(format!(
+                "column index {index} is out of range: the input has {width} columns \
+                 (valid indices: 0..={})",
+                width - 1
+            ))
+        };
     }
     match &table.header {
         Some(names) => names

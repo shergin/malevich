@@ -20,17 +20,6 @@ use std::process::ExitCode;
 
 use args::{Args, Fail, Outcome};
 
-/// The widest row — the column count `--by` filters against.
-fn width(table: &input::Table) -> usize {
-    table
-        .rows
-        .iter()
-        .map(Vec::len)
-        .max()
-        .or(table.header.as_ref().map(Vec::len))
-        .unwrap_or(0)
-}
-
 fn main() -> ExitCode {
     match run() {
         Ok(code) => ExitCode::from(code as u8),
@@ -77,7 +66,7 @@ fn execute(args: &Args) -> Result<i32, Fail> {
     if let Some(selector) = &args.by {
         let index = input::column_index(&table, selector).map_err(Fail)?;
         categories = Some(input::string_column(&table, index));
-        let keep: Vec<String> = (0..width(&table))
+        let keep: Vec<String> = (0..table.width())
             .filter(|&column| column != index)
             .map(|column| column.to_string())
             .collect();
