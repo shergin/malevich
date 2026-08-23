@@ -231,9 +231,11 @@ A plain function composing the grammar into a named chart type: `line()`, `hist(
 `scatter()`, …. Every preset is provably equal to its grammar expansion (asserted
 bit-identical in tests). Presets are the front door; the grammar is discovered, not
 required. Statistical presets keep simple defaults while their `_with` variants accept
-small checked option values for histogram caps/grids, KDE resolution, violin
-resolution, and contour levels. Maps to functions and option types re-exported at the
-crate root.
+option values for histogram caps/grids, KDE resolution, violin resolution, and
+contour levels; these configured functions return typed errors for invalid data or
+options. `_with` means configuration, while a `try_` prefix identifies the checked
+twin of an otherwise identical convenience operation. Maps to functions and option
+types re-exported at the crate root.
 
 ## Stream
 

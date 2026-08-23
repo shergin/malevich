@@ -4,13 +4,12 @@ use std::fmt;
 
 /// Why a plot/grid spec or render request is invalid.
 ///
-/// Returned by the fallible [`Plot`](crate::Plot) and [`Grid`](crate::Grid) validation
-/// and rendering entry points, so a spec that arrives from deserialization,
-/// configuration, or untrusted input can be checked before it is drawn. The
-/// panicking constructors stay for specs built inline, where a length mismatch is a
-/// programmer bug; the infallible render methods also stay, and never fail — they
-/// shed whatever they cannot draw. `validate` is the strict counterpart: it reports
-/// the first problem instead of quietly shedding it.
+/// Returned by every strict construction, configuration, validation, and rendering
+/// boundary. Invalid caller-controlled input to a `Result`-returning function is an
+/// `Error`, never a constructor assertion. Plain constructors remain concise for
+/// inline specs and may panic on documented programmer invariants; infallible render
+/// methods instead shed malformed retained content. `validate` and `try_render` are
+/// their strict counterparts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {

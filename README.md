@@ -133,9 +133,10 @@ iTerm2) on the right, from the same plot values:
   science and ML actually need. One `Reducer` vocabulary — count, sum, mean,
   median, min, max, and type-7 percentiles, the same estimator the box plot
   uses — reduces groups, rolling windows, and histogram bins alike, so a
-  rolling p95 or a binned median is one call. Defaults stay one-call; checked `_with` variants
-  expose histogram geometry, KDE/violin resolution, contour levels, and colormaps
-  when the data or host needs control. The named colormaps are a curated set that
+  rolling p95 or a binned median is one call. Defaults stay one-call; configurable
+  `_with` variants return typed errors for invalid data or options while exposing
+  histogram geometry, KDE/violin resolution, contour levels, and colormaps when the
+  data or host needs control. The named colormaps are a curated set that
   stays distinguishable down the whole color ladder — sequential
   (`Colormap::VIRIDIS`, `MAGMA`, `CIVIDIS`, `GREYS`) and diverging
   (`RED_BLUE`, `PURPLE_ORANGE`): center one on a data value

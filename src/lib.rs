@@ -25,9 +25,24 @@
 //! cannot draw — so building a plot inline needs no error handling. For a spec that
 //! arrives from deserialization or configuration, [`Plot::validate`] and
 //! [`Plot::try_render`] report the first problem as a typed [`Error`] instead.
+//!
+//! # Failure model
+//!
+//! Functions that return [`Result`] are the strict boundary: invalid data shapes,
+//! configuration, numeric domains, and bounded resource requests return a typed
+//! [`Error`] rather than asserting. A `try_` name distinguishes that checked twin
+//! when the same operation also has a convenience form, such as
+//! [`Cells::matrix`] / [`Cells::try_matrix`] and [`Plot::render`] /
+//! [`Plot::try_render`]. The `_with` suffix means “configured with an options
+//! value”; its return type, not the suffix, states whether the call is fallible.
+//! Plain mark constructors and one-call presets may panic on their documented
+//! programmer invariants, such as unequal paired channels. Infallible rendering is
+//! intentionally different: it sheds malformed retained content and excessive
+//! output instead of panicking.
+//!
 //! The modules follow the concepts (each defined in
 //! the repository's `TERMINOLOGY.md`): [`mark`] for the primitives, [`stat`] for
-//! transforms (binning, KDE, rolling windows, downsampling — all mergeable),
+//! online accumulators, reducers, and batch transforms,
 //! [`scale`] for ticks and colormaps, [`render`] for the subpixel surface and
 //! charsets, [`stream`] for live charts, [`data`] for the ingestion rim.
 //!
