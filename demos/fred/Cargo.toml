@@ -10,5 +10,5 @@ description = "A Federal Reserve economic-data browser built on malevich — not
 [dependencies]
 malevich = { path = "../..", features = ["ratatui"] }
 ratatui = "0.30"
-crossterm = "0.28"
+crossterm = "0.29"
 ureq = "2"

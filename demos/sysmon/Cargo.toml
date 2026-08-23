@@ -10,5 +10,5 @@ description = "A live system monitor built on malevich — not published"
 [dependencies]
 malevich = { path = "../..", features = ["ratatui"] }
 ratatui = "0.30"
-crossterm = "0.28"
+crossterm = "0.29"
 sysinfo = "0.33"
