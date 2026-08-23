@@ -88,7 +88,7 @@ impl<'a> Mark<'a> {
 }
 
 /// Errors unless the two channel lengths match.
-fn pair(mark: &'static str, a: usize, b: usize) -> Result<(), crate::Error> {
+pub(crate) fn pair(mark: &'static str, a: usize, b: usize) -> Result<(), crate::Error> {
     if a == b {
         Ok(())
     } else {

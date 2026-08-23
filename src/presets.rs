@@ -472,6 +472,11 @@ pub fn ecdf_with<'a>(values: impl IntoSeries<'a>, options: EcdfOptions) -> crate
 /// let grid = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
 /// println!("{}", malevich::heatmap(3, &grid[..]).render(&malevich::Frame::plain(30, 8)));
 /// ```
+///
+/// # Panics
+///
+/// Panics if `columns` is zero or does not divide the value count evenly. Use
+/// [`heatmap_with`] for a checked boundary.
 pub fn heatmap<'a>(columns: usize, values: impl IntoSeries<'a>) -> Plot<'a> {
     heatmap_with(columns, values, HeatmapOptions::default())
         .expect("default heatmap options are valid")
@@ -489,14 +494,15 @@ pub fn heatmap<'a>(columns: usize, values: impl IntoSeries<'a>) -> Plot<'a> {
 ///
 /// # Errors
 ///
-/// Returns an error for an invalid colormap.
+/// Returns an error for a zero column count, a non-rectangular value grid, or an
+/// invalid colormap.
 pub fn heatmap_with<'a>(
     columns: usize,
     values: impl IntoSeries<'a>,
     options: HeatmapOptions,
 ) -> crate::Result<Plot<'a>> {
     check_colormap(&options.colormap)?;
-    let plot = Plot::new().layer(Cells::matrix(columns, values).colormap(options.colormap));
+    let plot = Plot::new().layer(Cells::try_matrix(columns, values)?.colormap(options.colormap));
     Ok(if options.colorbar {
         plot.colorbar()
     } else {
@@ -541,11 +547,10 @@ pub fn hist2d_with<'a>(
                     .into_iter()
                     .map(|count| if count == 0.0 { f64::NAN } else { count })
                     .collect();
-                let plot = Plot::new().layer(
-                    Cells::matrix(grid.columns, counts)
-                        .extents(grid.x, grid.y)
-                        .colormap(options.colormap),
-                );
+                let cells = Cells::try_matrix(grid.columns, counts)?
+                    .try_extents(grid.x, grid.y)?
+                    .colormap(options.colormap);
+                let plot = Plot::new().layer(cells);
                 if options.colorbar {
                     plot.colorbar()
                 } else {
@@ -890,12 +895,9 @@ pub fn trend<'a>(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Plot<'a> {
 ///
 /// # Errors
 ///
-/// Returns an error when the band multiplier is not finite and positive, or
-/// the band sample count is out of range.
-///
-/// # Panics
-///
-/// Panics if the two series have different lengths.
+/// Returns an error when the two series have different lengths, the band
+/// multiplier is not finite and positive, or the band sample count is out of
+/// range.
 pub fn trend_with<'a>(
     x: impl IntoSeries<'a>,
     y: impl IntoSeries<'a>,
@@ -916,7 +918,7 @@ pub fn trend_with<'a>(
     }
     let x = x.into_series();
     let y = y.into_series();
-    assert_eq!(x.len(), y.len(), "trend requires series of equal length");
+    crate::mark::pair("trend: x and y", x.len(), y.len())?;
     let fit = crate::stat::Fit::xy(x.as_slice(), y.as_slice());
     let extent = x.iter().filter(|value| value.is_finite()).fold(
         None,
@@ -1145,6 +1147,18 @@ mod tests {
         assert!(matches!(
             hist2d_with([1.0], [1.0], Histogram2dOptions::new(0, 2)),
             Err(crate::Error::EmptyDimension { .. })
+        ));
+        assert!(matches!(
+            heatmap_with(0, [1.0], HeatmapOptions::new()),
+            Err(crate::Error::EmptyDimension { .. })
+        ));
+        assert!(matches!(
+            heatmap_with(2, [1.0, 2.0, 3.0], HeatmapOptions::new()),
+            Err(crate::Error::NonRectangular { .. })
+        ));
+        assert!(matches!(
+            trend_with([1.0], [1.0, 2.0], TrendOptions::new()),
+            Err(crate::Error::UnequalChannels { .. })
         ));
         assert!(matches!(
             density_with([1.0], DensityOptions::new(1)),

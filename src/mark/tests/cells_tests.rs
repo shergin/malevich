@@ -10,6 +10,18 @@ fn ragged_grids_panic() {
 }
 
 #[test]
+fn checked_grid_shapes_return_typed_errors() {
+    assert!(matches!(
+        Cells::try_matrix(0, &[1.0, 2.0][..]),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    assert!(matches!(
+        Cells::try_matrix(3, &[1.0, 2.0][..]),
+        Err(crate::Error::NonRectangular { .. })
+    ));
+}
+
+#[test]
 fn debug_stays_curated() {
     let cells = Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]);
     let debug = format!("{cells:?}");
@@ -21,6 +33,15 @@ fn debug_stays_curated() {
 #[should_panic(expected = "non-empty bounds")]
 fn degenerate_extents_panic() {
     let _ = Cells::matrix(2, &[1.0, 2.0][..]).extents((1.0, 1.0), (0.0, 1.0));
+}
+
+#[test]
+fn checked_extents_return_typed_errors() {
+    let cells = Cells::matrix(2, &[1.0, 2.0][..]);
+    assert!(matches!(
+        cells.try_extents((1.0, 1.0), (0.0, 1.0)),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
 }
 
 #[test]

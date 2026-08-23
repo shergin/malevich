@@ -28,6 +28,18 @@ impl<'a> Cells<'a> {
     ///
     /// Panics if `columns` is zero or does not divide the value count evenly.
     pub fn matrix(columns: usize, values: impl IntoSeries<'a>) -> Cells<'a> {
+        Cells::try_matrix(columns, values)
+            .expect("Cells::matrix requires columns to divide the value count evenly")
+    }
+
+    /// Fallible counterpart to [`Cells::matrix`] for data-driven grid shapes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::EmptyDimension`](crate::Error::EmptyDimension) when
+    /// `columns` is zero, or [`Error::NonRectangular`](crate::Error::NonRectangular)
+    /// when the values do not fill complete rows.
+    pub fn try_matrix(columns: usize, values: impl IntoSeries<'a>) -> crate::Result<Cells<'a>> {
         let values = values.into_series();
         let cells = Cells {
             columns,
@@ -35,10 +47,8 @@ impl<'a> Cells<'a> {
             extents: None,
             colormap: Colormap::DEFAULT,
         };
-        cells
-            .validate()
-            .expect("Cells::matrix requires columns to divide the value count evenly");
-        cells
+        cells.validate()?;
+        Ok(cells)
     }
 
     /// Maps the grid onto data coordinates: the x axis spans `x`, the y axis `y`.
@@ -48,11 +58,22 @@ impl<'a> Cells<'a> {
     /// Panics if the extents are not finite or either span is empty. Reversed
     /// endpoints are accepted and flip that grid axis.
     #[must_use]
-    pub fn extents(mut self, x: (f64, f64), y: (f64, f64)) -> Cells<'a> {
+    pub fn extents(self, x: (f64, f64), y: (f64, f64)) -> Cells<'a> {
+        self.try_extents(x, y)
+            .expect("Cells::extents requires finite, non-empty bounds")
+    }
+
+    /// Fallible counterpart to [`Cells::extents`] for computed domains.
+    /// Reversed finite endpoints remain an explicit axis flip.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidParameter`](crate::Error::InvalidParameter) for
+    /// non-finite or equal endpoints.
+    pub fn try_extents(mut self, x: (f64, f64), y: (f64, f64)) -> crate::Result<Cells<'a>> {
         self.extents = Some((x, y));
-        self.validate()
-            .expect("Cells::extents requires finite, non-empty bounds");
-        self
+        self.validate()?;
+        Ok(self)
     }
 
     /// Sets the colormap; the default approximates viridis.

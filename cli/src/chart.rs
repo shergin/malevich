@@ -50,9 +50,9 @@ pub fn build(recipe: &Recipe) -> malevich::Result<Built<'_>> {
             extents,
             colormap,
         } => {
-            let mut cells = Cells::matrix(*columns, values).colormap(colormap.clone());
+            let mut cells = Cells::try_matrix(*columns, values)?.colormap(colormap.clone());
             if let Some((x, y)) = extents {
-                cells = cells.extents(*x, *y);
+                cells = cells.try_extents(*x, *y)?;
             }
             Plot::new().layer(cells).colorbar()
         }
