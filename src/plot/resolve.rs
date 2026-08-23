@@ -490,7 +490,7 @@ fn series_swatch(
 pub(crate) fn resolve<'p>(
     marks: &'p [Mark<'_>],
     sample_width: usize,
-    palette: &'p [Color; 6],
+    palette: &[Color; 6],
     categorical: &'p Palette,
     cycle_markers: bool,
     reduce: Reduce,
@@ -502,7 +502,7 @@ pub(crate) fn resolve<'p>(
         .filter(|mark| !matches!(mark, Mark::Rule(_) | Mark::Text(_)))
         .count();
     let mut colors = ColorResolver {
-        layer_palette: palette,
+        layer_palette: *palette,
         categorical,
         cycle_markers,
         single_data_layer: data_layers == 1,
@@ -645,7 +645,7 @@ pub(crate) fn resolve<'p>(
 }
 
 struct ColorResolver<'p> {
-    layer_palette: &'p [Color; 6],
+    layer_palette: [Color; 6],
     categorical: &'p Palette,
     cycle_markers: bool,
     single_data_layer: bool,

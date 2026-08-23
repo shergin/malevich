@@ -114,7 +114,7 @@ impl<'p> Layout<'p> {
     pub(crate) fn compute(
         frame: &Frame,
         density: (usize, usize),
-        layers: &'p [ResolvedLayer<'p>],
+        layers: &[ResolvedLayer<'p>],
         has_title: bool,
         scales: (&'p Scale, &Scale),
         axis_labels: (Option<&str>, Option<&str>),

@@ -74,6 +74,10 @@ source of truth. The accepted change instead:
 - retains the probed layout for drawing, avoiding a second round of tick formatting,
   gutter measurement, and colorbar work.
 
+Cell and hybrid device-pixel rasterizers both use that same prepared-render phase.
+Their target policy contains only sampling density, marker cycling, downsampling,
+and the pixel fallback for cell-only corner glyphs; no parallel mark metadata exists.
+
 The pixel-exact raw-versus-M4 oracle and all rendering snapshots remained identical.
 
 ## Allocation contract

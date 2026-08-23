@@ -2,9 +2,13 @@
 //! pipeline.
 
 use super::frame::Frame;
-use crate::mark::Mark;
+use super::layout::Layout;
+use super::resolve::{Kind, Reduce, ResolvedLayer};
+use crate::mark::{LineStyle, Mark};
 use crate::render::Surface;
 use crate::scale::Scale;
+
+static DEFAULT_CATEGORICAL_PALETTE: crate::scale::Palette = crate::scale::Palette::OKABE_ITO;
 
 /// A retained chart description: layers of marks plus furniture.
 ///
@@ -48,6 +52,45 @@ pub struct Plot<'a> {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     palette: Option<crate::scale::Palette>,
+}
+
+/// The few choices that genuinely differ between cell and device-pixel targets.
+#[derive(Clone, Copy)]
+struct TargetPolicy {
+    density: (usize, usize),
+    downsample: bool,
+    cycle_markers: bool,
+    pixel_lines: bool,
+    sample_width_name: &'static str,
+}
+
+impl TargetPolicy {
+    fn cells(frame: &Frame, downsample: bool) -> Self {
+        Self {
+            density: frame.charset.pixels_per_cell(),
+            downsample,
+            cycle_markers: frame.color == crate::render::ColorMode::Plain,
+            pixel_lines: false,
+            sample_width_name: "cell sample width",
+        }
+    }
+
+    #[cfg(feature = "pixel")]
+    fn pixels(density: (usize, usize)) -> Self {
+        Self {
+            density,
+            downsample: true,
+            cycle_markers: false,
+            pixel_lines: true,
+            sample_width_name: "pixel sample width",
+        }
+    }
+}
+
+/// Target-independent output of resolve → probe → layout → final resolution.
+struct PreparedRender<'p> {
+    layout: Layout<'p>,
+    layers: Vec<ResolvedLayer<'p>>,
 }
 
 impl<'a> Plot<'a> {
@@ -548,6 +591,104 @@ impl<'a> Plot<'a> {
         crate::pixel::try_render(self, frame, graphics, column)
     }
 
+    /// Runs the target-independent render orchestration once. The returned
+    /// layers still borrow the retained plot; layout borrows only retained band
+    /// labels, never the temporary probe or final layer vector.
+    fn prepare_render<'p>(
+        &'p self,
+        frame: &Frame,
+        policy: TargetPolicy,
+    ) -> crate::Result<PreparedRender<'p>> {
+        let sample_width =
+            frame
+                .width
+                .checked_mul(policy.density.0)
+                .ok_or(crate::Error::DimensionTooLarge {
+                    what: policy.sample_width_name,
+                    requested: usize::MAX,
+                    limit: crate::render::MAX_DEVICE_PIXELS,
+                })?;
+        let title = self.title.is_some();
+        let scales = (&self.x, &self.y);
+        let labels = (self.x_label.as_deref(), self.y_label.as_deref());
+        let domains = (self.x_domain, self.y_domain);
+        let layer_palette = &frame.theme.palette;
+        let categorical = self
+            .palette
+            .as_ref()
+            .unwrap_or(&DEFAULT_CATEGORICAL_PALETTE);
+
+        // M4 must bucket by the rendered column, but that column mapping comes
+        // from layout. Probe with independent channel extents, retain its layout,
+        // then resolve the final scene in exactly that raster space.
+        let extent = Reduce::Extent {
+            x_positive: matches!(&self.x, Scale::Log),
+            y_positive: matches!(&self.y, Scale::Log),
+        };
+        let probe = policy.downsample.then(|| {
+            super::resolve::resolve(
+                &self.layers,
+                sample_width,
+                layer_palette,
+                categorical,
+                policy.cycle_markers,
+                extent,
+            )
+        });
+        let probed_layout = probe.as_ref().map(|probe| {
+            Layout::compute(
+                frame,
+                policy.density,
+                probe,
+                title,
+                scales,
+                labels,
+                domains,
+                self.colorbar,
+            )
+        });
+        let reduce = match &probed_layout {
+            Some(layout) => Reduce::Mapped {
+                map: layout.x_scale,
+                columns: layout.plot_sub_w,
+            },
+            None => Reduce::None,
+        };
+
+        let mut layers = super::resolve::resolve(
+            &self.layers,
+            sample_width,
+            layer_palette,
+            categorical,
+            policy.cycle_markers,
+            reduce,
+        );
+        if policy.pixel_lines {
+            // Corners is cell-glyph art; on a pixel canvas the honest line is
+            // the line itself.
+            for layer in &mut layers {
+                if let ResolvedLayer::Series { kind, .. } = layer
+                    && matches!(kind, Kind::Line(LineStyle::Corners))
+                {
+                    *kind = Kind::Line(LineStyle::Pixels);
+                }
+            }
+        }
+        let layout = probed_layout.unwrap_or_else(|| {
+            Layout::compute(
+                frame,
+                policy.density,
+                &layers,
+                title,
+                scales,
+                labels,
+                domains,
+                self.colorbar,
+            )
+        });
+        Ok(PreparedRender { layout, layers })
+    }
+
     /// Rasterizes for hybrid pixel output: chrome on a cell surface, marks on a
     /// device-pixel canvas at `cell` pixels per cell, one shared layout — so the
     /// scales map into device pixels and M4 buckets per pixel column.
@@ -557,9 +698,6 @@ impl<'a> Plot<'a> {
         frame: &Frame,
         cell: (usize, usize),
     ) -> crate::Result<(Surface, crate::pixel::PixelCanvas, crate::render::PlotRect)> {
-        use super::resolve::Reduce;
-        use crate::mark::LineStyle;
-        use crate::plot::resolve::{Kind, ResolvedLayer};
         use crate::render::PlotRect;
 
         let mut surface = Surface::try_new(frame.width, frame.height, frame.charset)?;
@@ -574,69 +712,9 @@ impl<'a> Plot<'a> {
             return Ok((surface, canvas, empty));
         }
         let mut canvas = canvas;
-        let sample_width =
-            frame
-                .width
-                .checked_mul(cell.0)
-                .ok_or(crate::Error::DimensionTooLarge {
-                    what: "pixel sample width",
-                    requested: usize::MAX,
-                    limit: crate::render::MAX_DEVICE_PIXELS,
-                })?;
-        let title = self.title.is_some();
-        let scales = (&self.x, &self.y);
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
-        let domains = (self.x_domain, self.y_domain);
-        let palette = &frame.theme.palette;
-
-        // The same probe-then-reduce dance as cell output (see rasterize_with):
-        // M4 must bucket by the rendered column, which here is one device pixel.
-        // The probe already contains every layout input, so retain its geometry
-        // instead of formatting ticks and measuring gutters a second time.
-        let extent = Reduce::Extent {
-            x_positive: matches!(&self.x, Scale::Log),
-            y_positive: matches!(&self.y, Scale::Log),
-        };
-        let categorical = self.palette.clone().unwrap_or_default();
-        let probe = super::resolve::resolve(
-            &self.layers,
-            sample_width,
-            palette,
-            &categorical,
-            false,
-            extent,
-        );
-        let layout = super::layout::Layout::compute(
-            frame,
-            cell,
-            &probe,
-            title,
-            scales,
-            labels,
-            domains,
-            self.colorbar,
-        );
-        let reduce = Reduce::Mapped {
-            map: layout.x_scale,
-            columns: layout.plot_sub_w,
-        };
-        let mut layers = super::resolve::resolve(
-            &self.layers,
-            sample_width,
-            palette,
-            &categorical,
-            false,
-            reduce,
-        );
-        // Corners is cell-glyph art; at pixel resolution the honest line is the
-        // line itself.
-        for layer in &mut layers {
-            if let ResolvedLayer::Series { kind, .. } = layer
-                && matches!(kind, Kind::Line(LineStyle::Corners))
-            {
-                *kind = Kind::Line(LineStyle::Pixels);
-            }
-        }
+        let PreparedRender { layout, layers } =
+            self.prepare_render(frame, TargetPolicy::pixels(cell))?;
         super::chrome::draw(
             &mut surface,
             &layout,
@@ -678,90 +756,13 @@ impl<'a> Plot<'a> {
     }
 
     fn try_rasterize_with(&self, frame: &Frame, downsample: bool) -> crate::Result<Surface> {
-        use super::resolve::Reduce;
-
         let mut surface = Surface::try_new(frame.width, frame.height, frame.charset)?;
         if frame.width == 0 || frame.height == 0 {
             return Ok(surface);
         }
-        let (px, _) = frame.charset.pixels_per_cell();
-        let sample_width = frame
-            .width
-            .checked_mul(px)
-            .ok_or(crate::Error::DimensionTooLarge {
-                what: "cell sample width",
-                requested: usize::MAX,
-                limit: crate::render::MAX_DEVICE_PIXELS,
-            })?;
-        let title = self.title.is_some();
-        let scales = (&self.x, &self.y);
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
-        let domains = (self.x_domain, self.y_domain);
-        let palette = &frame.theme.palette;
-
-        // Pixel-exact M4 must bucket by the *rendered* column, which the layout
-        // fixes — but the layout needs the data first. So probe once with a coarse
-        // reduction (M4 preserves the extents the layout reads), lift the scale and
-        // width from that geometry, then reduce for real in exactly that raster space.
-        // That probed layout is final: recomputing it from the reduced layers only
-        // repeats tick formatting, label measurement, and colorbar work.
-        let extent = Reduce::Extent {
-            x_positive: matches!(&self.x, Scale::Log),
-            y_positive: matches!(&self.y, Scale::Log),
-        };
-        let categorical = self.palette.clone().unwrap_or_default();
-        let cycle_markers = frame.color == crate::render::ColorMode::Plain;
-        let probe = downsample.then(|| {
-            super::resolve::resolve(
-                &self.layers,
-                sample_width,
-                palette,
-                &categorical,
-                cycle_markers,
-                extent,
-            )
-        });
-        let probed_layout = probe.as_ref().map(|probe| {
-            super::layout::Layout::compute(
-                frame,
-                frame.charset.pixels_per_cell(),
-                probe,
-                title,
-                scales,
-                labels,
-                domains,
-                self.colorbar,
-            )
-        });
-        let reduce = if let Some(layout) = &probed_layout {
-            Reduce::Mapped {
-                map: layout.x_scale,
-                columns: layout.plot_sub_w,
-            }
-        } else {
-            Reduce::None
-        };
-
-        let layers = super::resolve::resolve(
-            &self.layers,
-            sample_width,
-            palette,
-            &categorical,
-            cycle_markers,
-            reduce,
-        );
-        let layout = probed_layout.unwrap_or_else(|| {
-            super::layout::Layout::compute(
-                frame,
-                frame.charset.pixels_per_cell(),
-                &layers,
-                title,
-                scales,
-                labels,
-                domains,
-                self.colorbar,
-            )
-        });
+        let PreparedRender { layout, layers } =
+            self.prepare_render(frame, TargetPolicy::cells(frame, downsample))?;
         super::chrome::draw(
             &mut surface,
             &layout,
