@@ -33,3 +33,18 @@ fn gaps_are_ignored_and_empty_groups_become_gaps() {
 fn mismatched_keys_and_values_panic() {
     Agg::by(["a"], &[1.0, 2.0][..]);
 }
+
+#[test]
+#[should_panic(expected = "one key per value")]
+fn extra_keys_also_panic() {
+    Agg::by(["a", "b"], &[1.0][..]);
+}
+
+#[test]
+fn many_groups_remain_in_first_appearance_order() {
+    let keys: Vec<String> = (0..10_000).rev().map(|index| format!("k{index}")).collect();
+    let values = vec![1.0; keys.len()];
+    let (grouped, counts) = Agg::by(keys.clone(), values).count();
+    assert_eq!(grouped, keys);
+    assert!(counts.iter().all(|&count| count == 1.0));
+}
