@@ -4,21 +4,88 @@
 //! Aggregation" (PVLDB 2014): keeping the first, last, minimum, and maximum point of
 //! every raster column reproduces that column's pixels exactly. The plot pipeline
 //! buckets by the rendered column ([`m4_mapped`]), so the auto-inserted reduction is
-//! pixel-identical to drawing every point — zero visual error, one O(n) pass, O(width)
-//! memory.
+//! pixel-identical to drawing every point. Finite runs are summarized independently:
+//! gaps retain path topology, using O(width + gaps) memory when a column contains
+//! several disconnected runs.
 
-/// One column's aggregate: the four points that matter, in `(x, y)` pairs.
+/// One uninterrupted run's aggregate: the four points that matter, in `(x, y)`
+/// pairs.
 #[derive(Debug, Clone, Copy)]
-struct Bucket {
+struct Run {
     first: (f64, f64),
     last: (f64, f64),
     min: (f64, f64),
     max: (f64, f64),
-    /// If a gap (`NaN`) fell inside this column, the x of the last finite point
-    /// before it — or `-inf` when the gap preceded every finite point here. On
-    /// emit the break goes between the points at or before this x and those after,
-    /// so a gap never reconnects the values it separated.
-    gap: Option<f64>,
+    break_before: bool,
+}
+
+impl Run {
+    fn new(point: (f64, f64), break_before: bool) -> Run {
+        Run {
+            first: point,
+            last: point,
+            min: point,
+            max: point,
+            break_before,
+        }
+    }
+
+    fn add(&mut self, point: (f64, f64)) {
+        self.last = point;
+        if point.1 < self.min.1 {
+            self.min = point;
+        }
+        if point.1 > self.max.1 {
+            self.max = point;
+        }
+    }
+
+    fn merge(&mut self, later: Run) {
+        self.last = later.last;
+        if later.min.1 < self.min.1 {
+            self.min = later.min;
+        }
+        if later.max.1 > self.max.1 {
+            self.max = later.max;
+        }
+    }
+}
+
+/// A raster column normally has one run. Additional storage is paid only when
+/// gaps divide that column into several runs.
+#[derive(Debug, Clone)]
+struct Bucket {
+    first: Run,
+    additional: Vec<Run>,
+}
+
+impl Bucket {
+    fn new(run: Run) -> Bucket {
+        Bucket {
+            first: run,
+            additional: Vec::new(),
+        }
+    }
+
+    fn last_mut(&mut self) -> &mut Run {
+        match self.additional.last_mut() {
+            Some(run) => run,
+            None => &mut self.first,
+        }
+    }
+
+    fn push(&mut self, run: Run) {
+        self.additional.push(run);
+    }
+
+    fn append(&mut self, later: Bucket) {
+        self.additional.push(later.first);
+        self.additional.extend(later.additional);
+    }
+
+    fn into_runs(self) -> impl Iterator<Item = Run> {
+        std::iter::once(self.first).chain(self.additional)
+    }
 }
 
 /// An M4 aggregator over a fixed x-domain divided into equal columns.
@@ -30,8 +97,8 @@ struct Bucket {
 pub struct M4 {
     domain: (f64, f64),
     buckets: Vec<Option<Bucket>>,
-    /// Gaps seen before any point landed in a bucket still break the line.
-    leading_gap: bool,
+    /// A gap after the last finite point makes the next run disconnected.
+    pending_gap: bool,
 }
 
 impl M4 {
@@ -72,14 +139,16 @@ impl M4 {
         Ok(M4 {
             domain,
             buckets,
-            leading_gap: false,
+            pending_gap: false,
         })
     }
 
     /// Accumulates one point. A non-finite `y` records a gap; points with a
-    /// non-finite or out-of-domain `x` are ignored.
+    /// non-finite `x` also record a gap, while finite out-of-domain x values are
+    /// ignored.
     pub fn add(&mut self, x: f64, y: f64) {
         if !x.is_finite() {
+            self.gap();
             return;
         }
         if let Some(index) = self.bucket_index(x) {
@@ -90,34 +159,27 @@ impl M4 {
     /// Records `(x, y)` into bucket `index`. A non-finite `y` marks a gap there.
     fn record(&mut self, index: usize, x: f64, y: f64) {
         if !y.is_finite() {
-            match &mut self.buckets[index] {
-                Some(bucket) => bucket.gap = Some(bucket.last.0),
-                None => self.leading_gap = true,
-            }
+            self.gap();
             return;
         }
         let point = (x, y);
+        let break_before = std::mem::take(&mut self.pending_gap);
         match &mut self.buckets[index] {
             Some(bucket) => {
-                bucket.last = point;
-                if y < bucket.min.1 {
-                    bucket.min = point;
-                }
-                if y > bucket.max.1 {
-                    bucket.max = point;
+                if break_before {
+                    bucket.push(Run::new(point, true));
+                } else {
+                    bucket.last_mut().add(point);
                 }
             }
             None => {
-                self.buckets[index] = Some(Bucket {
-                    first: point,
-                    last: point,
-                    min: point,
-                    max: point,
-                    gap: self.leading_gap.then_some(f64::NEG_INFINITY),
-                });
-                self.leading_gap = false;
+                self.buckets[index] = Some(Bucket::new(Run::new(point, break_before)));
             }
         }
+    }
+
+    fn gap(&mut self) {
+        self.pending_gap = true;
     }
 
     /// Merges `later` into `self`, as if `later`'s points had been added after
@@ -131,29 +193,44 @@ impl M4 {
             self.domain == later.domain && self.buckets.len() == later.buckets.len(),
             "M4::merge requires identical domains and column counts"
         );
-        for (mine, theirs) in self.buckets.iter_mut().zip(later.buckets.iter()) {
+        let self_last = self.buckets.iter().rposition(Option::is_some);
+        let later_first = later.buckets.iter().position(Option::is_some);
+        let boundary_gap = self.pending_gap;
+
+        for (index, (mine, theirs)) in self
+            .buckets
+            .iter_mut()
+            .zip(later.buckets.iter())
+            .enumerate()
+        {
             let Some(theirs) = theirs else { continue };
+            let mut theirs = theirs.clone();
+            if Some(index) == later_first && boundary_gap {
+                theirs.first.break_before = true;
+            }
             match mine {
                 Some(bucket) => {
-                    bucket.last = theirs.last;
-                    if theirs.min.1 < bucket.min.1 {
-                        bucket.min = theirs.min;
+                    let same_boundary_bucket =
+                        Some(index) == self_last && Some(index) == later_first;
+                    if same_boundary_bucket && !theirs.first.break_before {
+                        bucket.last_mut().merge(theirs.first);
+                        bucket.additional.extend(theirs.additional);
+                    } else {
+                        bucket.append(theirs);
                     }
-                    if theirs.max.1 > bucket.max.1 {
-                        bucket.max = theirs.max;
-                    }
-                    // Their points follow mine, so a gap in their column sits at
-                    // their x; keep it, else preserve mine.
-                    bucket.gap = theirs.gap.or(bucket.gap);
                 }
-                None => *mine = Some(*theirs),
+                None => *mine = Some(theirs),
             }
         }
-        self.leading_gap |= later.leading_gap;
+        self.pending_gap = if later_first.is_some() {
+            later.pending_gap
+        } else {
+            self.pending_gap || later.pending_gap
+        };
     }
 
-    /// Emits the aggregated series: up to four points per column in x order, with a
-    /// gap marker (`NaN`) where a column contained one.
+    /// Emits the aggregated series: up to four finite points per uninterrupted run
+    /// in each column, with a gap marker (`NaN`) before every disconnected run.
     pub fn emit(self) -> (Vec<f64>, Vec<f64>) {
         // Append a point unless it duplicates the last one written (collapses the
         // repeated first/min/max/last of a flat column into one).
@@ -163,28 +240,18 @@ impl M4 {
                 y.push(point.1);
             }
         }
-        let mut x = Vec::with_capacity(self.buckets.len() * 4);
-        let mut y = Vec::with_capacity(self.buckets.len() * 4);
+        let mut x: Vec<f64> = Vec::with_capacity(self.buckets.len() * 4);
+        let mut y: Vec<f64> = Vec::with_capacity(self.buckets.len() * 4);
         for bucket in self.buckets.into_iter().flatten() {
-            let mut points = [bucket.first, bucket.min, bucket.max, bucket.last];
-            points.sort_by(|a, b| a.0.total_cmp(&b.0));
-            match bucket.gap {
-                None => {
-                    for point in points {
-                        push(&mut x, &mut y, point);
-                    }
-                }
-                Some(at) => {
-                    // Emit the points that precede the gap, break, then the rest —
-                    // so the line is cut exactly where the data was, not before it.
-                    for point in points.iter().filter(|p| p.0 <= at) {
-                        push(&mut x, &mut y, *point);
-                    }
+            for run in bucket.into_runs() {
+                if run.break_before && y.last().is_none_or(|value| !value.is_nan()) {
                     x.push(f64::NAN);
                     y.push(f64::NAN);
-                    for point in points.iter().filter(|p| p.0 > at) {
-                        push(&mut x, &mut y, *point);
-                    }
+                }
+                let mut points = [run.first, run.min, run.max, run.last];
+                points.sort_by(|a, b| a.0.total_cmp(&b.0));
+                for point in points {
+                    push(&mut x, &mut y, point);
                 }
             }
         }
@@ -204,9 +271,10 @@ impl M4 {
     }
 }
 
-/// Downsamples an x-sorted series to at most four points per raster column,
-/// preserving each column's silhouette. Rendered over the same domain into a raster
-/// `columns` wide, the reduction is pixel-exact. Convenience over [`M4`].
+/// Downsamples an x-sorted series to at most four finite points per uninterrupted
+/// run in each raster column, preserving each run's silhouette and every gap.
+/// Rendered over the same domain into a raster `columns` wide, the reduction is
+/// pixel-exact. Convenience over [`M4`].
 ///
 /// Returns `None` when `x` is not sorted ascending (M4 reorders points within
 /// columns, which only preserves the drawn line for monotonic x), when the series
@@ -254,8 +322,9 @@ pub fn m4(x: &[f64], y: &[f64], columns: usize) -> Option<(Vec<f64>, Vec<f64>)> 
 ///
 /// `x = None` means the implicit indices `0, 1, 2, …`, materialized on the fly.
 /// Returns `None` when x is not ascending (M4 reorders within a column, exact only
-/// for monotonic x); non-finite x, non-finite mapped positions (a non-positive value
-/// on a log axis), and positions outside `[0, columns)` are skipped.
+/// for monotonic x). Non-finite x and non-finite mapped positions (a non-positive
+/// value on a log axis) break the path; positions outside `[0, columns)` are
+/// skipped.
 pub(crate) fn m4_mapped(
     x: Option<&[f64]>,
     y: &[f64],
@@ -267,20 +336,27 @@ pub(crate) fn m4_mapped(
     }
     let mut aggregate = M4::try_new((0.0, 1.0), columns).ok()?;
     let mut previous = f64::NEG_INFINITY;
-    for (index, &yv) in y.iter().enumerate() {
+    let length = x.map_or(y.len(), |values| values.len().min(y.len()));
+    for (index, &yv) in y.iter().take(length).enumerate() {
         let xv = match x {
             Some(values) => values[index],
             None => index as f64,
         };
         if !xv.is_finite() {
+            aggregate.gap();
             continue;
         }
         if xv < previous {
             return None;
         }
         previous = xv;
+        if !yv.is_finite() {
+            aggregate.gap();
+            continue;
+        }
         let position = map(xv);
         if !position.is_finite() {
+            aggregate.gap();
             continue;
         }
         let column = position.round();

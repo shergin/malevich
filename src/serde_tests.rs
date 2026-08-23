@@ -264,6 +264,26 @@ fn malformed_payloads_render_without_panicking() {
     let ragged = r#"{"layers":[{"Range":{"placement":{"Numeric":[0.0,1.0,2.0]},"low":[0.0],"high":[5.0,6.0],"body":null,"marker":[1.0,2.0,3.0,4.0],"color":null,"label":null}}],"title":null,"x":"Linear","y":"Linear","x_label":null,"y_label":null,"x_domain":null,"y_domain":null}"#;
     let plot: Plot = serde_json::from_str(ragged).expect("ragged range deserializes");
     let _ = plot.render(&frame());
+
+    // Large lines take the M4 path, whose tolerance must match the small line
+    // renderer instead of indexing the shorter channel.
+    let ragged_line: Plot = serde_json::from_value(serde_json::json!({
+        "layers": [{
+            "Line": {
+                "x": [0.0],
+                "y": vec![1.0; 1_000],
+                "color": null,
+                "label": null,
+                "style": "Pixels"
+            }
+        }]
+    }))
+    .expect("ragged large line deserializes");
+    assert!(matches!(
+        ragged_line.validate(),
+        Err(crate::Error::UnequalChannels { .. })
+    ));
+    let _ = ragged_line.render(&Frame::plain(20, 8));
 }
 
 #[test]

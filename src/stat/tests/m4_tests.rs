@@ -1,5 +1,39 @@
 use super::{M4, m4, m4_mapped};
 
+fn normalized(series: (Vec<f64>, Vec<f64>)) -> Vec<Option<(u64, u64)>> {
+    series
+        .0
+        .into_iter()
+        .zip(series.1)
+        .map(|(x, y)| {
+            if x.is_nan() || y.is_nan() {
+                None
+            } else {
+                Some((x.to_bits(), y.to_bits()))
+            }
+        })
+        .collect()
+}
+
+fn runs(values: &[f64]) -> Vec<Vec<f64>> {
+    let mut runs = Vec::new();
+    let mut starts_run = true;
+    for &value in values {
+        if value.is_nan() {
+            starts_run = true;
+            continue;
+        }
+        if starts_run {
+            runs.push(Vec::new());
+            starts_run = false;
+        }
+        runs.last_mut()
+            .expect("a finite value starts a run")
+            .push(value);
+    }
+    runs
+}
+
 fn wave(n: usize) -> (Vec<f64>, Vec<f64>) {
     let x: Vec<f64> = (0..n).map(|i| i as f64).collect();
     let y: Vec<f64> = (0..n)
@@ -98,6 +132,64 @@ fn a_gap_between_finite_values_in_one_column_does_not_reconnect_them() {
 }
 
 #[test]
+fn several_gaps_in_one_column_keep_every_run_disconnected() {
+    let x = [0.0, 1.0, 2.0, 3.0, 4.0];
+    let y = [0.0, f64::NAN, 10.0, f64::NAN, 0.0];
+    let (_, emitted) = m4(&x, &y, 1).unwrap();
+    assert_eq!(runs(&emitted), [vec![0.0], vec![10.0], vec![0.0]]);
+}
+
+#[test]
+fn merges_preserve_gaps_at_and_inside_partition_boundaries() {
+    let x = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
+    let y = [1.0, f64::NAN, 2.0, 4.0, f64::NAN, 3.0, f64::NAN, 5.0];
+    let mut sequential = M4::new((0.0, 7.0), 2);
+    for (&xv, &yv) in x.iter().zip(&y) {
+        sequential.add(xv, yv);
+    }
+    let expected = normalized(sequential.emit());
+
+    for first_split in 0..=x.len() {
+        for second_split in first_split..=x.len() {
+            let mut first = M4::new((0.0, 7.0), 2);
+            let mut second = M4::new((0.0, 7.0), 2);
+            let mut third = M4::new((0.0, 7.0), 2);
+            for (&xv, &yv) in x[..first_split].iter().zip(&y[..first_split]) {
+                first.add(xv, yv);
+            }
+            for (&xv, &yv) in x[first_split..second_split]
+                .iter()
+                .zip(&y[first_split..second_split])
+            {
+                second.add(xv, yv);
+            }
+            for (&xv, &yv) in x[second_split..].iter().zip(&y[second_split..]) {
+                third.add(xv, yv);
+            }
+
+            let mut left_associative = first.clone();
+            left_associative.merge(&second);
+            left_associative.merge(&third);
+            assert_eq!(
+                normalized(left_associative.emit()),
+                expected,
+                "partition {first_split}, {second_split}"
+            );
+
+            let mut right = second;
+            right.merge(&third);
+            let mut right_associative = first;
+            right_associative.merge(&right);
+            assert_eq!(
+                normalized(right_associative.emit()),
+                expected,
+                "right-associated partition {first_split}, {second_split}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_leading_gap_in_a_column_breaks_before_its_points() {
     let x = [0.0, 1.0, 2.0];
     let y = [f64::NAN, 3.0, 5.0];
@@ -133,4 +225,39 @@ fn mapped_reduction_preserves_a_gap() {
     let gap = ry.iter().position(|v| v.is_nan()).expect("gap kept");
     assert!(ry[..gap].iter().all(|&v| v < 3.0));
     assert!(ry[gap + 1..].iter().all(|&v| v > 3.0));
+}
+
+#[test]
+fn mapped_reduction_tolerates_ragged_explicit_channels() {
+    let x = [0.0];
+    let y = vec![1.0; 1_000];
+    let (rx, ry) = m4_mapped(Some(&x), &y, 4, |_| 0.0).unwrap();
+    assert_eq!(rx, [0.0]);
+    assert_eq!(ry, [1.0]);
+}
+
+#[test]
+fn invalid_x_and_mapping_values_break_the_path() {
+    let x = [0.0, 1.0, f64::NAN, 3.0, 4.0];
+    let y = [-1.0, -1.0, 0.0, 1.0, 1.0];
+    let (_, invalid_x) = m4_mapped(Some(&x), &y, 1, |_| 0.0).unwrap();
+    let invalid_x_runs = runs(&invalid_x);
+    assert_eq!(invalid_x_runs.len(), 2);
+    assert!(invalid_x_runs[0].iter().all(|value| *value < 0.0));
+    assert!(invalid_x_runs[1].iter().all(|value| *value > 0.0));
+
+    let x = [0.0, 1.0, 2.0, 3.0, 4.0];
+    let (_, invalid_map) = m4_mapped(
+        Some(&x),
+        &y,
+        1,
+        |value| {
+            if value == 2.0 { f64::NAN } else { 0.0 }
+        },
+    )
+    .unwrap();
+    let invalid_map_runs = runs(&invalid_map);
+    assert_eq!(invalid_map_runs.len(), 2);
+    assert!(invalid_map_runs[0].iter().all(|value| *value < 0.0));
+    assert!(invalid_map_runs[1].iter().all(|value| *value > 0.0));
 }

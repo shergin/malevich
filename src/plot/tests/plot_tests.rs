@@ -126,6 +126,26 @@ fn a_gap_inside_a_raster_column_stays_a_break() {
 }
 
 #[test]
+fn several_gaps_inside_one_raster_column_stay_disconnected() {
+    // An isolated high point sits between two gaps in the same target column.
+    // Collapsing either gap invents a visible vertical connection.
+    let n = 20_000;
+    let x: Vec<f64> = (0..n).map(|index| index as f64).collect();
+    let mut y = vec![-4.0; n];
+    y[n / 2] = f64::NAN;
+    y[n / 2 + 1] = 4.0;
+    y[n / 2 + 2] = f64::NAN;
+
+    let frame = Frame::plain(40, 11);
+    let plot = Plot::new().layer(Line::xy(&x[..], &y[..]));
+    assert_eq!(
+        plot.rasterize_with(&frame, true).to_plain(),
+        plot.rasterize_with(&frame, false).to_plain(),
+        "M4 must preserve every break inside a target column"
+    );
+}
+
+#[test]
 fn labeled_layers_grow_a_legend_row() {
     let plot = Plot::new()
         .layer(Line::y(&[1.0, 2.0][..]).label("first"))
