@@ -266,7 +266,7 @@ impl M4 {
         if hi == lo {
             return Some(0);
         }
-        let position = (x - lo) / (hi - lo) * self.buckets.len() as f64;
+        let position = crate::numeric::inverse_lerp(lo, hi, x) * self.buckets.len() as f64;
         Some((position as usize).min(self.buckets.len() - 1))
     }
 }

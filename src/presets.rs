@@ -380,8 +380,8 @@ pub fn hist<'a>(values: impl IntoSeries<'a>) -> Plot<'a> {
 ///
 /// # Errors
 ///
-/// Returns an error when `options.max_bins` is zero or exceeds the defensive
-/// statistics limit.
+/// Returns an error when `options.max_bins` is zero, exceeds the defensive
+/// statistics limit, or cannot represent the complete finite data span.
 pub fn hist_with<'a>(
     values: impl IntoSeries<'a>,
     options: HistogramOptions,
@@ -394,7 +394,7 @@ pub fn hist_with<'a>(
     )?;
     let series = values.into_series();
     Ok(
-        match crate::stat::Bins::auto(series.as_slice(), options.max_bins) {
+        match crate::stat::Bins::try_auto(series.as_slice(), options.max_bins)? {
             Some(bins) => {
                 let counts: Vec<f64> = bins.counts().iter().map(|&count| count as f64).collect();
                 Plot::new().layer(Bars::spans(bins.start(), bins.width(), counts))
@@ -941,8 +941,9 @@ pub fn trend_with<'a>(
     if let (Some((x0, x1)), Some(_)) = (extent, fit.slope()) {
         if let (Some(multiplier), true) = (options.band, x1 > x0) {
             let samples = options.band_samples;
-            let step = (x1 - x0) / (samples - 1) as f64;
-            let positions: Vec<f64> = (0..samples).map(|i| x0 + i as f64 * step).collect();
+            let positions: Vec<f64> = (0..samples)
+                .map(|index| crate::numeric::lerp(x0, x1, index as f64 / (samples - 1) as f64))
+                .collect();
             let band: Option<(Vec<f64>, Vec<f64>)> = positions
                 .iter()
                 .map(|&at| {
@@ -1094,6 +1095,18 @@ mod tests {
             .layer(Bars::spans(bins.start(), bins.width(), counts))
             .render(&frame);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn histograms_handle_the_full_finite_range_without_panicking() {
+        let plot = hist([-f64::MAX, f64::MAX]);
+        assert!(plot.validate().is_ok());
+        let _ = plot.render(&Frame::plain(40, 10));
+
+        assert!(matches!(
+            hist_with([-f64::MAX, f64::MAX], HistogramOptions::new(1)),
+            Err(crate::Error::InvalidParameter { .. })
+        ));
     }
 
     #[test]

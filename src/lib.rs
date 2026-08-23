@@ -65,6 +65,7 @@ mod error;
 #[cfg(feature = "evcxr")]
 pub mod evcxr;
 pub mod mark;
+mod numeric;
 #[cfg(feature = "pixel")]
 pub mod pixel;
 pub mod plot;

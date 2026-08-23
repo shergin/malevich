@@ -23,16 +23,7 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
 
     let mut sorted = finite.clone();
     sorted.sort_by(f64::total_cmp);
-    let quantile = |p: f64| -> f64 {
-        let position = (sorted.len() - 1) as f64 * p;
-        let index = position.floor() as usize;
-        let fraction = position - index as f64;
-        if index + 1 < sorted.len() {
-            sorted[index] + fraction * (sorted[index + 1] - sorted[index])
-        } else {
-            sorted[index]
-        }
-    };
+    let quantile = |p: f64| super::reducer::quantile_sorted(&sorted, p);
     let iqr = quantile(0.75) - quantile(0.25);
     let spread = if iqr > 0.0 {
         sigma.min(iqr / 1.34)
@@ -49,7 +40,7 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
     let (low, high) = (sorted[0], sorted[sorted.len() - 1]);
     let start = low - 3.0 * bandwidth;
     let end = high + 3.0 * bandwidth;
-    let step = (end - start) / (points - 1) as f64;
+    let step = crate::numeric::span_per(start, end, points - 1)?;
     // At extreme magnitudes the ±3σ padding can fall below the value's ULP, so the
     // grid collapses (step 0 or non-finite). A single point has no density curve;
     // refuse rather than binning through a zero step into a giant allocation.
@@ -60,7 +51,7 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
     // Linear binning onto the evaluation grid.
     let mut binned = vec![0.0f64; points];
     for &value in &finite {
-        let position = (value - start) / step;
+        let position = crate::numeric::inverse_lerp(start, end, value) * (points - 1) as f64;
         let index = position.floor() as usize;
         let fraction = position - position.floor();
         if index + 1 < points {
@@ -95,7 +86,9 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
             sum * normalization
         })
         .collect();
-    let positions = (0..points).map(|i| start + i as f64 * step).collect();
+    let positions = (0..points)
+        .map(|index| crate::numeric::lerp(start, end, index as f64 / (points - 1) as f64))
+        .collect();
     Some((positions, densities))
 }
 

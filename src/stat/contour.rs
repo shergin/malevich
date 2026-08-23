@@ -149,8 +149,11 @@ fn march(line: &mut Contour, origin: (f64, f64), corners: [f64; 4], level: f64) 
 fn crossing(edge: usize, corners: [f64; 4], level: f64) -> (f64, f64) {
     let Edge { from, to, a, b } = EDGES[edge];
     let (a, b) = (corners[a], corners[b]);
-    let t = if a == b { 0.5 } else { (level - a) / (b - a) };
-    (from.0 + t * (to.0 - from.0), from.1 + t * (to.1 - from.1))
+    let t = crate::numeric::inverse_lerp(a, b, level);
+    (
+        crate::numeric::lerp(from.0, to.0, t),
+        crate::numeric::lerp(from.1, to.1, t),
+    )
 }
 
 #[cfg(test)]

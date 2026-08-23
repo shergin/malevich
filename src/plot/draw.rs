@@ -200,8 +200,8 @@ pub(crate) fn layers<C: Canvas>(
                     draw_bars(
                         surface,
                         &|index| {
-                            let left = x_scale.map(start + width * index as f64);
-                            let right = x_scale.map(start + width * (index + 1) as f64);
+                            let left = x_scale.map(width.mul_add(index as f64, *start));
+                            let right = x_scale.map(width.mul_add((index + 1) as f64, *start));
                             (left, right)
                         },
                         y_scale,
@@ -502,10 +502,6 @@ fn draw_cells<C: Canvas>(
     let Some((low, high)) = extent(values) else {
         return;
     };
-    // A centered map widens the range symmetrically around its midpoint; a
-    // linear map displays the observed range as-is.
-    let (low, high) = colormap.display_domain(low, high);
-    let spread = if high > low { high - low } else { 1.0 };
     let ((x0, x1), (y0, y1)) = extents.unwrap_or(((0.0, columns as f64), (0.0, rows as f64)));
     let (samples_x, samples_y) = surface.patch_density();
     if samples_x == 0 || samples_y == 0 {
@@ -523,8 +519,8 @@ fn draw_cells<C: Canvas>(
             let sample = (|| {
                 let fx = position_on(x_scale, sub_x, x0, x1)?;
                 let fy = position_on(y_scale, sub_y, y0, y1)?;
-                let column = ((fx - x0) / (x1 - x0) * columns as f64).floor();
-                let row = ((fy - y0) / (y1 - y0) * rows as f64).floor();
+                let column = (crate::numeric::inverse_lerp(x0, x1, fx) * columns as f64).floor();
+                let row = (crate::numeric::inverse_lerp(y0, y1, fy) * rows as f64).floor();
                 if column < 0.0 || row < 0.0 {
                     return None;
                 }
@@ -536,7 +532,7 @@ fn draw_cells<C: Canvas>(
                 if !value.is_finite() {
                     return None;
                 }
-                let position = (value - low) / spread;
+                let position = colormap.position_in(value, low, high);
                 Some((position, colormap.color(position)))
             })();
             surface.patch(unit_col, unit_row, rect, sample);
@@ -551,7 +547,7 @@ fn position_on(scale: &Map, sub: f64, lo: f64, hi: f64) -> Option<f64> {
         return None;
     }
     let value = scale.unmap(sub);
-    let t = (value - lo) / (hi - lo);
+    let t = crate::numeric::inverse_lerp(lo, hi, value);
     if !(0.0..1.0).contains(&t) {
         return None;
     }

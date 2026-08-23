@@ -54,6 +54,11 @@ fn auto_bins_cover_the_data_with_nice_edges() {
 fn constant_data_gets_one_bin() {
     let bins = Bins::auto(&[7.0; 42], 60).unwrap();
     assert_eq!(bins.counts(), [42]);
+
+    let extreme = Bins::auto(&[f64::MAX; 2], 60).unwrap();
+    assert_eq!(extreme.counts(), [2]);
+    assert!(extreme.start().is_finite() && extreme.width().is_finite());
+    assert!(extreme.end().is_finite() && extreme.start() < extreme.end());
 }
 
 #[test]
@@ -81,11 +86,34 @@ fn auto_never_drops_finite_values_and_respects_the_cap() {
 }
 
 #[test]
+fn auto_bins_cover_opposite_finite_extremes_without_panicking() {
+    let bins = Bins::try_auto(&[-f64::MAX, f64::MAX], 60).unwrap().unwrap();
+    assert_eq!(bins.counts().iter().sum::<u64>(), 2);
+    assert!(bins.start().is_finite());
+    assert!(bins.width().is_finite() && bins.width() > 0.0);
+    assert!(bins.end().is_finite() && bins.end() >= f64::MAX);
+
+    assert!(matches!(
+        Bins::try_auto(&[-f64::MAX, f64::MAX], 1),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+}
+
+#[test]
 fn bins2_of_constant_data_keeps_a_drawable_extent() {
     let grid = super::bins2(&[3.0, 3.0, 3.0], &[7.0, 7.0, 7.0], 8, 8).expect("finite pairs");
     assert!(grid.x.0 < grid.x.1, "x extent must be drawable");
     assert!(grid.y.0 < grid.y.1, "y extent must be drawable");
     assert_eq!(grid.counts.iter().sum::<f64>(), 3.0);
+}
+
+#[test]
+fn bins2_distinguishes_opposite_finite_extremes() {
+    let grid = super::try_bins2(&[-f64::MAX, f64::MAX], &[0.0, 0.0], 2, 1)
+        .unwrap()
+        .unwrap();
+    assert_eq!(grid.counts, [1.0, 1.0]);
+    assert_eq!(grid.x, (-f64::MAX, f64::MAX));
 }
 
 #[test]

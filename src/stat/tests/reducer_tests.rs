@@ -26,6 +26,11 @@ fn percentiles_match_the_box_plot_quartiles() {
 }
 
 #[test]
+fn median_of_opposite_finite_extremes_stays_finite() {
+    assert_eq!(Reducer::Median.reduce(&[-f64::MAX, f64::MAX]), 0.0);
+}
+
+#[test]
 fn gaps_are_excluded_and_the_empty_set_answers_honestly() {
     let gappy = [1.0, f64::NAN, 3.0, f64::INFINITY];
     assert_eq!(Reducer::Count.reduce(&gappy), 2.0);

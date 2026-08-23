@@ -65,11 +65,19 @@ impl Bins {
     /// Bins sized to the data: bin count by the larger of Sturges' rule and
     /// Freedman–Diaconis (the NumPy `auto` policy), capped at `limit`, with widths
     /// and edges snapped to the same nice decimals ticks use. `None` without finite
-    /// values.
+    /// values or when the requested cap cannot represent the complete span; use
+    /// [`Bins::try_auto`] to distinguish those cases.
     pub fn auto(values: &[f64], limit: usize) -> Option<Bins> {
+        Bins::try_auto(values, limit).ok().flatten()
+    }
+
+    /// Fallible automatic binning. Unlike [`Bins::auto`], this distinguishes an
+    /// empty sample from finite data whose requested bin cap cannot represent the
+    /// complete numeric span.
+    pub fn try_auto(values: &[f64], limit: usize) -> crate::Result<Option<Bins>> {
         let mut finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
         if finite.is_empty() {
-            return None;
+            return Ok(None);
         }
         let n = finite.len();
         let (min, max) = finite
@@ -78,9 +86,14 @@ impl Bins {
                 (lo.min(v), hi.max(v))
             });
         if min == max {
-            let mut bins = Bins::new(min - 0.5, 1.0, 1);
+            let (start, end) = crate::numeric::extent_around(min);
+            let width =
+                crate::numeric::span_per(start, end, 1).ok_or(crate::Error::InvalidParameter {
+                    detail: "histogram extent is not representable",
+                })?;
+            let mut bins = Bins::try_new(start, width, 1)?;
             bins.counts[0] = n as u64;
-            return Some(bins);
+            return Ok(Some(bins));
         }
 
         let sturges = (n as f64).log2().ceil() as usize + 1;
@@ -90,10 +103,12 @@ impl Bins {
         let upper = (3 * n) / 4;
         let (_, q3, _) = finite.select_nth_unstable_by(upper.min(n - 1), f64::total_cmp);
         let q3 = *q3;
-        let iqr = q3 - q1;
-        let fd = if iqr > 0.0 {
+        let iqr = crate::numeric::span_per(q1, q3, 1);
+        let fd = if let Some(iqr) = iqr {
             let width = 2.0 * iqr / (n as f64).cbrt();
-            ((max - min) / width).ceil() as usize
+            crate::numeric::span_ratio(min, max, width)
+                .map(|count| count.ceil() as usize)
+                .unwrap_or(0)
         } else {
             0
         };
@@ -103,30 +118,42 @@ impl Bins {
         // so bin boundaries land on readable numbers.
         let cap = limit.clamp(1, super::MAX_STAT_ELEMENTS);
         let ticks = Ticks::linear(min, max, target.min(50));
-        let mut width = ticks.step().unwrap_or((max - min) / target as f64);
-        let mut start = (min / width).floor() * width;
-        let mut bins = (((max - start) / width).ceil() as usize).max(1);
+        let fallback_width =
+            crate::numeric::span_per(min, max, target).ok_or(crate::Error::InvalidParameter {
+                detail: "histogram span cannot be represented at the requested bin cap",
+            })?;
+        let mut width = ticks
+            .step()
+            .filter(|step| step.is_finite() && *step > 0.0)
+            .unwrap_or(fallback_width);
+        let snapped_start = (min / width).floor() * width;
+        let mut start = if snapped_start.is_finite() && snapped_start <= min {
+            snapped_start
+        } else {
+            min
+        };
+        let mut bins = crate::numeric::span_ratio(start, max, width)
+            .map(|count| count.ceil() as usize)
+            .unwrap_or(usize::MAX)
+            .max(1);
         // Never drop data to honor the cap: if the nice width needs more bins than
         // allowed, widen it so the same span fits in `cap` bins. Coverage is the
-        // contract; readable edges are the preference that yields first. With width
-        // (max-min)/(cap-1) and a floored start, ceil((max-start)/width) <= cap and
-        // start + cap*width >= max, so [min, max] is always covered.
+        // contract; readable edges are the preference that yields first. Falling
+        // back to an exact `cap`-way split from `min` covers both endpoints without
+        // requiring the complete span to be representable first.
         if bins > cap {
-            if cap == 1 {
-                start = min;
-                width = max - min;
-                bins = 1;
-            } else {
-                width = (max - min) / (cap - 1) as f64;
-                start = (min / width).floor() * width;
-                bins = (((max - start) / width).ceil() as usize).clamp(1, cap);
-            }
+            start = min;
+            width =
+                crate::numeric::span_per(min, max, cap).ok_or(crate::Error::InvalidParameter {
+                    detail: "histogram span cannot be represented at the requested bin cap",
+                })?;
+            bins = cap;
         }
-        let mut result = Bins::new(start, width, bins);
+        let mut result = Bins::try_new(start, width, bins)?;
         for &value in &finite {
             result.add(value);
         }
-        Some(result)
+        Ok(Some(result))
     }
 
     /// Counts one value; non-finite and out-of-range values are ignored.
@@ -143,18 +170,37 @@ impl Bins {
         if !value.is_finite() {
             return None;
         }
-        let position = (value - self.start) / self.width;
-        if position < 0.0 {
+        if value < self.start {
             return None;
         }
-        let index = position as usize;
-        if index < self.counts.len() {
-            Some(index)
-        } else if index == self.counts.len() && value <= self.end() {
-            Some(self.counts.len() - 1)
-        } else {
-            None
+        let end = self.end();
+        if end.is_finite() && end > self.start {
+            if value > end {
+                return None;
+            }
+            let position = crate::numeric::inverse_lerp(self.start, end, value);
+            let index = (position * self.counts.len() as f64) as usize;
+            return if index < self.counts.len() {
+                Some(index)
+            } else {
+                Some(self.counts.len() - 1)
+            };
         }
+
+        // A caller can request geometry whose mathematical end exceeds MAX. Find
+        // the first upper edge above the value without materializing that span.
+        let mut low = 0usize;
+        let mut high = self.counts.len();
+        while low < high {
+            let middle = low + (high - low) / 2;
+            let upper = self.width.mul_add((middle + 1) as f64, self.start);
+            if value < upper {
+                high = middle;
+            } else {
+                low = middle + 1;
+            }
+        }
+        Some(low.min(self.counts.len() - 1))
     }
 
     /// Merges another histogram with the same geometry into this one.
@@ -186,7 +232,7 @@ impl Bins {
 
     /// The right edge of the last bin.
     pub fn end(&self) -> f64 {
-        self.start + self.width * self.counts.len() as f64
+        self.width.mul_add(self.counts.len() as f64, self.start)
     }
 
     /// The per-bin counts, in order.
@@ -263,8 +309,6 @@ pub fn try_bins2(
     let (Some(x_extent), Some(y_extent)) = (x_extent, y_extent) else {
         return Ok(None);
     };
-    let width = (x_extent.1 - x_extent.0).max(f64::MIN_POSITIVE);
-    let height = (y_extent.1 - y_extent.0).max(f64::MIN_POSITIVE);
     // A constant coordinate leaves a zero-width extent that later renders blank
     // (the inverse mapping rejects equal endpoints). Give it a scale-aware span,
     // always numerically distinct even at large magnitudes, so the cells show.
@@ -272,8 +316,7 @@ pub fn try_bins2(
         if lo < hi {
             (lo, hi)
         } else {
-            let half = lo.abs() * 0.5 + 0.5;
-            (lo - half, hi + half)
+            crate::numeric::extent_around(lo)
         }
     };
     let mut counts = Vec::new();
@@ -287,8 +330,16 @@ pub fn try_bins2(
         if !xv.is_finite() || !yv.is_finite() {
             continue;
         }
-        let column = (((xv - x_extent.0) / width) * columns as f64) as usize;
-        let row = (((yv - y_extent.0) / height) * rows as f64) as usize;
+        let column = if x_extent.0 == x_extent.1 {
+            0
+        } else {
+            (crate::numeric::inverse_lerp(x_extent.0, x_extent.1, xv) * columns as f64) as usize
+        };
+        let row = if y_extent.0 == y_extent.1 {
+            0
+        } else {
+            (crate::numeric::inverse_lerp(y_extent.0, y_extent.1, yv) * rows as f64) as usize
+        };
         counts[row.min(rows - 1) * columns + column.min(columns - 1)] += 1.0;
     }
     Ok(Some(Histogram2d {

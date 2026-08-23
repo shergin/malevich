@@ -85,6 +85,10 @@ fn a_linear_map_spans_the_observed_range() {
     // Out-of-range and NaN degrade exactly like Colormap::color.
     assert_eq!(map.position_in(9.0, 2.0, 6.0), 1.0);
     assert_eq!(map.position_in(f64::NAN, 2.0, 6.0), 0.0);
+
+    assert_eq!(map.position_in(-f64::MAX, -f64::MAX, f64::MAX), 0.0);
+    assert_eq!(map.position_in(0.0, -f64::MAX, f64::MAX), 0.5);
+    assert_eq!(map.position_in(f64::MAX, -f64::MAX, f64::MAX), 1.0);
 }
 
 #[test]

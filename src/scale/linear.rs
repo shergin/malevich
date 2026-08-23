@@ -26,10 +26,10 @@ impl Linear {
             return if value.is_nan() {
                 value
             } else {
-                (r0 + r1) / 2.0
+                crate::numeric::midpoint(r0, r1)
             };
         }
-        r0 + (value - d0) / (d1 - d0) * (r1 - r0)
+        crate::numeric::lerp(r0, r1, crate::numeric::inverse_lerp(d0, d1, value))
     }
 
     /// Maps a range value back into the data domain.
@@ -43,10 +43,10 @@ impl Linear {
             return if value.is_nan() {
                 value
             } else {
-                (d0 + d1) / 2.0
+                crate::numeric::midpoint(d0, d1)
             };
         }
-        d0 + (value - r0) / (r1 - r0) * (d1 - d0)
+        crate::numeric::lerp(d0, d1, crate::numeric::inverse_lerp(r0, r1, value))
     }
 }
 

@@ -151,7 +151,7 @@ impl ResolvedLayer<'_> {
                 placement: Placement::Spans { start, width },
                 values,
                 ..
-            } => Some((*start, start + width * values.len() as f64)),
+            } => Some((*start, width.mul_add(values.len() as f64, *start))),
             ResolvedLayer::Bars { .. } => None,
             ResolvedLayer::Area {
                 x,
@@ -421,9 +421,15 @@ pub(crate) fn resolve<'p>(
                         }
                         Source::Function { domain, function } => {
                             let samples = sample_width.max(2);
-                            let step = (domain.1 - domain.0) / (samples - 1) as f64;
-                            let x: Vec<f64> =
-                                (0..samples).map(|i| domain.0 + i as f64 * step).collect();
+                            let x: Vec<f64> = (0..samples)
+                                .map(|index| {
+                                    crate::numeric::lerp(
+                                        domain.0,
+                                        domain.1,
+                                        index as f64 / (samples - 1) as f64,
+                                    )
+                                })
+                                .collect();
                             let y: Vec<f64> = x.iter().map(|&value| function(value)).collect();
                             ResolvedLayer::Series {
                                 x: Coordinates::Values(Cow::Owned(x)),

@@ -94,7 +94,7 @@ pub(crate) fn quantile_sorted(sorted: &[f64], p: f64) -> f64 {
     let index = position.floor() as usize;
     let fraction = position - index as f64;
     if index + 1 < sorted.len() {
-        sorted[index] + fraction * (sorted[index + 1] - sorted[index])
+        crate::numeric::lerp(sorted[index], sorted[index + 1], fraction)
     } else {
         sorted[index]
     }

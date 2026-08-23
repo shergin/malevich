@@ -236,8 +236,11 @@ impl Colormap {
     /// matching [`color`](Colormap::color).
     pub fn position_in(&self, value: f64, low: f64, high: f64) -> f64 {
         let (start, end) = self.display_domain(low, high);
-        let spread = if end > start { end - start } else { 1.0 };
-        let position = (value - start) / spread;
+        let position = if end > start {
+            crate::numeric::inverse_lerp(start, end, value)
+        } else {
+            0.0
+        };
         if position.is_finite() {
             position.clamp(0.0, 1.0)
         } else {

@@ -21,3 +21,17 @@ fn degenerate_maps_are_stable_and_preserve_gaps() {
     assert_eq!(range.unmap(100.0), 5.0);
     assert!(range.unmap(f64::NAN).is_nan());
 }
+
+#[test]
+fn extreme_finite_endpoints_map_without_non_finite_intermediates() {
+    let scale = Linear::new((-f64::MAX, f64::MAX), (0.0, 1.0));
+    assert_eq!(scale.map(-f64::MAX), 0.0);
+    assert_eq!(scale.map(0.0), 0.5);
+    assert_eq!(scale.map(f64::MAX), 1.0);
+    assert_eq!(scale.unmap(0.0), -f64::MAX);
+    assert_eq!(scale.unmap(0.5), 0.0);
+    assert_eq!(scale.unmap(1.0), f64::MAX);
+
+    let degenerate = Linear::new((1.0, 1.0), (-f64::MAX, f64::MAX));
+    assert_eq!(degenerate.map(1.0), 0.0);
+}
