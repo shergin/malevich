@@ -1,6 +1,7 @@
 use super::program;
 use crate::args::{Args, Outcome, parse_from};
 use crate::input;
+use crate::recipe;
 
 /// A parsed `Args` for an argument vector, as the process would build it.
 fn args(arguments: &[&str]) -> Args {
@@ -10,25 +11,12 @@ fn args(arguments: &[&str]) -> Args {
     }
 }
 
-/// Emits the program for one invocation over inline input text, applying the
-/// same `--cols`/`--by` shaping as `main::execute`.
+/// Emits the program for one invocation over inline input text.
 fn emit(arguments: &[&str], text: &str) -> String {
     let arguments = args(arguments);
-    let mut table = input::frame(text, arguments.delimiter, arguments.header);
-    if let Some(selectors) = &arguments.cols {
-        table = input::select(&table, selectors).expect("selectors resolve");
-    }
-    let mut categories = None;
-    if let Some(selector) = &arguments.by {
-        let index = input::column_index(&table, selector).expect("selector resolves");
-        categories = Some(input::string_column(&table, index));
-        let keep: Vec<String> = (0..table.width())
-            .filter(|&column| column != index)
-            .map(|column| column.to_string())
-            .collect();
-        table = input::select(&table, &keep).expect("indices resolve");
-    }
-    program(&arguments, &table, categories.as_deref()).expect("chart inputs are representable")
+    let table = input::frame(text, arguments.delimiter, arguments.header);
+    let recipe = recipe::prepare(&arguments, table).expect("chart inputs are representable");
+    program(&recipe)
 }
 
 #[test]

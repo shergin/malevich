@@ -57,9 +57,15 @@ fn out_of_range_numeric_selectors_are_usage_errors() {
 }
 
 #[test]
-fn explicit_histograms_handle_extreme_finite_endpoints_without_panicking() {
+fn histograms_handle_extreme_finite_endpoints_without_panicking() {
     let values = "-1.7976931348623157e308\n1.7976931348623157e308\n";
     for extra in [&[][..], &["--emit-code"][..]] {
+        let mut args = vec!["hist", "--color", "never"];
+        args.extend_from_slice(extra);
+        let out = run(&args, values);
+        assert!(out.status.success(), "{}", stderr(&out));
+        assert!(!stderr(&out).contains("panicked"), "{}", stderr(&out));
+
         let mut args = vec!["hist", "--bins", "2", "--color", "never"];
         args.extend_from_slice(extra);
         let out = run(&args, values);

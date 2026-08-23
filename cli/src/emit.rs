@@ -1,43 +1,44 @@
-//! `--emit-code`: the equivalent malevich Rust program, data inlined.
+//! `--emit-code`: translate a normalized recipe into a malevich Rust program.
 //!
 //! The exploratory-to-production bridge: pipe data through kaz until the chart
-//! is right, then take the program and keep going in Rust. The emitted source
-//! mirrors what [`crate::chart`] built — same presets, same grammar calls,
-//! same furniture — with the parsed values baked in as literals. It is a
-//! copy-pasteable starting point, not a byte-exact replica: it renders for
-//! whatever terminal it runs in. Every emission shape is compile-tested.
+//! is right, then take the program and keep going in Rust. Input semantics live
+//! in [`crate::recipe`]; this module only writes the equivalent public grammar
+//! with normalized values baked in as literals. Every shape is compile-tested.
 
 use std::fmt::Write;
 
 use malevich::scale::Colormap;
 
-use crate::args::{Args, Command};
-use crate::input::Table;
-use crate::series::{self, Series};
+use crate::recipe::{Chart, DistributionKind, Furniture, GroupedKind, Recipe, ValueMark};
+use crate::series::Series;
 
-/// The complete program for `args` over `table` (and the `--by` categories,
-/// when present).
-pub fn program(
-    args: &Args,
-    table: &Table,
-    categories: Option<&[String]>,
-) -> malevich::Result<String> {
+/// The complete standalone program for one prepared chart.
+pub fn program(recipe: &Recipe) -> String {
     let mut body = String::new();
-    let plot = match (args.command, categories) {
-        (Command::Scatter, Some(groups)) => scatter_by(&mut body, args, table, groups),
-        (Command::Line, _) => value(&mut body, args, table, "Line"),
-        (Command::Scatter, _) => value(&mut body, args, table, "Points"),
-        (Command::Hist, _) => hist(&mut body, args, table)?,
-        (Command::Bar, _) => bar(&mut body, table),
-        (Command::Count, _) => count(&mut body, table),
-        (Command::Density, _) => pooled(&mut body, table, "density"),
-        (Command::Ecdf, _) => pooled(&mut body, table, "ecdf"),
-        (Command::Box, _) => grouped(&mut body, table, "box_plot"),
-        (Command::Violin, _) => grouped(&mut body, table, "violin"),
-        (Command::Hist2d, _) => hist2d(&mut body, args, table),
-        (Command::Heatmap, _) => heatmap(&mut body, args, table),
+    let plot = match &recipe.chart {
+        Chart::Value { mark, series } => value(&mut body, *mark, series),
+        Chart::ScatterBy { x, y, groups } => scatter_by(&mut body, x, y, groups),
+        Chart::Histogram {
+            start,
+            width,
+            counts,
+        } => histogram(&mut body, *start, *width, counts),
+        Chart::Bars { labels, values } => bars(&mut body, labels, values),
+        Chart::Distribution { kind, values } => distribution(&mut body, *kind, values),
+        Chart::Grouped {
+            kind,
+            categories,
+            groups,
+        } => grouped(&mut body, *kind, categories, groups),
+        Chart::Grid {
+            columns,
+            values,
+            extents,
+            colormap,
+        } => grid(&mut body, *columns, values, *extents, colormap),
+        Chart::Empty => "malevich::Plot::new()".to_string(),
     };
-    let chart = furniture(plot, args);
+    let chart = furniture(plot, &recipe.furniture);
 
     let mut program = String::new();
     let _ = writeln!(
@@ -47,42 +48,43 @@ pub fn program(
          //! terminal it runs in.\n\n\
          use malevich::Frame;\n\n\
          fn main() {{",
-        args.command.name()
+        recipe.command.name()
     );
     program.push_str(&body);
     let _ = writeln!(program, "    let plot = {chart};");
-    let sized = args.width.is_some() || args.height.is_some();
+    let sized = recipe.frame.width.is_some() || recipe.frame.height.is_some();
     let binding = if sized { "let mut frame" } else { "let frame" };
     let _ = writeln!(program, "    {binding} = Frame::detect();");
-    if let Some(width) = args.width {
+    if let Some(width) = recipe.frame.width {
         let _ = writeln!(program, "    frame.width = {width};");
     }
-    if let Some(height) = args.height {
+    if let Some(height) = recipe.frame.height {
         let _ = writeln!(program, "    frame.height = {height};");
     }
     program.push_str("    println!(\"{}\", plot.render(&frame));\n}\n");
-    Ok(program)
+    program
 }
 
-/// Line and scatter: one layer per `--fmt` series, mirroring `chart::value_plot`.
-fn value(body: &mut String, args: &Args, table: &Table, mark: &str) -> String {
-    let fmt = series::resolve_fmt(table, args.fmt);
-    let data = series::dataset(table, fmt, args.time_x);
+/// One layer per already-normalized value series.
+fn value(body: &mut String, mark: ValueMark, series: &[Series]) -> String {
+    let mark = match mark {
+        ValueMark::Line => "Line",
+        ValueMark::Scatter => "Points",
+    };
     let mut chart = String::from("malevich::Plot::new()");
-    for (index, series) in data.series.into_iter().enumerate() {
-        let Series { x, y, label } = series;
-        let constructor = match &x {
+    for (index, series) in series.iter().enumerate() {
+        let constructor = match &series.x {
             Some(x) => {
                 let _ = writeln!(body, "    let x{index}: Vec<f64> = {};", floats(x));
-                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&y));
+                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&series.y));
                 format!("malevich::{mark}::xy(x{index}, y{index})")
             }
             None => {
-                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&y));
+                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&series.y));
                 format!("malevich::{mark}::y(y{index})")
             }
         };
-        let labeled = match label {
+        let labeled = match &series.label {
             Some(name) => format!("{constructor}.label({name:?})"),
             None => constructor,
         };
@@ -91,147 +93,119 @@ fn value(body: &mut String, args: &Args, table: &Table, mark: &str) -> String {
     chart
 }
 
-/// Scatter with `--by`: x, y, and the categorical color channel.
-fn scatter_by(body: &mut String, args: &Args, table: &Table, groups: &[String]) -> String {
-    let (x, y, _) = series::xy(table, args.time_x);
-    let _ = writeln!(body, "    let x: Vec<f64> = {};", floats(&x));
-    let _ = writeln!(body, "    let y: Vec<f64> = {};", floats(&y));
+fn scatter_by(body: &mut String, x: &[f64], y: &[f64], groups: &[String]) -> String {
+    let _ = writeln!(body, "    let x: Vec<f64> = {};", floats(x));
+    let _ = writeln!(body, "    let y: Vec<f64> = {};", floats(y));
     let _ = writeln!(body, "    let groups: Vec<&str> = {};", strings(groups));
     "malevich::Plot::new()\n        .layer(malevich::Points::xy(x, y).color_by(groups))".to_string()
 }
 
-/// Histogram: automatic binning re-runs in the program; `--bins N` inlines the
-/// bins kaz computed, as the documented `Bars::spans` expansion.
-fn hist(body: &mut String, args: &Args, table: &Table) -> malevich::Result<String> {
-    let (values, _) = series::flatten(table);
-    match args.bins {
-        None => {
-            let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(&values));
-            Ok("malevich::hist(values)".to_string())
-        }
-        Some(count) => {
-            let Some(histogram) = malevich::stat::Bins::try_uniform(&values, count)? else {
-                return Ok("malevich::Plot::new()".to_string());
-            };
-            let counts: Vec<f64> = histogram.counts().iter().map(|&c| c as f64).collect();
-            let _ = writeln!(body, "    let counts: Vec<f64> = {};", floats(&counts));
-            Ok(format!(
-                "malevich::Plot::new()\n        .layer(malevich::Bars::spans({}, {}, counts))",
-                float(histogram.start()),
-                float(histogram.width())
-            ))
-        }
-    }
+fn histogram(body: &mut String, start: f64, width: f64, counts: &[f64]) -> String {
+    let _ = writeln!(body, "    let counts: Vec<f64> = {};", floats(counts));
+    format!(
+        "malevich::Plot::new()\n        .layer(malevich::Bars::spans({}, {}, counts))",
+        float(start),
+        float(width)
+    )
 }
 
-/// Bar: `label value` rows into the preset.
-fn bar(body: &mut String, table: &Table) -> String {
-    let (labels, values, _) = series::labeled_values(table);
-    let _ = writeln!(body, "    let labels: Vec<&str> = {};", strings(&labels));
-    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(&values));
+fn bars(body: &mut String, labels: &[String], values: &[f64]) -> String {
+    let _ = writeln!(body, "    let labels: Vec<&str> = {};", strings(labels));
+    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(values));
     "malevich::bar(labels, values)".to_string()
 }
 
-/// Count: the tally happens at emit time; the program gets the counted bars.
-fn count(body: &mut String, table: &Table) -> String {
-    let (labels, values): (Vec<String>, Vec<f64>) = series::counts(table).into_iter().unzip();
-    let _ = writeln!(body, "    let labels: Vec<&str> = {};", strings(&labels));
-    let _ = writeln!(body, "    let counts: Vec<f64> = {};", floats(&values));
-    "malevich::bar(labels, counts)".to_string()
-}
-
-/// Density and ecdf: every numeric field pooled into one sample set.
-fn pooled(body: &mut String, table: &Table, preset: &str) -> String {
-    let (values, _) = series::flatten(table);
-    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(&values));
+fn distribution(body: &mut String, kind: DistributionKind, values: &[f64]) -> String {
+    let preset = match kind {
+        DistributionKind::Density => "density",
+        DistributionKind::Ecdf => "ecdf",
+    };
+    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(values));
     format!("malevich::{preset}(values)")
 }
 
-/// Box and violin: each column a named group.
-fn grouped(body: &mut String, table: &Table, preset: &str) -> String {
-    let (categories, groups, _) = series::groups(table);
+fn grouped(
+    body: &mut String,
+    kind: GroupedKind,
+    categories: &[String],
+    groups: &[Vec<f64>],
+) -> String {
+    let preset = match kind {
+        GroupedKind::Box => "box_plot",
+        GroupedKind::Violin => "violin",
+    };
     let _ = writeln!(body, "    let groups: Vec<Vec<f64>> = vec![");
-    for group in &groups {
+    for group in groups {
         let _ = writeln!(body, "        {},", floats(group));
     }
     let _ = writeln!(body, "    ];");
     let _ = writeln!(
         body,
         "    let categories: Vec<&str> = {};",
-        strings(&categories)
+        strings(categories)
     );
     format!("malevich::{preset}(categories, groups)")
 }
 
-/// 2D histogram, with the colormap options when `--colormap`/`--midpoint` set.
-fn hist2d(body: &mut String, args: &Args, table: &Table) -> String {
-    let (x, y, _) = series::xy(table, args.time_x);
-    let _ = writeln!(body, "    let x: Vec<f64> = {};", floats(&x));
-    let _ = writeln!(body, "    let y: Vec<f64> = {};", floats(&y));
-    match &args.colormap {
-        Some(map) => format!(
-            "malevich::hist2d_with(\n        x,\n        y,\n        \
-             malevich::Histogram2dOptions::default().colormap({}),\n    )\n    \
-             .expect(\"a named colormap is valid\")",
-            colormap(map)
-        ),
-        None => "malevich::hist2d(x, y)".to_string(),
+fn grid(
+    body: &mut String,
+    columns: usize,
+    values: &[f64],
+    extents: Option<((f64, f64), (f64, f64))>,
+    map: &Colormap,
+) -> String {
+    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(values));
+    let mut cells = format!(
+        "malevich::Cells::matrix({columns}, values)\n            .colormap({})",
+        colormap(map)
+    );
+    if let Some((x, y)) = extents {
+        let _ = write!(
+            cells,
+            "\n            .extents(({}, {}), ({}, {}))",
+            float(x.0),
+            float(x.1),
+            float(y.0),
+            float(y.1)
+        );
     }
+    format!("malevich::Plot::new()\n        .layer({cells})\n        .colorbar()")
 }
 
-/// Heatmap, with the colormap options when `--colormap`/`--midpoint` set.
-fn heatmap(body: &mut String, args: &Args, table: &Table) -> String {
-    let (columns, values, _) = series::matrix(table);
-    if columns == 0 {
-        return "malevich::Plot::new()".to_string();
-    }
-    let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(&values));
-    match &args.colormap {
-        Some(map) => format!(
-            "malevich::heatmap_with(\n        {columns},\n        values,\n        \
-             malevich::HeatmapOptions::new().colormap({}),\n    )\n    \
-             .expect(\"a named colormap is valid\")",
-            colormap(map)
-        ),
-        None => format!("malevich::heatmap({columns}, values)"),
-    }
-}
-
-/// The shared furniture flags, as chained builder calls.
-fn furniture(mut chart: String, args: &Args) -> String {
+/// Shared plot furniture as chained builder calls.
+fn furniture(mut chart: String, furniture: &Furniture) -> String {
     let mut push = |call: String| {
         chart.push_str("\n        ");
         chart.push_str(&call);
     };
-    if let Some(title) = &args.title {
+    if let Some(title) = &furniture.title {
         push(format!(".title({title:?})"));
     }
-    if let Some(xlabel) = &args.xlabel {
+    if let Some(xlabel) = &furniture.xlabel {
         push(format!(".x_label({xlabel:?})"));
     }
-    if let Some(ylabel) = &args.ylabel {
+    if let Some(ylabel) = &furniture.ylabel {
         push(format!(".y_label({ylabel:?})"));
     }
-    if let Some((lo, hi)) = args.xlim {
+    if let Some((lo, hi)) = furniture.xlim {
         push(format!(".x_domain({}, {})", float(lo), float(hi)));
     }
-    if let Some((lo, hi)) = args.ylim {
+    if let Some((lo, hi)) = furniture.ylim {
         push(format!(".y_domain({}, {})", float(lo), float(hi)));
     }
-    if args.time_x {
+    if furniture.time_x {
         push(".time_x()".to_string());
     }
-    if args.log_x {
+    if furniture.log_x {
         push(".log_x()".to_string());
     }
-    if args.log_y {
+    if furniture.log_y {
         push(".log_y()".to_string());
     }
     chart
 }
 
-/// The named-constant expression for a parsed colormap, re-centered as the
-/// flags were. `--colormap` only admits named maps, so the lookup always hits.
+/// The named-constant expression for a parsed colormap, re-centered as needed.
 fn colormap(map: &Colormap) -> String {
     let named = [
         ("VIRIDIS", Colormap::VIRIDIS),
@@ -267,13 +241,11 @@ fn float(value: f64) -> String {
     }
 }
 
-/// A `vec![…]` of `f64` expressions.
 fn floats(values: &[f64]) -> String {
     let items: Vec<String> = values.iter().copied().map(float).collect();
     format!("vec![{}]", items.join(", "))
 }
 
-/// A `vec![…]` of string literals.
 fn strings(values: &[String]) -> String {
     let items: Vec<String> = values.iter().map(|value| format!("{value:?}")).collect();
     format!("vec![{}]", items.join(", "))

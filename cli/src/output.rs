@@ -53,7 +53,7 @@ pub fn apply_color(choice: ColorChoice) {
 /// Renders and writes the plot to its destination and reports the unparsed-field
 /// tally. Returns the process exit code. (`-O` passthrough already happened at
 /// read time, line by line — see `main::read_input`.)
-pub fn emit(args: &Args, built: &Built) -> Result<i32, EmitError> {
+pub fn emit(args: &Args, built: &Built<'_>) -> Result<i32, EmitError> {
     match &args.output {
         Output::Stderr => plot_to(io::stderr(), &built.plot, args)?,
         Output::Stdout => plot_to(io::stdout(), &built.plot, args)?,
