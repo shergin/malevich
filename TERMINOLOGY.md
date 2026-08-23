@@ -43,9 +43,10 @@ channels are builder methods (`color`, `label`, `style`). The data-bound color
 channel is `color_by(categories)` on `Line`, `Points`, `Bars`, and `Range`: distinct
 categories in first-appearance order take colors from the plot's categorical
 Palette, name themselves in the legend, and — in colorless output — cycle the
-default point markers so groups stay separable. It resolves as one masked layer per
-category (the mask is the gap convention), which is what keeps legends, downsampling,
-and honest gaps compositions rather than special cases.
+default point markers so groups stay separable. Internally, the channel is one stable
+label table plus one integer identity per datum. Drawing maps those identities through
+the palette directly; a line category transition is an explicit path boundary, and
+category-aware M4 preserves that topology while downsampling.
 
 ## Series
 

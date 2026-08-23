@@ -2,7 +2,7 @@
 //! rasterization, and encoding of a 10k-point line into an 80×20 frame.
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use malevich::Frame;
+use malevich::{Frame, Plot, Points};
 use std::hint::black_box;
 
 fn line_render(c: &mut Criterion) {
@@ -25,6 +25,23 @@ fn scatter_render(c: &mut Criterion) {
             black_box(malevich::scatter(black_box(&x[..]), black_box(&y[..])).render(&frame))
         });
     });
+}
+
+fn categorical_render(c: &mut Criterion) {
+    let values: Vec<f64> = (0..100_000)
+        .map(|index| (index as f64 * 0.001).sin())
+        .collect();
+    let frame = Frame::plain(80, 20);
+    let mut group = c.benchmark_group("render/color_by_100k");
+
+    for distinct in [5, 100, 100_000] {
+        let categories = (0..values.len()).map(|index| format!("g{}", index % distinct));
+        let plot = Plot::new().layer(Points::y(&values[..]).color_by(categories));
+        group.bench_function(format!("{distinct}_categories"), |b| {
+            b.iter(|| black_box(plot.render(&frame)));
+        });
+    }
+    group.finish();
 }
 
 fn ansi_encoding(c: &mut Criterion) {
@@ -163,6 +180,7 @@ criterion_group!(
     kde_density,
     line_render,
     scatter_render,
+    categorical_render,
     ansi_encoding,
     ten_million_points,
     histogram_binning,

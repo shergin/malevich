@@ -155,6 +155,28 @@ fn several_gaps_inside_one_raster_column_stay_disconnected() {
 }
 
 #[test]
+fn category_transitions_survive_line_downsampling() {
+    // The category switch and numerical gap both land inside densely populated
+    // raster columns. Identity is topology: neither may become a connecting line.
+    let n = 20_000;
+    let x: Vec<f64> = (0..n).map(|index| index as f64).collect();
+    let mut y: Vec<f64> = (0..n).map(|index| (index as f64 * 0.003).sin()).collect();
+    y[n / 2 + 3] = f64::NAN;
+    let categories: Vec<&str> = (0..n)
+        .map(|index| if index < n / 2 { "before" } else { "after" })
+        .collect();
+    let plot = Plot::new().layer(Line::xy(&x[..], &y[..]).color_by(categories));
+    let mut frame = Frame::plain(50, 12);
+    frame.color = crate::ColorMode::TrueColor;
+
+    assert_eq!(
+        plot.rasterize_with(&frame, true).encode(frame.color),
+        plot.rasterize_with(&frame, false).encode(frame.color),
+        "category-aware M4 must reproduce the raw colored path"
+    );
+}
+
+#[test]
 fn labeled_layers_grow_a_legend_row() {
     let plot = Plot::new()
         .layer(Line::y(&[1.0, 2.0][..]).label("first"))
@@ -628,12 +650,12 @@ fn a_colorbar_legends_the_cells_value_range() {
 }
 
 #[test]
-fn color_by_equals_its_masked_layer_expansion() {
+fn color_by_matches_explicit_category_layers() {
     use crate::mark::Points;
     use crate::scale::Palette;
 
-    // The channel is sugar for one masked, palette-colored, labeled layer per
-    // category — proven bit-identical to writing those layers by hand.
+    // The compact channel remains visually equivalent to writing one explicit,
+    // palette-colored, labeled layer per category by hand.
     let x = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
     let y = [2.0, 1.0, 3.0, 2.5, 0.5, 1.5];
     let species = ["a", "b", "a", "c", "b", "a"];

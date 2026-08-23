@@ -8,7 +8,7 @@
 use crate::mark::{LineStyle, PointStyle};
 use crate::mark::{Orientation, Placement};
 use crate::plot::layout::{Layout, Map};
-use crate::plot::resolve::{Coordinates, Kind, ResolvedLayer, extent};
+use crate::plot::resolve::{ColorChannel, Coordinates, Kind, ResolvedLayer, extent};
 use crate::render::{Canvas, Charset, Color, PlotRect, PointShape};
 use crate::scale::Colormap;
 
@@ -59,7 +59,7 @@ pub(crate) fn layers<C: Canvas>(
                 kind: Kind::Line(LineStyle::Corners),
                 ..
             } => {
-                draw_corners(surface, layout, x, y, *color);
+                draw_corners(surface, layout, x, y, color);
             }
             ResolvedLayer::Series {
                 x, y, color, kind, ..
@@ -69,7 +69,7 @@ pub(crate) fn layers<C: Canvas>(
                     kind,
                     x,
                     y,
-                    *color,
+                    color,
                     x_scale,
                     y_scale,
                     (x_offset, y_offset),
@@ -134,7 +134,7 @@ pub(crate) fn layers<C: Canvas>(
                     high,
                     body.as_ref().map(|(lo, hi)| (lo.as_ref(), hi.as_ref())),
                     marker.as_deref(),
-                    *color,
+                    color,
                     x_scale,
                     y_scale,
                     (x_offset, y_offset),
@@ -191,7 +191,7 @@ pub(crate) fn layers<C: Canvas>(
                             },
                             y_scale,
                             values,
-                            *color,
+                            color,
                             rect,
                         );
                     }
@@ -206,7 +206,7 @@ pub(crate) fn layers<C: Canvas>(
                         },
                         y_scale,
                         values,
-                        *color,
+                        color,
                         rect,
                     );
                 }
@@ -222,7 +222,7 @@ fn draw_series<C: Canvas>(
     kind: &Kind,
     x: &Coordinates<'_>,
     y: &[f64],
-    color: Color,
+    color: &ColorChannel<'_>,
     x_scale: &Map,
     y_scale: &Map,
     offset: (f64, f64),
@@ -232,8 +232,8 @@ fn draw_series<C: Canvas>(
             unreachable!("corners are drawn by draw_corners");
         }
         Kind::Line(LineStyle::Pixels) => {
-            let mut previous: Option<(f64, f64)> = None;
-            for (xv, &yv) in x.iter().zip(y.iter()) {
+            let mut previous: Option<((f64, f64), Option<usize>)> = None;
+            for (index, (xv, &yv)) in x.iter().zip(y.iter()).enumerate() {
                 if !xv.is_finite() || !yv.is_finite() {
                     previous = None;
                     continue;
@@ -245,32 +245,39 @@ fn draw_series<C: Canvas>(
                     previous = None;
                     continue;
                 }
+                let category = color.category(index);
+                let ink = color.color(index);
                 match previous {
-                    Some(from) => surface.line(from, position, color),
-                    None => surface.dot(position.0, position.1, color),
+                    Some((from, previous_category)) if previous_category == category => {
+                        surface.line(from, position, ink);
+                    }
+                    _ => surface.dot(position.0, position.1, ink),
                 }
-                previous = Some(position);
+                previous = Some((position, category));
             }
         }
         Kind::Points(style) => {
-            let shape = match style {
-                PointStyle::Dot => PointShape::Dot,
-                PointStyle::Plus => PointShape::Plus,
-                PointStyle::Cross => PointShape::Cross,
-                PointStyle::Asterisk => PointShape::Asterisk,
-                PointStyle::Circle => PointShape::Circle,
-            };
-            for (xv, &yv) in x.iter().zip(y.iter()) {
+            for (index, (xv, &yv)) in x.iter().zip(y.iter()).enumerate() {
                 if xv.is_finite() && yv.is_finite() {
                     surface.point(
                         offset.0 + x_scale.map(xv),
                         offset.1 + y_scale.map(yv),
-                        shape,
-                        color,
+                        point_shape(color.point_style(index, *style)),
+                        color.color(index),
                     );
                 }
             }
         }
+    }
+}
+
+fn point_shape(style: PointStyle) -> PointShape {
+    match style {
+        PointStyle::Dot => PointShape::Dot,
+        PointStyle::Plus => PointShape::Plus,
+        PointStyle::Cross => PointShape::Cross,
+        PointStyle::Asterisk => PointShape::Asterisk,
+        PointStyle::Circle => PointShape::Circle,
     }
 }
 
@@ -285,7 +292,7 @@ fn draw_corners<C: Canvas>(
     layout: &Layout<'_>,
     x: &Coordinates<'_>,
     y: &[f64],
-    color: Color,
+    color: &ColorChannel<'_>,
 ) {
     let Layout {
         px,
@@ -310,9 +317,9 @@ fn draw_corners<C: Canvas>(
     };
 
     // The line's row at each cell column, sampled at the column center.
-    let mut rows: Vec<Option<i64>> = vec![None; plot_cols];
-    let mut previous: Option<(f64, f64)> = None;
-    for (xv, &yv) in x.iter().zip(y) {
+    let mut rows: Vec<Option<(i64, Option<usize>, Color)>> = vec![None; plot_cols];
+    let mut previous: Option<(f64, f64, Option<usize>)> = None;
+    for (index, (xv, &yv)) in x.iter().zip(y).enumerate() {
         if !xv.is_finite() || !yv.is_finite() {
             previous = None;
             continue;
@@ -323,7 +330,11 @@ fn draw_corners<C: Canvas>(
             previous = None;
             continue;
         }
-        if let Some((px_, py_)) = previous {
+        let category = color.category(index);
+        let ink = color.color(index);
+        if let Some((px_, py_, previous_category)) = previous
+            && previous_category == category
+        {
             let (from, to) = if px_ <= sx { (px_, sx) } else { (sx, px_) };
             let span = sx - px_;
             let first = (from / px as f64 - 0.5).ceil().max(0.0) as usize;
@@ -339,7 +350,7 @@ fn draw_corners<C: Canvas>(
                     let sub_y = py_ + (sy - py_) * t;
                     let row = (sub_y / py as f64).floor() as i64 - plot_top as i64;
                     if (0..plot_rows as i64).contains(&row) {
-                        *slot = Some(row + plot_top as i64);
+                        *slot = Some((row + plot_top as i64, category, ink));
                     }
                 }
             }
@@ -347,14 +358,16 @@ fn draw_corners<C: Canvas>(
             let column = (sx / px as f64 - 0.5).round() as i64;
             if (0..plot_cols as i64).contains(&column) {
                 let row = (sy / py as f64).floor() as i64;
-                rows[column as usize] = Some(row);
+                rows[column as usize] = Some((row, category, ink));
             }
         }
-        previous = Some((sx, sy));
+        previous = Some((sx, sy, category));
     }
 
     for column in 0..plot_cols {
-        let Some(row) = rows[column] else { continue };
+        let Some((row, category, ink)) = rows[column] else {
+            continue;
+        };
         let cell = (gutter + column) as i64;
         let next = if column + 1 < plot_cols {
             rows[column + 1]
@@ -362,27 +375,27 @@ fn draw_corners<C: Canvas>(
             None
         };
         match next {
-            Some(next_row) if next_row == row => {
-                surface.text(cell, row, flat, color);
+            Some((next_row, next_category, _)) if next_category == category && next_row == row => {
+                surface.text(cell, row, flat, ink);
             }
-            Some(next_row) if next_row > row => {
+            Some((next_row, next_category, _)) if next_category == category && next_row > row => {
                 // The line falls: leave rightward-down, fill, arrive.
-                surface.text(cell, row, down_out, color);
+                surface.text(cell, row, down_out, ink);
                 for between in row + 1..next_row {
-                    surface.text(cell, between, vertical, color);
+                    surface.text(cell, between, vertical, ink);
                 }
-                surface.text(cell, next_row, down_in, color);
+                surface.text(cell, next_row, down_in, ink);
             }
-            Some(next_row) => {
+            Some((next_row, next_category, _)) if next_category == category => {
                 // The line rises: leave rightward-up, fill, arrive.
-                surface.text(cell, row, up_out, color);
+                surface.text(cell, row, up_out, ink);
                 for between in next_row + 1..row {
-                    surface.text(cell, between, vertical, color);
+                    surface.text(cell, between, vertical, ink);
                 }
-                surface.text(cell, next_row, up_in, color);
+                surface.text(cell, next_row, up_in, ink);
             }
-            None => {
-                surface.text(cell, row, flat, color);
+            Some(_) | None => {
+                surface.text(cell, row, flat, ink);
             }
         }
     }
@@ -396,7 +409,7 @@ fn draw_bars<C: Canvas>(
     span: &dyn Fn(usize) -> (f64, f64),
     y_scale: &Map,
     values: &[f64],
-    color: Color,
+    color: &ColorChannel<'_>,
     rect: PlotRect,
 ) {
     let baseline = y_scale.map(0.0);
@@ -414,7 +427,7 @@ fn draw_bars<C: Canvas>(
             baseline,
             value > 0.0,
             rect,
-            color,
+            color.color(index),
         );
     }
 }
@@ -431,7 +444,7 @@ fn draw_ranges<C: Canvas>(
     high: &[f64],
     body: Option<(&[f64], &[f64])>,
     marker: Option<&[f64]>,
-    color: Color,
+    color: &ColorChannel<'_>,
     x_scale: &Map,
     y_scale: &Map,
     offset: (f64, f64),
@@ -447,10 +460,11 @@ fn draw_ranges<C: Canvas>(
         let sx = offset.0 + x_scale.map(xv);
         let sl = offset.1 + y_scale.map(lv);
         let sh = offset.1 + y_scale.map(hv);
+        let ink = color.color(index);
         // The whisker and its caps.
-        surface.line((sx, sl), (sx, sh), color);
-        surface.line((sx - cap, sl), (sx + cap, sl), color);
-        surface.line((sx - cap, sh), (sx + cap, sh), color);
+        surface.line((sx, sl), (sx, sh), ink);
+        surface.line((sx - cap, sl), (sx + cap, sl), ink);
+        surface.line((sx - cap, sh), (sx + cap, sh), ink);
         // The body: vertical subpixel runs across the width.
         if let Some((body_low, body_high)) = body {
             let (Some(&bl), Some(&bh)) = (body_low.get(index), body_high.get(index)) else {
@@ -462,7 +476,7 @@ fn draw_ranges<C: Canvas>(
                 let from = (sx - half_width).round() as i64;
                 let to = (sx + half_width).round() as i64;
                 for column in from..=to {
-                    surface.line((column as f64, sbl), (column as f64, sbh), color);
+                    surface.line((column as f64, sbl), (column as f64, sbh), ink);
                 }
             }
         }
@@ -473,7 +487,7 @@ fn draw_ranges<C: Canvas>(
             };
             if mv.is_finite() {
                 let sy = offset.1 + y_scale.map(mv);
-                surface.marker(sx, half_width, sy, color);
+                surface.marker(sx, half_width, sy, ink);
             }
         }
     }

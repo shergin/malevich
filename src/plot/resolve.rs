@@ -2,10 +2,12 @@
 
 use std::borrow::Cow;
 
-use crate::mark::{LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement, Source};
+use crate::mark::{
+    Categories, LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement, Source,
+};
 use crate::plot::layout::Map;
 use crate::render::Color;
-use crate::scale::Colormap;
+use crate::scale::{Colormap, Palette};
 
 /// A resolved coordinate channel, either backed by values or by the implicit
 /// `0, 1, 2, ...` indices used when a mark omits x coordinates.
@@ -86,7 +88,108 @@ pub(crate) enum Kind {
     Points(PointStyle),
 }
 
-/// A resolved interval body: the open/close pair, borrowed or masked-owned.
+/// A resolved constant or data-bound color channel.
+///
+/// Categorical channels keep one compact identity vector beside the values.
+/// The palette remains symbolic until drawing, so no per-datum color array and
+/// no per-category copy of the numeric channels is needed.
+pub(crate) enum ColorChannel<'p> {
+    Fixed {
+        color: Color,
+        label: Option<&'p str>,
+    },
+    Categories {
+        labels: &'p [String],
+        ids: Cow<'p, [usize]>,
+        palette: &'p Palette,
+        cycle_markers: bool,
+    },
+}
+
+impl<'p> ColorChannel<'p> {
+    fn fixed(color: Color, label: Option<&'p str>) -> Self {
+        Self::Fixed { color, label }
+    }
+
+    fn categories(
+        categories: &'p Categories,
+        ids: Cow<'p, [usize]>,
+        palette: &'p Palette,
+        cycle_markers: bool,
+    ) -> Self {
+        Self::Categories {
+            labels: categories.labels(),
+            ids,
+            palette,
+            cycle_markers,
+        }
+    }
+
+    pub(crate) fn color(&self, index: usize) -> Color {
+        match self {
+            ColorChannel::Fixed { color, .. } => *color,
+            ColorChannel::Categories { ids, palette, .. } => ids
+                .get(index)
+                .map_or(Color::Default, |&category| palette.color(category)),
+        }
+    }
+
+    /// Category identity is line topology as well as paint: unequal adjacent
+    /// identities must never be connected, even when palette colors wrap.
+    pub(crate) fn category(&self, index: usize) -> Option<usize> {
+        match self {
+            ColorChannel::Fixed { .. } => None,
+            ColorChannel::Categories { ids, .. } => ids.get(index).copied(),
+        }
+    }
+
+    pub(crate) fn point_style(&self, index: usize, base: PointStyle) -> PointStyle {
+        let category = self.category(index);
+        self.point_style_for_category(category, base)
+    }
+
+    fn point_style_for_category(&self, category: Option<usize>, base: PointStyle) -> PointStyle {
+        match self {
+            ColorChannel::Categories {
+                cycle_markers: true,
+                ..
+            } if base == PointStyle::Dot => category
+                .map(|category| MARKER_CYCLE[category % MARKER_CYCLE.len()])
+                .unwrap_or(base),
+            _ => base,
+        }
+    }
+
+    fn has_legend(&self) -> bool {
+        match self {
+            ColorChannel::Fixed { label, .. } => label.is_some(),
+            ColorChannel::Categories { labels, .. } => !labels.is_empty(),
+        }
+    }
+
+    fn for_each_legend_entry<'a>(
+        &'a self,
+        mut swatch: impl FnMut(Option<usize>) -> &'static str,
+        visit: &mut impl FnMut(&'static str, Color, &'a str),
+    ) {
+        match self {
+            ColorChannel::Fixed {
+                color,
+                label: Some(label),
+            } => visit(swatch(None), *color, label),
+            ColorChannel::Categories {
+                labels, palette, ..
+            } => {
+                for (category, label) in labels.iter().enumerate() {
+                    visit(swatch(Some(category)), palette.color(category), label);
+                }
+            }
+            ColorChannel::Fixed { label: None, .. } => {}
+        }
+    }
+}
+
+/// A resolved interval body: the open/close pair, borrowed or materialized.
 pub(crate) type Body<'p> = (Cow<'p, [f64]>, Cow<'p, [f64]>);
 
 /// One layer, resolved to drawable data.
@@ -94,15 +197,13 @@ pub(crate) enum ResolvedLayer<'p> {
     Series {
         x: Coordinates<'p>,
         y: Cow<'p, [f64]>,
-        color: Color,
+        color: ColorChannel<'p>,
         kind: Kind,
-        label: Option<&'p str>,
     },
     Bars {
         placement: &'p Placement,
         values: Cow<'p, [f64]>,
-        color: Color,
-        label: Option<&'p str>,
+        color: ColorChannel<'p>,
     },
     Area {
         x: Coordinates<'p>,
@@ -120,13 +221,12 @@ pub(crate) enum ResolvedLayer<'p> {
     },
     Range {
         x: Coordinates<'p>,
-        categories: Option<&'p [String]>,
+        bands: Option<&'p [String]>,
         low: Cow<'p, [f64]>,
         high: Cow<'p, [f64]>,
         body: Option<Body<'p>>,
         marker: Option<Cow<'p, [f64]>>,
-        color: Color,
-        label: Option<&'p str>,
+        color: ColorChannel<'p>,
     },
     Rule {
         orientation: Orientation,
@@ -178,8 +278,8 @@ impl ResolvedLayer<'_> {
                 Some((x, _)) => *x,
                 None => (0.0, *columns as f64),
             }),
-            ResolvedLayer::Range { x, categories, .. } => {
-                if categories.is_some() {
+            ResolvedLayer::Range { x, bands, .. } => {
+                if bands.is_some() {
                     None
                 } else {
                     x.extent()
@@ -271,11 +371,7 @@ impl ResolvedLayer<'_> {
             } if *x > 0.0 => Some((*x, *x)),
             ResolvedLayer::Text { x, .. } if *x > 0.0 => Some((*x, *x)),
             ResolvedLayer::Cells { .. } => self.x_extent().filter(|(lo, _)| *lo > 0.0),
-            ResolvedLayer::Range {
-                x,
-                categories: None,
-                ..
-            } => x.extent_positive(),
+            ResolvedLayer::Range { x, bands: None, .. } => x.extent_positive(),
             _ => None,
         }
     }
@@ -311,57 +407,91 @@ impl ResolvedLayer<'_> {
         }
     }
 
-    /// The legend entry of this layer, if labeled: swatch text, color, label.
-    pub(crate) fn legend_entry(&self, ascii: bool) -> Option<(&'static str, Color, &str)> {
-        let (swatch, color, label) = match self {
-            ResolvedLayer::Series {
-                color, kind, label, ..
-            } => {
-                let swatch = match (kind, ascii) {
-                    (Kind::Line(_), false) => "\u{2500}\u{2500}",
-                    (Kind::Line(_), true) => "--",
-                    (Kind::Points(PointStyle::Dot), false) => "\u{2022}\u{2022}",
-                    (Kind::Points(PointStyle::Dot), true) => "..",
-                    (Kind::Points(PointStyle::Plus), _) => "++",
-                    (Kind::Points(PointStyle::Cross), _) => "xx",
-                    (Kind::Points(PointStyle::Asterisk), _) => "**",
-                    (Kind::Points(PointStyle::Circle), _) => "oo",
-                };
-                (swatch, *color, *label)
+    pub(crate) fn has_legend(&self) -> bool {
+        match self {
+            ResolvedLayer::Series { color, .. }
+            | ResolvedLayer::Bars { color, .. }
+            | ResolvedLayer::Range { color, .. } => color.has_legend(),
+            ResolvedLayer::Area { label, .. } | ResolvedLayer::Rule { label, .. } => {
+                label.is_some()
             }
-            ResolvedLayer::Bars { color, label, .. } => {
-                let swatch = if ascii { "##" } else { "\u{2588}\u{2588}" };
-                (swatch, *color, *label)
-            }
-            ResolvedLayer::Area { color, label, .. } => {
-                let swatch = if ascii { "##" } else { "\u{2584}\u{2584}" };
-                (swatch, *color, *label)
-            }
-            ResolvedLayer::Rule { color, label, .. } => {
-                let swatch = if ascii { "--" } else { "\u{2500}\u{2500}" };
-                (swatch, *color, *label)
-            }
-            ResolvedLayer::Range { color, label, .. } => {
-                let swatch = if ascii { "||" } else { "\u{2503}\u{2503}" };
-                (swatch, *color, *label)
-            }
-            ResolvedLayer::Text { .. } | ResolvedLayer::Cells { .. } => return None,
-        };
-        label.map(|label| (swatch, color, label))
+            ResolvedLayer::Text { .. } | ResolvedLayer::Cells { .. } => false,
+        }
+    }
+
+    /// Visits every legend entry represented by this layer. A constant channel
+    /// contributes at most one; a categorical channel contributes its stable
+    /// first-appearance label table without manufacturing drawable layers.
+    pub(crate) fn for_each_legend_entry<'a>(
+        &'a self,
+        ascii: bool,
+        mut visit: impl FnMut(&'static str, Color, &'a str),
+    ) {
+        match self {
+            ResolvedLayer::Series { color, kind, .. } => color.for_each_legend_entry(
+                |category| series_swatch(kind, color, category, ascii),
+                &mut visit,
+            ),
+            ResolvedLayer::Bars { color, .. } => color.for_each_legend_entry(
+                |_| {
+                    if ascii { "##" } else { "\u{2588}\u{2588}" }
+                },
+                &mut visit,
+            ),
+            ResolvedLayer::Range { color, .. } => color.for_each_legend_entry(
+                |_| {
+                    if ascii { "||" } else { "\u{2503}\u{2503}" }
+                },
+                &mut visit,
+            ),
+            ResolvedLayer::Area {
+                color,
+                label: Some(label),
+                ..
+            } => visit(if ascii { "##" } else { "\u{2584}\u{2584}" }, *color, label),
+            ResolvedLayer::Rule {
+                color,
+                label: Some(label),
+                ..
+            } => visit(if ascii { "--" } else { "\u{2500}\u{2500}" }, *color, label),
+            ResolvedLayer::Area { label: None, .. }
+            | ResolvedLayer::Rule { label: None, .. }
+            | ResolvedLayer::Text { .. }
+            | ResolvedLayer::Cells { .. } => {}
+        }
+    }
+}
+
+fn series_swatch(
+    kind: &Kind,
+    color: &ColorChannel<'_>,
+    category: Option<usize>,
+    ascii: bool,
+) -> &'static str {
+    match kind {
+        Kind::Line(_) if ascii => "--",
+        Kind::Line(_) => "\u{2500}\u{2500}",
+        Kind::Points(style) => match color.point_style_for_category(category, *style) {
+            PointStyle::Dot if ascii => "..",
+            PointStyle::Dot => "\u{2022}\u{2022}",
+            PointStyle::Plus => "++",
+            PointStyle::Cross => "xx",
+            PointStyle::Asterisk => "**",
+            PointStyle::Circle => "oo",
+        },
     }
 }
 
 /// Materializes every layer into drawable columns plus a resolved color.
 /// Functions are sampled here, once per subpixel column of the frame width.
-/// A `color_by` mark expands into one layer per category, colored from the
-/// categorical palette and labeled for the legend; `cycle_markers` (plain
-/// output) additionally cycles default point markers so the categories stay
-/// separable without color.
+/// A `color_by` mark remains one layer with integer category identity beside its
+/// values; `cycle_markers` (plain output) cycles default point markers so the
+/// categories stay separable without color.
 pub(crate) fn resolve<'p>(
     marks: &'p [Mark<'_>],
     sample_width: usize,
-    palette: &[Color; 6],
-    categorical: &crate::scale::Palette,
+    palette: &'p [Color; 6],
+    categorical: &'p Palette,
     cycle_markers: bool,
     reduce: Reduce,
 ) -> Vec<ResolvedLayer<'p>> {
@@ -371,143 +501,187 @@ pub(crate) fn resolve<'p>(
         .iter()
         .filter(|mark| !matches!(mark, Mark::Rule(_) | Mark::Text(_)))
         .count();
-    let single = data_layers == 1;
-    let mut palette_index = 0usize;
+    let mut colors = ColorResolver {
+        layer_palette: palette,
+        categorical,
+        cycle_markers,
+        single_data_layer: data_layers == 1,
+        layer_index: 0,
+    };
+
     marks
         .iter()
-        .flat_map(|mark| {
-            if let Some(layers) = expand_color_by(mark, categorical, cycle_markers, reduce) {
-                return layers;
-            }
-            let mut assigned = |explicit: Option<Color>| {
-                let index = palette_index;
-                palette_index += 1;
-                explicit.unwrap_or(if single {
-                    Color::Default
-                } else {
-                    palette[index % palette.len()]
-                })
-            };
-            vec![match mark {
-                Mark::Line(line) => {
-                    let color = assigned(line.color);
-                    match &line.source {
-                        Source::Points { x, y } => {
-                            // The aggregate-to-raster pipeline: past four points per
-                            // raster column, M4 reduces the series to what the column
-                            // can show. Mapped M4 buckets by the rendered column, so
-                            // the reduction is pixel-exact; non-monotonic x declines.
-                            let downsampled = reduced(
-                                x.as_ref().map(|series| series.as_slice()),
-                                y.as_slice(),
-                                reduce,
-                            );
-                            match downsampled {
-                                Some((dx, dy)) => ResolvedLayer::Series {
-                                    x: Coordinates::Values(Cow::Owned(dx)),
-                                    y: Cow::Owned(dy),
-                                    color,
-                                    kind: Kind::Line(line.style),
-                                    label: line.label.as_deref(),
-                                },
-                                None => ResolvedLayer::Series {
-                                    x: coordinates(x.as_ref(), y.len()),
-                                    y: Cow::Borrowed(y.as_slice()),
-                                    color,
-                                    kind: Kind::Line(line.style),
-                                    label: line.label.as_deref(),
-                                },
-                            }
+        .map(|mark| match mark {
+            Mark::Line(line) => match &line.source {
+                Source::Points { x, y } => {
+                    let x_slice = x.as_ref().map(|series| series.as_slice());
+                    if let Some(categories) = &line.color_by {
+                        match reduced_categories(x_slice, y.as_slice(), categories.ids(), reduce) {
+                            Some((dx, dy, ids)) => ResolvedLayer::Series {
+                                x: Coordinates::Values(Cow::Owned(dx)),
+                                y: Cow::Owned(dy),
+                                color: colors.categories(categories, Cow::Owned(ids)),
+                                kind: Kind::Line(line.style),
+                            },
+                            None => ResolvedLayer::Series {
+                                x: coordinates(x.as_ref(), y.len()),
+                                y: Cow::Borrowed(y.as_slice()),
+                                color: colors
+                                    .categories(categories, Cow::Borrowed(categories.ids())),
+                                kind: Kind::Line(line.style),
+                            },
                         }
-                        Source::Function { domain, function } => {
-                            let samples = sample_width.max(2);
-                            let x: Vec<f64> = (0..samples)
-                                .map(|index| {
-                                    crate::numeric::lerp(
-                                        domain.0,
-                                        domain.1,
-                                        index as f64 / (samples - 1) as f64,
-                                    )
-                                })
-                                .collect();
-                            let y: Vec<f64> = x.iter().map(|&value| function(value)).collect();
-                            ResolvedLayer::Series {
-                                x: Coordinates::Values(Cow::Owned(x)),
-                                y: Cow::Owned(y),
+                    } else {
+                        // The aggregate-to-raster pipeline: past four points per
+                        // raster column, M4 reduces the series to what the column
+                        // can show. Mapped M4 buckets by the rendered column, so
+                        // the reduction is pixel-exact; non-monotonic x declines.
+                        let color = colors.fixed(line.color, line.label.as_deref());
+                        match reduced(x_slice, y.as_slice(), reduce) {
+                            Some((dx, dy)) => ResolvedLayer::Series {
+                                x: Coordinates::Values(Cow::Owned(dx)),
+                                y: Cow::Owned(dy),
                                 color,
                                 kind: Kind::Line(line.style),
-                                label: line.label.as_deref(),
-                            }
+                            },
+                            None => ResolvedLayer::Series {
+                                x: coordinates(x.as_ref(), y.len()),
+                                y: Cow::Borrowed(y.as_slice()),
+                                color,
+                                kind: Kind::Line(line.style),
+                            },
                         }
                     }
                 }
-                Mark::Points(points) => ResolvedLayer::Series {
-                    x: coordinates(points.x.as_ref(), points.y.len()),
-                    y: Cow::Borrowed(points.y.as_slice()),
-                    color: assigned(points.color),
-                    kind: Kind::Points(points.style),
-                    label: points.label.as_deref(),
-                },
-                Mark::Bars(bars) => ResolvedLayer::Bars {
-                    placement: &bars.placement,
-                    values: Cow::Borrowed(bars.values.as_slice()),
-                    color: assigned(bars.color),
-                    label: bars.label.as_deref(),
-                },
-                Mark::Area(area) => ResolvedLayer::Area {
-                    x: coordinates(area.x.as_ref(), area.high.len()),
-                    low: area.low.as_ref().map(|series| series.as_slice()),
-                    high: area.high.as_slice(),
-                    horizontal: area.horizontal,
-                    color: assigned(area.color),
-                    label: area.label.as_deref(),
-                },
-                Mark::Cells(cells) => ResolvedLayer::Cells {
-                    columns: cells.columns,
-                    values: cells.values.as_slice(),
-                    extents: cells.extents,
-                    colormap: cells.colormap.clone(),
-                },
-                Mark::Range(range) => {
-                    let (x, categories) = match &range.placement {
-                        RangePlacement::Numeric(x) => {
-                            (coordinates(x.as_ref(), range.low.len()), None)
-                        }
-                        RangePlacement::Bands(categories) => (
-                            Coordinates::Indices(categories.len()),
-                            Some(categories.as_slice()),
-                        ),
-                    };
-                    ResolvedLayer::Range {
-                        x,
-                        categories,
-                        low: Cow::Borrowed(range.low.as_slice()),
-                        high: Cow::Borrowed(range.high.as_slice()),
-                        body: range.body.as_ref().map(|(low, high)| {
-                            (
-                                Cow::Borrowed(low.as_slice()),
-                                Cow::Borrowed(high.as_slice()),
+                Source::Function { domain, function } => {
+                    let samples = sample_width.max(2);
+                    let x: Vec<f64> = (0..samples)
+                        .map(|index| {
+                            crate::numeric::lerp(
+                                domain.0,
+                                domain.1,
+                                index as f64 / (samples - 1) as f64,
                             )
-                        }),
-                        marker: range.marker.as_ref().map(|m| Cow::Borrowed(m.as_slice())),
-                        color: assigned(range.color),
-                        label: range.label.as_deref(),
+                        })
+                        .collect();
+                    let y: Vec<f64> = x.iter().map(|&value| function(value)).collect();
+                    ResolvedLayer::Series {
+                        x: Coordinates::Values(Cow::Owned(x)),
+                        y: Cow::Owned(y),
+                        color: colors.fixed(line.color, line.label.as_deref()),
+                        kind: Kind::Line(line.style),
                     }
                 }
-                Mark::Rule(rule) => ResolvedLayer::Rule {
-                    orientation: rule.orientation,
-                    color: rule.color.unwrap_or(Color::Default),
-                    label: rule.label.as_deref(),
-                },
-                Mark::Text(text) => ResolvedLayer::Text {
-                    x: text.x,
-                    y: text.y,
-                    text: &text.text,
-                    color: text.color.unwrap_or(Color::Default),
-                },
-            }]
+            },
+            Mark::Points(points) => ResolvedLayer::Series {
+                x: coordinates(points.x.as_ref(), points.y.len()),
+                y: Cow::Borrowed(points.y.as_slice()),
+                color: colors.channel(
+                    points.color_by.as_ref(),
+                    points.color,
+                    points.label.as_deref(),
+                ),
+                kind: Kind::Points(points.style),
+            },
+            Mark::Bars(bars) => ResolvedLayer::Bars {
+                placement: &bars.placement,
+                values: Cow::Borrowed(bars.values.as_slice()),
+                color: colors.channel(bars.color_by.as_ref(), bars.color, bars.label.as_deref()),
+            },
+            Mark::Area(area) => ResolvedLayer::Area {
+                x: coordinates(area.x.as_ref(), area.high.len()),
+                low: area.low.as_ref().map(|series| series.as_slice()),
+                high: area.high.as_slice(),
+                horizontal: area.horizontal,
+                color: colors.assigned(area.color),
+                label: area.label.as_deref(),
+            },
+            Mark::Cells(cells) => ResolvedLayer::Cells {
+                columns: cells.columns,
+                values: cells.values.as_slice(),
+                extents: cells.extents,
+                colormap: cells.colormap.clone(),
+            },
+            Mark::Range(range) => {
+                let (x, bands) = match &range.placement {
+                    RangePlacement::Numeric(x) => (coordinates(x.as_ref(), range.low.len()), None),
+                    RangePlacement::Bands(categories) => (
+                        Coordinates::Indices(categories.len()),
+                        Some(categories.as_slice()),
+                    ),
+                };
+                ResolvedLayer::Range {
+                    x,
+                    bands,
+                    low: Cow::Borrowed(range.low.as_slice()),
+                    high: Cow::Borrowed(range.high.as_slice()),
+                    body: range.body.as_ref().map(|(low, high)| {
+                        (
+                            Cow::Borrowed(low.as_slice()),
+                            Cow::Borrowed(high.as_slice()),
+                        )
+                    }),
+                    marker: range.marker.as_ref().map(|m| Cow::Borrowed(m.as_slice())),
+                    color: colors.channel(
+                        range.color_by.as_ref(),
+                        range.color,
+                        range.label.as_deref(),
+                    ),
+                }
+            }
+            Mark::Rule(rule) => ResolvedLayer::Rule {
+                orientation: rule.orientation,
+                color: rule.color.unwrap_or(Color::Default),
+                label: rule.label.as_deref(),
+            },
+            Mark::Text(text) => ResolvedLayer::Text {
+                x: text.x,
+                y: text.y,
+                text: &text.text,
+                color: text.color.unwrap_or(Color::Default),
+            },
         })
         .collect()
+}
+
+struct ColorResolver<'p> {
+    layer_palette: &'p [Color; 6],
+    categorical: &'p Palette,
+    cycle_markers: bool,
+    single_data_layer: bool,
+    layer_index: usize,
+}
+
+impl<'p> ColorResolver<'p> {
+    fn assigned(&mut self, explicit: Option<Color>) -> Color {
+        let index = self.layer_index;
+        self.layer_index += 1;
+        explicit.unwrap_or(if self.single_data_layer {
+            Color::Default
+        } else {
+            self.layer_palette[index % self.layer_palette.len()]
+        })
+    }
+
+    fn fixed(&mut self, explicit: Option<Color>, label: Option<&'p str>) -> ColorChannel<'p> {
+        ColorChannel::fixed(self.assigned(explicit), label)
+    }
+
+    fn categories(&self, categories: &'p Categories, ids: Cow<'p, [usize]>) -> ColorChannel<'p> {
+        ColorChannel::categories(categories, ids, self.categorical, self.cycle_markers)
+    }
+
+    fn channel(
+        &mut self,
+        categories: Option<&'p Categories>,
+        explicit: Option<Color>,
+        label: Option<&'p str>,
+    ) -> ColorChannel<'p> {
+        match categories {
+            Some(categories) => self.categories(categories, Cow::Borrowed(categories.ids())),
+            None => self.fixed(explicit, label),
+        }
+    }
 }
 
 /// The marker shapes colorless output cycles through per category, so groups
@@ -519,16 +693,6 @@ const MARKER_CYCLE: [PointStyle; 5] = [
     PointStyle::Asterisk,
     PointStyle::Circle,
 ];
-
-/// NaN-masks `values` down to the elements of one category — the mask is the
-/// gap convention, so masked-out elements draw nothing, honestly.
-fn masked(values: &[f64], indices: &[usize], category: usize) -> Vec<f64> {
-    values
-        .iter()
-        .zip(indices)
-        .map(|(value, index)| if *index == category { *value } else { f64::NAN })
-        .collect()
-}
 
 /// Applies the layer reduction to one line series, returning owned reduced
 /// coordinates when a reduction applies.
@@ -546,136 +710,20 @@ fn reduced(x: Option<&[f64]>, y: &[f64], reduce: Reduce) -> Option<(Vec<f64>, Ve
     }
 }
 
-/// Expands a `color_by` mark into one resolved layer per category. Returns
-/// `None` for marks without the channel (including a function-backed line,
-/// which has no per-point categories).
-fn expand_color_by<'p>(
-    mark: &'p Mark<'_>,
-    categorical: &crate::scale::Palette,
-    cycle_markers: bool,
+/// Reduces a categorical line without converting membership into numeric gaps.
+/// The extent probe deliberately borrows the raw channels: it avoids fabricating
+/// category identities for independent x/y summaries, and remains linear.
+fn reduced_categories(
+    x: Option<&[f64]>,
+    y: &[f64],
+    categories: &[usize],
     reduce: Reduce,
-) -> Option<Vec<ResolvedLayer<'p>>> {
-    match mark {
-        Mark::Points(points) => {
-            let categories = points.color_by.as_ref()?;
-            Some(
-                categories
-                    .labels()
-                    .iter()
-                    .enumerate()
-                    .map(|(category, name)| ResolvedLayer::Series {
-                        x: coordinates(points.x.as_ref(), points.y.len()),
-                        y: Cow::Owned(masked(points.y.as_slice(), categories.ids(), category)),
-                        color: categorical.color(category),
-                        kind: Kind::Points(if cycle_markers && points.style == PointStyle::Dot {
-                            MARKER_CYCLE[category % MARKER_CYCLE.len()]
-                        } else {
-                            points.style
-                        }),
-                        label: Some(name),
-                    })
-                    .collect(),
-            )
+) -> Option<(Vec<f64>, Vec<f64>, Vec<usize>)> {
+    match reduce {
+        Reduce::Mapped { map, columns } if y.len() > 4 * columns.max(1) => {
+            crate::stat::m4_mapped_categories(x, y, categories, columns, |value| map.map(value))
         }
-        Mark::Line(line) => {
-            let categories = line.color_by.as_ref()?;
-            let Source::Points { x, y } = &line.source else {
-                return None;
-            };
-            let x_slice = x.as_ref().map(|series| series.as_slice());
-            Some(
-                categories
-                    .labels()
-                    .iter()
-                    .enumerate()
-                    .map(|(category, name)| {
-                        let masked_y = masked(y.as_slice(), categories.ids(), category);
-                        match reduced(x_slice, &masked_y, reduce) {
-                            Some((dx, dy)) => ResolvedLayer::Series {
-                                x: Coordinates::Values(Cow::Owned(dx)),
-                                y: Cow::Owned(dy),
-                                color: categorical.color(category),
-                                kind: Kind::Line(line.style),
-                                label: Some(name),
-                            },
-                            None => ResolvedLayer::Series {
-                                x: coordinates(x.as_ref(), y.len()),
-                                y: Cow::Owned(masked_y),
-                                color: categorical.color(category),
-                                kind: Kind::Line(line.style),
-                                label: Some(name),
-                            },
-                        }
-                    })
-                    .collect(),
-            )
-        }
-        Mark::Bars(bars) => {
-            let categories = bars.color_by.as_ref()?;
-            Some(
-                categories
-                    .labels()
-                    .iter()
-                    .enumerate()
-                    .map(|(category, name)| ResolvedLayer::Bars {
-                        placement: &bars.placement,
-                        values: Cow::Owned(masked(
-                            bars.values.as_slice(),
-                            categories.ids(),
-                            category,
-                        )),
-                        color: categorical.color(category),
-                        label: Some(name),
-                    })
-                    .collect(),
-            )
-        }
-        Mark::Range(range) => {
-            let categories = range.color_by.as_ref()?;
-            Some(
-                categories
-                    .labels()
-                    .iter()
-                    .enumerate()
-                    .map(|(category, name)| {
-                        let (x, band_categories) = match &range.placement {
-                            RangePlacement::Numeric(x) => {
-                                (coordinates(x.as_ref(), range.low.len()), None)
-                            }
-                            RangePlacement::Bands(bands) => {
-                                (Coordinates::Indices(bands.len()), Some(bands.as_slice()))
-                            }
-                        };
-                        ResolvedLayer::Range {
-                            x,
-                            categories: band_categories,
-                            low: Cow::Owned(masked(
-                                range.low.as_slice(),
-                                categories.ids(),
-                                category,
-                            )),
-                            high: Cow::Owned(masked(
-                                range.high.as_slice(),
-                                categories.ids(),
-                                category,
-                            )),
-                            body: range.body.as_ref().map(|(low, high)| {
-                                (
-                                    Cow::Owned(masked(low.as_slice(), categories.ids(), category)),
-                                    Cow::Owned(masked(high.as_slice(), categories.ids(), category)),
-                                )
-                            }),
-                            marker: range.marker.as_ref().map(|marker| {
-                                Cow::Owned(masked(marker.as_slice(), categories.ids(), category))
-                            }),
-                            color: categorical.color(category),
-                            label: Some(name),
-                        }
-                    })
-                    .collect(),
-            )
-        }
-        _ => None,
+        Reduce::None | Reduce::Extent { .. } | Reduce::Mapped { .. } => None,
     }
 }
 
@@ -771,7 +819,15 @@ pub(crate) fn union(extents: impl Iterator<Item = Option<(f64, f64)>>) -> Option
 
 #[cfg(test)]
 mod tests {
-    use super::{Coordinates, coordinates, extent, extent_positive, line_extent};
+    use std::borrow::Cow;
+
+    use super::{
+        ColorChannel, Coordinates, Reduce, ResolvedLayer, coordinates, extent, extent_positive,
+        line_extent, resolve,
+    };
+    use crate::mark::{Mark, Points};
+    use crate::render::Color;
+    use crate::scale::Palette;
 
     #[test]
     fn implicit_coordinates_remain_symbolic() {
@@ -816,5 +872,33 @@ mod tests {
         let (_, finite_y) = line_extent(None, &[1.0, f64::INFINITY, 3.0], false, false)
             .expect("finite values survive an infinity");
         assert_eq!(extent(&finite_y), Some((1.0, 3.0)));
+    }
+
+    #[test]
+    fn unique_categories_remain_one_borrowed_numeric_layer() {
+        let values: Vec<f64> = (0..10_000).map(f64::from).collect();
+        let labels: Vec<String> = (0..values.len()).map(|index| format!("g{index}")).collect();
+        let marks = vec![Mark::from(Points::y(&values[..]).color_by(labels))];
+        let layer_palette = [Color::Red; 6];
+        let categorical = Palette::default();
+
+        let layers = resolve(
+            &marks,
+            80,
+            &layer_palette,
+            &categorical,
+            false,
+            Reduce::None,
+        );
+        assert_eq!(layers.len(), 1, "categories must not manufacture layers");
+        let ResolvedLayer::Series { y, color, .. } = &layers[0] else {
+            panic!("points resolve to a series")
+        };
+        assert!(matches!(y, Cow::Borrowed(_)));
+        let ColorChannel::Categories { labels, ids, .. } = color else {
+            panic!("the categorical channel stays explicit")
+        };
+        assert_eq!(labels.len(), values.len());
+        assert_eq!(ids.len(), values.len());
     }
 }

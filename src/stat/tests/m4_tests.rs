@@ -1,4 +1,4 @@
-use super::{M4, m4, m4_mapped};
+use super::{M4, m4, m4_mapped, m4_mapped_categories};
 
 fn normalized(series: (Vec<f64>, Vec<f64>)) -> Vec<Option<(u64, u64)>> {
     series
@@ -260,4 +260,36 @@ fn invalid_x_and_mapping_values_break_the_path() {
     assert_eq!(invalid_map_runs.len(), 2);
     assert!(invalid_map_runs[0].iter().all(|value| *value < 0.0));
     assert!(invalid_map_runs[1].iter().all(|value| *value > 0.0));
+}
+
+#[test]
+fn category_transitions_are_emitted_as_aligned_path_breaks() {
+    let y = [1.0, 2.0, 8.0, 9.0, 3.0, 4.0];
+    let categories = [0, 0, 1, 1, 0, 0];
+    let (x, reduced, reduced_categories) =
+        m4_mapped_categories(None, &y, &categories, 1, |_| 0.0).unwrap();
+
+    assert_eq!(x.len(), reduced.len());
+    assert_eq!(reduced.len(), reduced_categories.len());
+    assert_eq!(
+        runs(&reduced),
+        [vec![1.0, 2.0], vec![8.0, 9.0], vec![3.0, 4.0]]
+    );
+
+    let identities: Vec<Vec<usize>> =
+        reduced
+            .iter()
+            .zip(reduced_categories)
+            .fold(Vec::new(), |mut groups, (value, category)| {
+                if value.is_nan() {
+                    groups.push(Vec::new());
+                } else {
+                    if groups.is_empty() {
+                        groups.push(Vec::new());
+                    }
+                    groups.last_mut().unwrap().push(category);
+                }
+                groups
+            });
+    assert_eq!(identities, [vec![0, 0], vec![1, 1], vec![0, 0]]);
 }

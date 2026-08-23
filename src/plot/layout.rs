@@ -136,7 +136,7 @@ impl<'p> Layout<'p> {
                     ..
                 } if !categories.is_empty() => Some(categories.as_slice()),
                 ResolvedLayer::Range {
-                    categories: Some(categories),
+                    bands: Some(categories),
                     ..
                 } if !categories.is_empty() => Some(*categories),
                 _ => None,
@@ -184,9 +184,7 @@ impl<'p> Layout<'p> {
         // labels — shed in priority order (legend first) when the frame is short.
         let ascii = frame.charset == Charset::Ascii;
         let title_rows = usize::from(has_title && frame.height >= 6);
-        let has_legend = layers
-            .iter()
-            .any(|layer| layer.legend_entry(ascii).is_some());
+        let has_legend = layers.iter().any(ResolvedLayer::has_legend);
         let legend_rows = usize::from(has_legend && frame.height >= 8);
         let chrome_top = title_rows + legend_rows;
         let axis_rows = match frame.height - chrome_top {

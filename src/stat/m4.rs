@@ -17,16 +17,18 @@ struct Run {
     min: (f64, f64),
     max: (f64, f64),
     break_before: bool,
+    category: usize,
 }
 
 impl Run {
-    fn new(point: (f64, f64), break_before: bool) -> Run {
+    fn in_category(point: (f64, f64), break_before: bool, category: usize) -> Run {
         Run {
             first: point,
             last: point,
             min: point,
             max: point,
             break_before,
+            category,
         }
     }
 
@@ -41,6 +43,7 @@ impl Run {
     }
 
     fn merge(&mut self, later: Run) {
+        debug_assert_eq!(self.category, later.category);
         self.last = later.last;
         if later.min.1 < self.min.1 {
             self.min = later.min;
@@ -158,6 +161,12 @@ impl M4 {
 
     /// Records `(x, y)` into bucket `index`. A non-finite `y` marks a gap there.
     fn record(&mut self, index: usize, x: f64, y: f64) {
+        self.record_category(index, x, y, 0);
+    }
+
+    /// Records a point whose category is part of its path identity. A category
+    /// transition starts a new run even when both adjacent values are finite.
+    fn record_category(&mut self, index: usize, x: f64, y: f64, category: usize) {
         if !y.is_finite() {
             self.gap();
             return;
@@ -166,14 +175,15 @@ impl M4 {
         let break_before = std::mem::take(&mut self.pending_gap);
         match &mut self.buckets[index] {
             Some(bucket) => {
-                if break_before {
-                    bucket.push(Run::new(point, true));
+                if break_before || bucket.last_mut().category != category {
+                    bucket.push(Run::in_category(point, true, category));
                 } else {
                     bucket.last_mut().add(point);
                 }
             }
             None => {
-                self.buckets[index] = Some(Bucket::new(Run::new(point, break_before)));
+                self.buckets[index] =
+                    Some(Bucket::new(Run::in_category(point, break_before, category)));
             }
         }
     }
@@ -232,30 +242,63 @@ impl M4 {
     /// Emits the aggregated series: up to four finite points per uninterrupted run
     /// in each column, with a gap marker (`NaN`) before every disconnected run.
     pub fn emit(self) -> (Vec<f64>, Vec<f64>) {
+        let (x, y, _) = self.emit_inner(false);
+        (x, y)
+    }
+
+    /// Emits category identity beside each point. Gap entries carry the following
+    /// run's category, though renderers deliberately ignore identity at a gap.
+    fn emit_categories(self) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
+        self.emit_inner(true)
+    }
+
+    fn emit_inner(self, include_categories: bool) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
         // Append a point unless it duplicates the last one written (collapses the
         // repeated first/min/max/last of a flat column into one).
-        fn push(x: &mut Vec<f64>, y: &mut Vec<f64>, point: (f64, f64)) {
+        fn push(
+            x: &mut Vec<f64>,
+            y: &mut Vec<f64>,
+            categories: &mut Vec<usize>,
+            include_categories: bool,
+            point: (f64, f64),
+            category: usize,
+        ) {
             if x.last() != Some(&point.0) || y.last() != Some(&point.1) {
                 x.push(point.0);
                 y.push(point.1);
+                if include_categories {
+                    categories.push(category);
+                }
             }
         }
-        let mut x: Vec<f64> = Vec::with_capacity(self.buckets.len() * 4);
-        let mut y: Vec<f64> = Vec::with_capacity(self.buckets.len() * 4);
+        let capacity = self.buckets.len() * 4;
+        let mut x: Vec<f64> = Vec::with_capacity(capacity);
+        let mut y: Vec<f64> = Vec::with_capacity(capacity);
+        let mut categories = Vec::with_capacity(if include_categories { capacity } else { 0 });
         for bucket in self.buckets.into_iter().flatten() {
             for run in bucket.into_runs() {
                 if run.break_before && y.last().is_none_or(|value| !value.is_nan()) {
                     x.push(f64::NAN);
                     y.push(f64::NAN);
+                    if include_categories {
+                        categories.push(run.category);
+                    }
                 }
                 let mut points = [run.first, run.min, run.max, run.last];
                 points.sort_by(|a, b| a.0.total_cmp(&b.0));
                 for point in points {
-                    push(&mut x, &mut y, point);
+                    push(
+                        &mut x,
+                        &mut y,
+                        &mut categories,
+                        include_categories,
+                        point,
+                        run.category,
+                    );
                 }
             }
         }
-        (x, y)
+        (x, y, categories)
     }
 
     fn bucket_index(&self, x: f64) -> Option<usize> {
@@ -365,6 +408,61 @@ pub(crate) fn m4_mapped(
         }
     }
     Some(aggregate.emit())
+}
+
+/// Category-aware counterpart to [`m4_mapped`]. Category transitions are path
+/// boundaries, and the returned identities stay aligned with the reduced points.
+pub(crate) fn m4_mapped_categories(
+    x: Option<&[f64]>,
+    y: &[f64],
+    categories: &[usize],
+    columns: usize,
+    map: impl Fn(f64) -> f64,
+) -> Option<(Vec<f64>, Vec<f64>, Vec<usize>)> {
+    if columns == 0 || columns > super::MAX_STAT_ELEMENTS {
+        return None;
+    }
+    let mut aggregate = M4::try_new((0.0, 1.0), columns).ok()?;
+    let mut previous_x = f64::NEG_INFINITY;
+    let mut previous_category = None;
+    let length = x
+        .map_or(y.len(), |values| values.len().min(y.len()))
+        .min(categories.len());
+
+    for (index, &yv) in y.iter().take(length).enumerate() {
+        let category = categories[index];
+        if previous_category.is_some_and(|previous| previous != category) {
+            aggregate.gap();
+        }
+        previous_category = Some(category);
+
+        let xv = match x {
+            Some(values) => values[index],
+            None => index as f64,
+        };
+        if !xv.is_finite() {
+            aggregate.gap();
+            continue;
+        }
+        if xv < previous_x {
+            return None;
+        }
+        previous_x = xv;
+        if !yv.is_finite() {
+            aggregate.gap();
+            continue;
+        }
+        let position = map(xv);
+        if !position.is_finite() {
+            aggregate.gap();
+            continue;
+        }
+        let column = position.round();
+        if (0.0..columns as f64).contains(&column) {
+            aggregate.record_category(column as usize, xv, yv, category);
+        }
+    }
+    Some(aggregate.emit_categories())
 }
 
 #[cfg(test)]

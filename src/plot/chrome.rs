@@ -42,25 +42,38 @@ pub(crate) fn draw(
     }
 
     if legend_rows == 1 {
-        let entries: Vec<_> = layers
-            .iter()
-            .filter_map(|layer| layer.legend_entry(ascii))
-            .collect();
-        let total: usize = entries
-            .iter()
-            .map(|(swatch, _, label)| display_width(swatch) + 1 + display_width(label))
-            .sum::<usize>()
-            + 2 * entries.len().saturating_sub(1);
-        let mut column = ((frame_width as i64 - total as i64) / 2).max(0);
+        let mut entry_count = 0usize;
+        let mut total = 0usize;
+        for layer in layers {
+            layer.for_each_legend_entry(ascii, |swatch, _, label| {
+                entry_count = entry_count.saturating_add(1);
+                total = total.saturating_add(
+                    display_width(swatch)
+                        .saturating_add(1)
+                        .saturating_add(display_width(label)),
+                );
+            });
+        }
+        total = total.saturating_add(2usize.saturating_mul(entry_count.saturating_sub(1)));
+
+        let total = i64::try_from(total).unwrap_or(i64::MAX);
+        let frame_width = i64::try_from(frame_width).unwrap_or(i64::MAX);
+        let mut column = (frame_width.saturating_sub(total) / 2).max(0);
         let row = title_rows as i64;
-        for (index, (swatch, color, label)) in entries.iter().enumerate() {
-            if index > 0 {
-                column += 2;
-            }
-            surface.text(column, row, swatch, *color);
-            column += display_width(swatch) as i64 + 1;
-            surface.text(column, row, label, Color::Default);
-            column += display_width(label) as i64;
+        let mut index = 0usize;
+        for layer in layers {
+            layer.for_each_legend_entry(ascii, |swatch, color, label| {
+                if index > 0 {
+                    column = column.saturating_add(2);
+                }
+                surface.text(column, row, swatch, color);
+                let swatch_width = i64::try_from(display_width(swatch)).unwrap_or(i64::MAX);
+                column = column.saturating_add(swatch_width.saturating_add(1));
+                surface.text(column, row, label, Color::Default);
+                let label_width = i64::try_from(display_width(label)).unwrap_or(i64::MAX);
+                column = column.saturating_add(label_width);
+                index = index.saturating_add(1);
+            });
         }
     }
 
