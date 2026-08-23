@@ -29,6 +29,33 @@ These are connected. The code needs a smaller set of explicit boundary concepts:
 
 The recommended order is to lock in regression tests for the reproduced failures, restore totality and gap correctness, centralize invariants and numeric policy, then simplify categories, statistics execution, rendering orchestration, and CLI construction. The changes should preserve the compact M4 probe design that the project has already benchmarked; introducing a second parallel metadata model would repeat an experiment the project correctly rejected.
 
+## Remediation status
+
+The findings below describe revision `ed3d43d6cab1` and remain as the evidence and
+design rationale for the work. The subsequent remediation series addressed every
+priority row without changing the retained grammar or adding a parallel metadata
+model:
+
+| Finding | Result | Commits |
+|---|---|---|
+| F1 — render totality | Ragged channels are bounded before mapped reduction; hostile calendar domains terminate and degrade safely. | `5ff7a6c`, `33ed59b` |
+| F2 — M4 gaps | Runs, multiple gaps, invalid mapped x values, category transitions, and ordered partition boundaries preserve path disconnection. | `5ff7a6c`, `29efd79` |
+| F3 — finite arithmetic | Shared overflow-safe interpolation/extent operations cover scales, bins, quantiles, and KDE; CLI histogram geometry is fallible. | `0d39199`, `24acb0f`, `f4d5221` |
+| F4 — invariant drift | Constructors and deserialized validation reuse each mark's one invariant owner. | `bce369d`, `9b60c44` |
+| F5 — categorical expansion | Categories are interned once and rendered as a first-class per-datum channel in one resolved layer. | `a34b669`, `29efd79` |
+| F6 — CLI boundaries | Civil timestamps reject impossible dates as counted gaps; numeric selectors report out-of-range columns as usage errors. | `7ed1fef`, `7befae6` |
+| F7 — statistics execution | Reducers compile into streaming or buffered states; rolling strategies, key interning, and KDE storage avoid repeated work. | `92e0fbd`, `e836c82`, `2c57c29`, `d0c2fd7` |
+| F8 — render orchestration | Cell and pixel targets share one prepared resolve/probe/layout pipeline with a small target policy. | `72d695a` |
+| F9 — CLI recipe | Runtime rendering and Rust emission consume one normalized recipe; value charts use columnar shared channels. | `f4d5221`, `496e839` |
+| F10 — failure vocabulary | Result-returning presets no longer hide assertions; checked `Cells` construction owns grid errors, and the public failure model is explicit. | `9b60c44`, `fafbc1d` |
+| F11 — statistical concepts | Documentation distinguishes online accumulators, reducers, and batch transforms and states ordering/merge laws precisely. | `5cb85fa`, `fafbc1d` |
+| F12 — CI/dependencies | Demo crates have an explicit CI gate; direct crossterm users share one version and stale license allowances were removed. | `6b650a7`, `4967d47` |
+
+After the series, workspace tests with every feature and target, strict Clippy,
+warning-free rustdoc, doctests, generated-document verification, allocation budgets,
+and dependency policy all pass. The only remaining duplicate-dependency warnings are
+upstream-internal `hashbrown` and proc-macro `syn` generations.
+
 ## Priority map
 
 | ID | Priority | Area | Finding | Main consequence |
