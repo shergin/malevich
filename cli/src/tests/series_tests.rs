@@ -15,8 +15,8 @@ fn fmt_y_makes_each_column_a_series_over_its_index() {
     let data = dataset(&table, Fmt::Y, false);
     assert_eq!(data.series.len(), 2);
     assert!(data.series[0].x.is_none());
-    assert_eq!(data.series[0].y, vec![1.0, 2.0, 3.0]);
-    assert_eq!(data.series[1].y, vec![10.0, 20.0, 30.0]);
+    assert_eq!(data.y(&data.series[0]), [1.0, 2.0, 3.0]);
+    assert_eq!(data.y(&data.series[1]), [10.0, 20.0, 30.0]);
 }
 
 #[test]
@@ -24,8 +24,8 @@ fn fmt_xy_pairs_the_first_two_columns() {
     let table = frame("1 2\n3 4\n", None, false);
     let data = dataset(&table, Fmt::Xy, false);
     assert_eq!(data.series.len(), 1);
-    assert_eq!(data.series[0].x.as_deref(), Some(&[1.0, 3.0][..]));
-    assert_eq!(data.series[0].y, vec![2.0, 4.0]);
+    assert_eq!(data.x(&data.series[0]), Some(&[1.0, 3.0][..]));
+    assert_eq!(data.y(&data.series[0]), [2.0, 4.0]);
 }
 
 #[test]
@@ -33,10 +33,14 @@ fn fmt_xyy_shares_the_first_column_as_x() {
     let table = frame("0 1 2\n1 3 4\n", None, false);
     let data = dataset(&table, Fmt::Xyy, false);
     assert_eq!(data.series.len(), 2);
-    assert_eq!(data.series[0].x.as_deref(), Some(&[0.0, 1.0][..]));
-    assert_eq!(data.series[0].y, vec![1.0, 3.0]);
-    assert_eq!(data.series[1].x.as_deref(), Some(&[0.0, 1.0][..]));
-    assert_eq!(data.series[1].y, vec![2.0, 4.0]);
+    assert_eq!(data.x(&data.series[0]), Some(&[0.0, 1.0][..]));
+    assert_eq!(data.y(&data.series[0]), [1.0, 3.0]);
+    assert_eq!(data.x(&data.series[1]), Some(&[0.0, 1.0][..]));
+    assert_eq!(data.y(&data.series[1]), [2.0, 4.0]);
+    assert_eq!(
+        data.series[0].x, data.series[1].x,
+        "xyy series reference one shared x buffer"
+    );
 }
 
 #[test]
@@ -44,10 +48,10 @@ fn fmt_xyxy_takes_columns_in_pairs() {
     let table = frame("0 1 10 100\n1 2 11 101\n", None, false);
     let data = dataset(&table, Fmt::Xyxy, false);
     assert_eq!(data.series.len(), 2);
-    assert_eq!(data.series[0].x.as_deref(), Some(&[0.0, 1.0][..]));
-    assert_eq!(data.series[0].y, vec![1.0, 2.0]);
-    assert_eq!(data.series[1].x.as_deref(), Some(&[10.0, 11.0][..]));
-    assert_eq!(data.series[1].y, vec![100.0, 101.0]);
+    assert_eq!(data.x(&data.series[0]), Some(&[0.0, 1.0][..]));
+    assert_eq!(data.y(&data.series[0]), [1.0, 2.0]);
+    assert_eq!(data.x(&data.series[1]), Some(&[10.0, 11.0][..]));
+    assert_eq!(data.y(&data.series[1]), [100.0, 101.0]);
 }
 
 #[test]
@@ -55,8 +59,8 @@ fn fmt_yx_swaps_for_youplot_compatibility() {
     let table = frame("2 0\n4 1\n", None, false);
     let data = dataset(&table, Fmt::Yx, false);
     assert_eq!(data.series.len(), 1);
-    assert_eq!(data.series[0].x.as_deref(), Some(&[0.0, 1.0][..]));
-    assert_eq!(data.series[0].y, vec![2.0, 4.0]);
+    assert_eq!(data.x(&data.series[0]), Some(&[0.0, 1.0][..]));
+    assert_eq!(data.y(&data.series[0]), [2.0, 4.0]);
 }
 
 #[test]
@@ -72,8 +76,8 @@ fn a_present_but_unparseable_field_is_a_counted_gap() {
     let table = frame("1\n2\noops\n4\n", None, false);
     let data = dataset(&table, Fmt::Y, false);
     assert_eq!(data.unparsed, 1);
-    assert!(data.series[0].y[2].is_nan());
-    assert_eq!(data.series[0].y[3], 4.0);
+    assert!(data.y(&data.series[0])[2].is_nan());
+    assert_eq!(data.y(&data.series[0])[3], 4.0);
 }
 
 #[test]
@@ -85,7 +89,7 @@ fn a_short_row_is_a_gap_but_not_a_parse_failure() {
         "a missing field is structural, not unparseable"
     );
     assert!(
-        data.series[1].y[1].is_nan(),
+        data.y(&data.series[1])[1].is_nan(),
         "the absent second field is a gap"
     );
 }
@@ -96,8 +100,8 @@ fn non_finite_spellings_are_gaps_not_values() {
     let data = dataset(&table, Fmt::Y, false);
     // `inf`/`nan` carry no position; they are counted as unparseable gaps.
     assert_eq!(data.unparsed, 2);
-    assert!(data.series[0].y[1].is_nan());
-    assert!(data.series[0].y[2].is_nan());
+    assert!(data.y(&data.series[0])[1].is_nan());
+    assert!(data.y(&data.series[0])[2].is_nan());
 }
 
 #[test]
@@ -144,18 +148,18 @@ fn time_x_parses_the_x_column_as_timestamps() {
     let data = dataset(&table, Fmt::Xy, true);
     // 2021-01-01 and 2021-01-02 as unix seconds, one day apart.
     assert_eq!(
-        data.series[0].x.as_deref(),
+        data.x(&data.series[0]),
         Some(&[1_609_459_200.0, 1_609_545_600.0][..])
     );
-    assert_eq!(data.series[0].y, vec![10.0, 20.0]);
+    assert_eq!(data.y(&data.series[0]), [10.0, 20.0]);
 }
 
 #[test]
 fn time_x_leaves_the_y_column_numeric() {
     let table = frame("1609459200 5\n", None, false);
     let data = dataset(&table, Fmt::Xy, true);
-    assert_eq!(data.series[0].x.as_deref(), Some(&[1_609_459_200.0][..]));
-    assert_eq!(data.series[0].y, vec![5.0]);
+    assert_eq!(data.x(&data.series[0]), Some(&[1_609_459_200.0][..]));
+    assert_eq!(data.y(&data.series[0]), [5.0]);
 }
 
 #[test]

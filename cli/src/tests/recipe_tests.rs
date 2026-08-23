@@ -19,16 +19,16 @@ fn projection_and_column_roles_are_resolved_in_the_recipe() {
     );
     let recipe = prepare(&args, table).unwrap();
 
-    let Chart::Value { mark, series } = recipe.chart else {
+    let Chart::Value { mark, data } = recipe.chart else {
         panic!("expected value data")
     };
     assert_eq!(mark, ValueMark::Line);
-    assert_eq!(series.len(), 2);
-    assert_eq!(series[0].x.as_deref(), Some(&[1.0, 2.0][..]));
-    assert_eq!(series[0].y, [4.0, 3.0]);
-    assert_eq!(series[0].label.as_deref(), Some("loss"));
-    assert_eq!(series[1].y, [0.8, 0.9]);
-    assert_eq!(series[1].label.as_deref(), Some("score"));
+    assert_eq!(data.series.len(), 2);
+    assert_eq!(data.x(&data.series[0]), Some(&[1.0, 2.0][..]));
+    assert_eq!(data.y(&data.series[0]), [4.0, 3.0]);
+    assert_eq!(data.series[0].label.as_deref(), Some("loss"));
+    assert_eq!(data.y(&data.series[1]), [0.8, 0.9]);
+    assert_eq!(data.series[1].label.as_deref(), Some("score"));
 }
 
 #[test]

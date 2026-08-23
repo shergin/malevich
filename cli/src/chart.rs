@@ -4,7 +4,7 @@
 use malevich::{Bars, Cells, Line, Plot, Points};
 
 use crate::recipe::{Chart, DistributionKind, Furniture, GroupedKind, Recipe, ValueMark};
-use crate::series::Series;
+use crate::series::{Dataset, Series};
 
 /// A built plot plus the count of fields that would not parse.
 pub struct Built<'a> {
@@ -15,7 +15,7 @@ pub struct Built<'a> {
 /// Builds a retained plot by borrowing the normalized buffers in `recipe`.
 pub fn build(recipe: &Recipe) -> malevich::Result<Built<'_>> {
     let plot = match &recipe.chart {
-        Chart::Value { mark, series } => value_plot(series, *mark),
+        Chart::Value { mark, data } => value_plot(data, *mark),
         Chart::ScatterBy { x, y, groups } => {
             Plot::new().layer(Points::xy(x, y).color_by(groups.iter().map(String::as_str)))
         }
@@ -65,32 +65,29 @@ pub fn build(recipe: &Recipe) -> malevich::Result<Built<'_>> {
 }
 
 /// Line and scatter: one layer per normalized series.
-fn value_plot<'a>(series: &'a [Series], mark: ValueMark) -> Plot<'a> {
-    series
+fn value_plot<'a>(data: &'a Dataset, mark: ValueMark) -> Plot<'a> {
+    data.series
         .iter()
-        .fold(Plot::new(), |plot, series| layer(plot, series, mark))
+        .fold(Plot::new(), |plot, series| layer(plot, data, series, mark))
 }
 
-fn layer<'a>(plot: Plot<'a>, series: &'a Series, mark: ValueMark) -> Plot<'a> {
+fn layer<'a>(plot: Plot<'a>, data: &'a Dataset, series: &Series, mark: ValueMark) -> Plot<'a> {
     let label = series.label.as_deref();
-    match (mark, series.x.as_ref()) {
+    let y = data.y(series);
+    match (mark, data.x(series)) {
         (ValueMark::Line, Some(x)) => {
-            plot.layer(named(Line::xy(x, &series.y), label, |mark, text| {
-                mark.label(text)
-            }))
+            plot.layer(named(Line::xy(x, y), label, |mark, text| mark.label(text)))
         }
-        (ValueMark::Line, None) => plot.layer(named(Line::y(&series.y), label, |mark, text| {
-            mark.label(text)
-        })),
+        (ValueMark::Line, None) => {
+            plot.layer(named(Line::y(y), label, |mark, text| mark.label(text)))
+        }
         (ValueMark::Scatter, Some(x)) => {
-            plot.layer(named(Points::xy(x, &series.y), label, |mark, text| {
+            plot.layer(named(Points::xy(x, y), label, |mark, text| {
                 mark.label(text)
             }))
         }
         (ValueMark::Scatter, None) => {
-            plot.layer(named(Points::y(&series.y), label, |mark, text| {
-                mark.label(text)
-            }))
+            plot.layer(named(Points::y(y), label, |mark, text| mark.label(text)))
         }
     }
 }

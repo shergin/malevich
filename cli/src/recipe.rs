@@ -11,7 +11,7 @@ use malevich::scale::Colormap;
 
 use crate::args::{Args, Command};
 use crate::input::{self, Table};
-use crate::series::{self, Series};
+use crate::series::{self, Dataset};
 
 /// A chart whose input semantics have already been resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -28,7 +28,7 @@ pub(crate) struct Recipe {
 pub(crate) enum Chart {
     Value {
         mark: ValueMark,
-        series: Vec<Series>,
+        data: Dataset,
     },
     ScatterBy {
         x: Vec<f64>,
@@ -223,13 +223,8 @@ pub(crate) fn prepare(args: &Args, mut table: Table) -> Result<Recipe, PrepareEr
 fn value(table: &Table, args: &Args, mark: ValueMark) -> (Chart, usize) {
     let fmt = series::resolve_fmt(table, args.fmt);
     let data = series::dataset(table, fmt, args.time_x);
-    (
-        Chart::Value {
-            mark,
-            series: data.series,
-        },
-        data.unparsed,
-    )
+    let unparsed = data.unparsed;
+    (Chart::Value { mark, data }, unparsed)
 }
 
 /// Resolves both automatic and explicit bins once. Keeping only bar geometry

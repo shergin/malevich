@@ -36,6 +36,13 @@ fn a_line_program_inlines_the_data_and_furniture() {
 }
 
 #[test]
+fn shared_x_data_is_declared_once() {
+    let code = emit(&["line", "--fmt", "xyy"], "1 10 100\n2 20 200\n3 30 300\n");
+    assert_eq!(code.matches("vec![1.0, 2.0, 3.0]").count(), 1, "{code}");
+    assert_eq!(code.matches("::xy(&channel0").count(), 2, "{code}");
+}
+
+#[test]
 fn gaps_emit_as_nan_expressions_not_invalid_literals() {
     let code = emit(&["line"], "1\nnot-a-number\n3\n");
     assert!(code.contains("f64::NAN"), "{code}");

@@ -10,13 +10,13 @@ use std::fmt::Write;
 use malevich::scale::Colormap;
 
 use crate::recipe::{Chart, DistributionKind, Furniture, GroupedKind, Recipe, ValueMark};
-use crate::series::Series;
+use crate::series::Dataset;
 
 /// The complete standalone program for one prepared chart.
 pub fn program(recipe: &Recipe) -> String {
     let mut body = String::new();
     let plot = match &recipe.chart {
-        Chart::Value { mark, series } => value(&mut body, *mark, series),
+        Chart::Value { mark, data } => value(&mut body, *mark, data),
         Chart::ScatterBy { x, y, groups } => scatter_by(&mut body, x, y, groups),
         Chart::Histogram {
             start,
@@ -66,23 +66,27 @@ pub fn program(recipe: &Recipe) -> String {
 }
 
 /// One layer per already-normalized value series.
-fn value(body: &mut String, mark: ValueMark, series: &[Series]) -> String {
+fn value(body: &mut String, mark: ValueMark, data: &Dataset) -> String {
     let mark = match mark {
         ValueMark::Line => "Line",
         ValueMark::Scatter => "Points",
     };
+    for (index, channel) in data.channels().iter().enumerate() {
+        let _ = writeln!(
+            body,
+            "    let channel{index}: Vec<f64> = {};",
+            floats(channel)
+        );
+    }
     let mut chart = String::from("malevich::Plot::new()");
-    for (index, series) in series.iter().enumerate() {
-        let constructor = match &series.x {
+    for series in &data.series {
+        let y = series.y.index();
+        let constructor = match series.x {
             Some(x) => {
-                let _ = writeln!(body, "    let x{index}: Vec<f64> = {};", floats(x));
-                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&series.y));
-                format!("malevich::{mark}::xy(x{index}, y{index})")
+                let x = x.index();
+                format!("malevich::{mark}::xy(&channel{x}, &channel{y})")
             }
-            None => {
-                let _ = writeln!(body, "    let y{index}: Vec<f64> = {};", floats(&series.y));
-                format!("malevich::{mark}::y(y{index})")
-            }
+            None => format!("malevich::{mark}::y(&channel{y})"),
         };
         let labeled = match &series.label {
             Some(name) => format!("{constructor}.label({name:?})"),

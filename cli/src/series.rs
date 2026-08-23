@@ -11,20 +11,54 @@ use std::collections::HashMap;
 use crate::args::Fmt;
 use crate::input::Table;
 
-/// One plottable series: a y channel, an optional x channel (indices when absent),
-/// and an optional label.
-#[derive(Debug, Clone, PartialEq)]
+/// An index into a [`Dataset`]'s unique parsed channels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Channel(usize);
+
+impl Channel {
+    /// Position in the dataset's unique channel store.
+    pub fn index(self) -> usize {
+        self.0
+    }
+}
+
+/// One plottable series: channel references plus an optional label.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Series {
-    pub x: Option<Vec<f64>>,
-    pub y: Vec<f64>,
+    pub x: Option<Channel>,
+    pub y: Channel,
     pub label: Option<String>,
 }
 
-/// A set of series plus the count of fields that could not be parsed.
+/// Unique parsed columns, the series that reference them, and the parse tally.
+/// Shared x channels (`xyy`) occupy one buffer regardless of series count.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Dataset {
+    channels: Vec<Vec<f64>>,
     pub series: Vec<Series>,
     pub unparsed: usize,
+}
+
+impl Dataset {
+    /// Every unique channel, in first input-column order.
+    pub fn channels(&self) -> &[Vec<f64>] {
+        &self.channels
+    }
+
+    /// Resolves a lightweight channel reference to its parsed values.
+    pub fn channel(&self, channel: Channel) -> &[f64] {
+        &self.channels[channel.index()]
+    }
+
+    /// The explicit x values for `series`, or `None` for row indices.
+    pub fn x(&self, series: &Series) -> Option<&[f64]> {
+        series.x.map(|channel| self.channel(channel))
+    }
+
+    /// The y values for `series`.
+    pub fn y(&self, series: &Series) -> &[f64] {
+        self.channel(series.y)
+    }
 }
 
 /// The default column mapping when `--fmt` is unset: a lone column is a y-series
@@ -104,6 +138,12 @@ struct Spec {
     label: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParseAs {
+    Number,
+    Time,
+}
+
 /// The per-series column roles for a `--fmt`.
 fn specs(fmt: Fmt, width: usize) -> Vec<Spec> {
     match fmt {
@@ -145,31 +185,54 @@ fn specs(fmt: Fmt, width: usize) -> Vec<Spec> {
 /// Maps columns onto series per `fmt`, parsing x columns as time when `time_x`.
 pub fn dataset(table: &Table, fmt: Fmt, time_x: bool) -> Dataset {
     let specs = specs(fmt, table.width());
-    // Each referenced column is built once; a shared x column (xyy) is counted once.
-    let mut cache: HashMap<usize, Vec<f64>> = HashMap::new();
-    let mut unparsed = 0;
+    // Record each referenced column's one parsing role. No current format uses
+    // one column as both time and numeric data.
+    let mut roles = vec![None; table.width()];
     for spec in &specs {
-        let mut needed = vec![(spec.y, false)];
+        insert_role(&mut roles, spec.y, ParseAs::Number);
         if let Some(x) = spec.x {
-            needed.push((x, time_x));
+            let role = if time_x {
+                ParseAs::Time
+            } else {
+                ParseAs::Number
+            };
+            insert_role(&mut roles, x, role);
         }
-        for (index, is_time) in needed {
-            cache.entry(index).or_insert_with(|| {
-                let (column, count) = build_column(table, index, is_time);
-                unparsed += count;
-                column
-            });
+    }
+
+    let mut channels = Vec::with_capacity(roles.iter().flatten().count());
+    let mut channel_for = vec![None; table.width()];
+    let mut unparsed = 0;
+    for (index, role) in roles.into_iter().enumerate() {
+        if let Some(role) = role {
+            let (column, count) = build_column(table, index, role == ParseAs::Time);
+            channel_for[index] = Some(Channel(channels.len()));
+            channels.push(column);
+            unparsed += count;
         }
     }
     let series = specs
         .iter()
         .map(|spec| Series {
-            x: spec.x.map(|index| cache[&index].clone()),
-            y: cache[&spec.y].clone(),
+            x: spec.x.map(|index| {
+                channel_for[index].expect("every x role was assigned a parsed channel")
+            }),
+            y: channel_for[spec.y].expect("every y role was assigned a parsed channel"),
             label: label(table, spec.label),
         })
         .collect();
-    Dataset { series, unparsed }
+    Dataset {
+        channels,
+        series,
+        unparsed,
+    }
+}
+
+fn insert_role(roles: &mut [Option<ParseAs>], index: usize, role: ParseAs) {
+    match roles[index] {
+        Some(existing) => debug_assert_eq!(existing, role),
+        None => roles[index] = Some(role),
+    }
 }
 
 /// Resolves the effective `--fmt` for a value-shaped chart (line, scatter),
