@@ -49,3 +49,19 @@ fn a_degenerate_large_offset_sample_declines_without_panicking() {
 fn caller_selected_grid_is_bounded() {
     assert!(kde(&[1.0, 2.0], usize::MAX).is_none());
 }
+
+#[test]
+fn gaps_do_not_change_the_finite_sample_density() {
+    let finite = [1.0, 2.0, 3.0, 5.0, 8.0];
+    let gappy = [
+        1.0,
+        f64::NAN,
+        2.0,
+        f64::INFINITY,
+        3.0,
+        f64::NEG_INFINITY,
+        5.0,
+        8.0,
+    ];
+    assert_eq!(kde(&gappy, 64), kde(&finite, 64));
+}

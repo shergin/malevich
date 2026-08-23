@@ -12,19 +12,28 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
     if points > super::MAX_STAT_ELEMENTS {
         return None;
     }
-    let finite: Vec<f64> = values.iter().copied().filter(|v| v.is_finite()).collect();
+    let mut finite = Vec::with_capacity(values.len());
+    let mut moments = super::Moments::new();
+    for &value in values {
+        if value.is_finite() {
+            moments.add(value);
+            finite.push(value);
+        }
+    }
     if finite.is_empty() || points < 2 {
         return None;
     }
-    let n = finite.len() as f64;
-    let mean = finite.iter().sum::<f64>() / n;
-    let variance = finite.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-    let sigma = variance.sqrt();
+    let n = moments.count() as f64;
+    let sigma = moments.standard_deviation()?;
 
-    let mut sorted = finite.clone();
-    sorted.sort_by(f64::total_cmp);
-    let quantile = |p: f64| super::reducer::quantile_sorted(&sorted, p);
-    let iqr = quantile(0.75) - quantile(0.25);
+    finite.sort_by(f64::total_cmp);
+    let quantile = |p: f64| super::reducer::quantile_sorted(&finite, p);
+    let (q1, q3) = (quantile(0.25), quantile(0.75));
+    let iqr = if q1 < q3 {
+        crate::numeric::span_per(q1, q3, 1).unwrap_or(f64::INFINITY)
+    } else {
+        0.0
+    };
     let spread = if iqr > 0.0 {
         sigma.min(iqr / 1.34)
     } else {
@@ -37,7 +46,7 @@ pub fn kde(values: &[f64], points: usize) -> Option<(Vec<f64>, Vec<f64>)> {
         1.0
     };
 
-    let (low, high) = (sorted[0], sorted[sorted.len() - 1]);
+    let (low, high) = (finite[0], finite[finite.len() - 1]);
     let start = low - 3.0 * bandwidth;
     let end = high + 3.0 * bandwidth;
     let step = crate::numeric::span_per(start, end, points - 1)?;
