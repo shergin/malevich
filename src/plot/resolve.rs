@@ -704,7 +704,7 @@ fn reduced(x: Option<&[f64]>, y: &[f64], reduce: Reduce) -> Option<(Vec<f64>, Ve
             y_positive,
         } => line_extent(x, y, x_positive, y_positive),
         Reduce::Mapped { map, columns } if y.len() > 4 * columns.max(1) => {
-            crate::stat::m4_mapped(x, y, columns, |value| map.map(value))
+            mapped_m4(x, y, map, columns)
         }
         Reduce::Mapped { .. } => None,
     }
@@ -721,9 +721,66 @@ fn reduced_categories(
 ) -> Option<(Vec<f64>, Vec<f64>, Vec<usize>)> {
     match reduce {
         Reduce::Mapped { map, columns } if y.len() > 4 * columns.max(1) => {
-            crate::stat::m4_mapped_categories(x, y, categories, columns, |value| map.map(value))
+            mapped_m4_categories(x, y, categories, map, columns)
         }
         Reduce::None | Reduce::Extent { .. } | Reduce::Mapped { .. } => None,
+    }
+}
+
+fn mapped_m4(
+    x: Option<&[f64]>,
+    y: &[f64],
+    map: Map,
+    columns: usize,
+) -> Option<(Vec<f64>, Vec<f64>)> {
+    match map {
+        Map::Linear(linear) => match linear.finite_affine() {
+            Some((start, span, output_start, output_span)) => {
+                crate::stat::m4_mapped(x, y, columns, move |value| {
+                    output_start + (value - start) / span * output_span
+                })
+            }
+            None => crate::stat::m4_mapped(x, y, columns, |value| linear.map(value)),
+        },
+        Map::Log(linear) => match linear.finite_affine() {
+            Some((start, span, output_start, output_span)) => {
+                crate::stat::m4_mapped(x, y, columns, move |value| {
+                    output_start + (value.log10() - start) / span * output_span
+                })
+            }
+            None => crate::stat::m4_mapped(x, y, columns, |value| linear.map(value.log10())),
+        },
+    }
+}
+
+fn mapped_m4_categories(
+    x: Option<&[f64]>,
+    y: &[f64],
+    categories: &[usize],
+    map: Map,
+    columns: usize,
+) -> Option<(Vec<f64>, Vec<f64>, Vec<usize>)> {
+    match map {
+        Map::Linear(linear) => match linear.finite_affine() {
+            Some((start, span, output_start, output_span)) => {
+                crate::stat::m4_mapped_categories(x, y, categories, columns, move |value| {
+                    output_start + (value - start) / span * output_span
+                })
+            }
+            None => crate::stat::m4_mapped_categories(x, y, categories, columns, |value| {
+                linear.map(value)
+            }),
+        },
+        Map::Log(linear) => match linear.finite_affine() {
+            Some((start, span, output_start, output_span)) => {
+                crate::stat::m4_mapped_categories(x, y, categories, columns, move |value| {
+                    output_start + (value.log10() - start) / span * output_span
+                })
+            }
+            None => crate::stat::m4_mapped_categories(x, y, categories, columns, |value| {
+                linear.map(value.log10())
+            }),
+        },
     }
 }
 

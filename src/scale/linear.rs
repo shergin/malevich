@@ -18,6 +18,22 @@ impl Linear {
         Linear { domain, range }
     }
 
+    /// The ordinary affine coefficients when neither span overflows. Render-time
+    /// reducers use this once, outside their point loop; unusual extreme spans keep
+    /// using [`Linear::map`]'s scaled arithmetic.
+    pub(crate) fn finite_affine(&self) -> Option<(f64, f64, f64, f64)> {
+        let (d0, d1) = self.domain;
+        let (r0, r1) = self.range;
+        let domain_span = d1 - d0;
+        let range_span = r1 - r0;
+        (domain_span.is_finite() && domain_span != 0.0 && range_span.is_finite()).then_some((
+            d0,
+            domain_span,
+            r0,
+            range_span,
+        ))
+    }
+
     /// Maps a data value into the range.
     pub fn map(&self, value: f64) -> f64 {
         let (d0, d1) = self.domain;

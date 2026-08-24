@@ -109,6 +109,23 @@ fn large_lines_downsample_pixel_exactly_against_the_raw_raster() {
 }
 
 #[test]
+fn extreme_domain_downsampling_uses_the_safe_map() {
+    let n = 2_000;
+    let x: Vec<f64> = (0..n)
+        .map(|index| crate::numeric::lerp(-f64::MAX, f64::MAX, index as f64 / (n - 1) as f64))
+        .collect();
+    let y: Vec<f64> = (0..n).map(|index| (index as f64 * 0.03).sin()).collect();
+    let frame = Frame::plain(40, 10);
+    let plot = Plot::new().layer(Line::xy(&x[..], &y[..]));
+
+    assert_eq!(
+        plot.rasterize_with(&frame, true).to_plain(),
+        plot.rasterize_with(&frame, false).to_plain(),
+        "an overflowing domain span must keep the scaled mapping path"
+    );
+}
+
+#[test]
 fn a_gap_inside_a_raster_column_stays_a_break() {
     // Many points per column with a NaN between a jump from low to high: the raw
     // render breaks the line there, and the downsampled one must too (COR-03).

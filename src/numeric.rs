@@ -6,9 +6,15 @@
 /// Scaling first avoids overflowing `end - start` for opposite-sign extremes.
 /// Values outside the endpoints may still produce an infinite position when the
 /// mathematical result itself is not representable.
+#[inline]
 pub(crate) fn inverse_lerp(start: f64, end: f64, value: f64) -> f64 {
     if start == end {
         return if value.is_nan() { value } else { 0.5 };
+    }
+    let numerator = value - start;
+    let denominator = end - start;
+    if numerator.is_finite() && denominator.is_finite() {
+        return numerator / denominator;
     }
     if value == start {
         return 0.0;
@@ -19,11 +25,6 @@ pub(crate) fn inverse_lerp(start: f64, end: f64, value: f64) -> f64 {
     if !(start.is_finite() && end.is_finite()) {
         return f64::NAN;
     }
-    let numerator = value - start;
-    let denominator = end - start;
-    if numerator.is_finite() && denominator.is_finite() {
-        return numerator / denominator;
-    }
     let scale = start.abs().max(end.abs());
     let scaled_start = start / scale;
     let scaled_end = end / scale;
@@ -31,6 +32,7 @@ pub(crate) fn inverse_lerp(start: f64, end: f64, value: f64) -> f64 {
 }
 
 /// Linear interpolation that does not form an overflowing endpoint difference.
+#[inline]
 pub(crate) fn lerp(start: f64, end: f64, position: f64) -> f64 {
     if position == 0.0 {
         return start;
@@ -46,6 +48,7 @@ pub(crate) fn lerp(start: f64, end: f64, position: f64) -> f64 {
 }
 
 /// The midpoint of two finite values, including opposite-sign extremes.
+#[inline]
 pub(crate) fn midpoint(start: f64, end: f64) -> f64 {
     lerp(start, end, 0.5)
 }

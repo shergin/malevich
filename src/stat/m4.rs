@@ -9,26 +9,28 @@
 //! several disconnected runs.
 
 /// One uninterrupted run's aggregate: the four points that matter, in `(x, y)`
-/// pairs.
+/// pairs. `Identity = ()` keeps ordinary M4 runs as compact as they were before
+/// categorical channels; category-aware reduction specializes the same state with
+/// a `usize` identity.
 #[derive(Debug, Clone, Copy)]
-struct Run {
+struct Run<Identity> {
     first: (f64, f64),
     last: (f64, f64),
     min: (f64, f64),
     max: (f64, f64),
     break_before: bool,
-    category: usize,
+    identity: Identity,
 }
 
-impl Run {
-    fn in_category(point: (f64, f64), break_before: bool, category: usize) -> Run {
+impl<Identity: Copy + Eq> Run<Identity> {
+    fn new(point: (f64, f64), break_before: bool, identity: Identity) -> Self {
         Run {
             first: point,
             last: point,
             min: point,
             max: point,
             break_before,
-            category,
+            identity,
         }
     }
 
@@ -42,8 +44,8 @@ impl Run {
         }
     }
 
-    fn merge(&mut self, later: Run) {
-        debug_assert_eq!(self.category, later.category);
+    fn merge(&mut self, later: Run<Identity>) {
+        debug_assert!(self.identity == later.identity);
         self.last = later.last;
         if later.min.1 < self.min.1 {
             self.min = later.min;
@@ -52,73 +54,64 @@ impl Run {
             self.max = later.max;
         }
     }
+
+    fn points(self) -> [(f64, f64); 4] {
+        let mut points = [self.first, self.min, self.max, self.last];
+        points.sort_by(|a, b| a.0.total_cmp(&b.0));
+        points
+    }
 }
 
 /// A raster column normally has one run. Additional storage is paid only when
 /// gaps divide that column into several runs.
 #[derive(Debug, Clone)]
-struct Bucket {
-    first: Run,
-    additional: Vec<Run>,
+struct Bucket<Identity> {
+    first: Run<Identity>,
+    additional: Vec<Run<Identity>>,
 }
 
-impl Bucket {
-    fn new(run: Run) -> Bucket {
+impl<Identity: Copy + Eq> Bucket<Identity> {
+    fn new(run: Run<Identity>) -> Self {
         Bucket {
             first: run,
             additional: Vec::new(),
         }
     }
 
-    fn last_mut(&mut self) -> &mut Run {
+    fn last_mut(&mut self) -> &mut Run<Identity> {
         match self.additional.last_mut() {
             Some(run) => run,
             None => &mut self.first,
         }
     }
 
-    fn push(&mut self, run: Run) {
+    fn push(&mut self, run: Run<Identity>) {
         self.additional.push(run);
     }
 
-    fn append(&mut self, later: Bucket) {
+    fn append(&mut self, later: Bucket<Identity>) {
         self.additional.push(later.first);
         self.additional.extend(later.additional);
     }
 
-    fn into_runs(self) -> impl Iterator<Item = Run> {
+    fn into_runs(self) -> impl Iterator<Item = Run<Identity>> {
         std::iter::once(self.first).chain(self.additional)
     }
 }
 
-/// An M4 aggregator over a fixed x-domain divided into equal columns.
-///
-/// A mergeable monoid: aggregates built over chunks of a series combine with
-/// [`M4::merge`] into exactly the state a single pass would have produced, provided
-/// chunks are merged in series order (first/last are scan-order concepts).
+/// Shared M4 mechanics, monomorphized by path identity. Ordinary series use the
+/// zero-sized `()` identity; categorical series pay for a `usize` only where the
+/// distinction is part of their topology.
 #[derive(Debug, Clone)]
-pub struct M4 {
+struct Aggregate<Identity> {
     domain: (f64, f64),
-    buckets: Vec<Option<Bucket>>,
+    buckets: Vec<Option<Bucket<Identity>>>,
     /// A gap after the last finite point makes the next run disconnected.
     pending_gap: bool,
 }
 
-impl M4 {
-    /// An empty aggregator over `domain`, one bucket per raster `column`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the domain is not finite, `columns` is zero, or the requested
-    /// allocation exceeds the defensive statistics budget. Use [`M4::try_new`]
-    /// for caller-controlled geometry.
-    pub fn new(domain: (f64, f64), columns: usize) -> M4 {
-        M4::try_new(domain, columns)
-            .expect("M4::new requires a finite domain and a bounded non-empty grid")
-    }
-
-    /// Fallible counterpart to [`M4::new`] for caller-controlled column counts.
-    pub fn try_new(domain: (f64, f64), columns: usize) -> crate::Result<M4> {
+impl<Identity: Copy + Eq> Aggregate<Identity> {
+    fn try_new(domain: (f64, f64), columns: usize) -> crate::Result<Self> {
         if !(domain.0.is_finite() && domain.1.is_finite()) {
             return Err(crate::Error::InvalidParameter {
                 detail: "M4 needs a finite domain",
@@ -139,34 +132,24 @@ impl M4 {
             .try_reserve_exact(columns)
             .map_err(|_| crate::Error::AllocationFailed { what: "M4 buckets" })?;
         buckets.resize(columns, None);
-        Ok(M4 {
+        Ok(Self {
             domain,
             buckets,
             pending_gap: false,
         })
     }
 
-    /// Accumulates one point. A non-finite `y` records a gap; points with a
-    /// non-finite `x` also record a gap, while finite out-of-domain x values are
-    /// ignored.
-    pub fn add(&mut self, x: f64, y: f64) {
+    fn add(&mut self, x: f64, y: f64, identity: Identity) {
         if !x.is_finite() {
             self.gap();
             return;
         }
         if let Some(index) = self.bucket_index(x) {
-            self.record(index, x, y);
+            self.record(index, x, y, identity);
         }
     }
 
-    /// Records `(x, y)` into bucket `index`. A non-finite `y` marks a gap there.
-    fn record(&mut self, index: usize, x: f64, y: f64) {
-        self.record_category(index, x, y, 0);
-    }
-
-    /// Records a point whose category is part of its path identity. A category
-    /// transition starts a new run even when both adjacent values are finite.
-    fn record_category(&mut self, index: usize, x: f64, y: f64, category: usize) {
+    fn record(&mut self, index: usize, x: f64, y: f64, identity: Identity) {
         if !y.is_finite() {
             self.gap();
             return;
@@ -174,16 +157,17 @@ impl M4 {
         let point = (x, y);
         let break_before = std::mem::take(&mut self.pending_gap);
         match &mut self.buckets[index] {
+            Some(bucket) if break_before => bucket.push(Run::new(point, true, identity)),
             Some(bucket) => {
-                if break_before || bucket.last_mut().category != category {
-                    bucket.push(Run::in_category(point, true, category));
+                let last = bucket.last_mut();
+                if last.identity == identity {
+                    last.add(point);
                 } else {
-                    bucket.last_mut().add(point);
+                    bucket.push(Run::new(point, true, identity));
                 }
             }
             None => {
-                self.buckets[index] =
-                    Some(Bucket::new(Run::in_category(point, break_before, category)));
+                self.buckets[index] = Some(Bucket::new(Run::new(point, break_before, identity)));
             }
         }
     }
@@ -192,13 +176,7 @@ impl M4 {
         self.pending_gap = true;
     }
 
-    /// Merges `later` into `self`, as if `later`'s points had been added after
-    /// `self`'s. Both sides must share the domain and column count.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the two aggregators have different domains or column counts.
-    pub fn merge(&mut self, later: &M4) {
+    fn merge(&mut self, later: &Self) {
         assert!(
             self.domain == later.domain && self.buckets.len() == later.buckets.len(),
             "M4::merge requires identical domains and column counts"
@@ -222,10 +200,14 @@ impl M4 {
                 Some(bucket) => {
                     let same_boundary_bucket =
                         Some(index) == self_last && Some(index) == later_first;
-                    if same_boundary_bucket && !theirs.first.break_before {
+                    let same_identity = bucket.last_mut().identity == theirs.first.identity;
+                    if same_boundary_bucket && !theirs.first.break_before && same_identity {
                         bucket.last_mut().merge(theirs.first);
                         bucket.additional.extend(theirs.additional);
                     } else {
+                        if same_boundary_bucket && !same_identity {
+                            theirs.first.break_before = true;
+                        }
                         bucket.append(theirs);
                     }
                 }
@@ -239,66 +221,11 @@ impl M4 {
         };
     }
 
-    /// Emits the aggregated series: up to four finite points per uninterrupted run
-    /// in each column, with a gap marker (`NaN`) before every disconnected run.
-    pub fn emit(self) -> (Vec<f64>, Vec<f64>) {
-        let (x, y, _) = self.emit_inner(false);
-        (x, y)
-    }
-
-    /// Emits category identity beside each point. Gap entries carry the following
-    /// run's category, though renderers deliberately ignore identity at a gap.
-    fn emit_categories(self) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
-        self.emit_inner(true)
-    }
-
-    fn emit_inner(self, include_categories: bool) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
-        // Append a point unless it duplicates the last one written (collapses the
-        // repeated first/min/max/last of a flat column into one).
-        fn push(
-            x: &mut Vec<f64>,
-            y: &mut Vec<f64>,
-            categories: &mut Vec<usize>,
-            include_categories: bool,
-            point: (f64, f64),
-            category: usize,
-        ) {
-            if x.last() != Some(&point.0) || y.last() != Some(&point.1) {
-                x.push(point.0);
-                y.push(point.1);
-                if include_categories {
-                    categories.push(category);
-                }
-            }
-        }
-        let capacity = self.buckets.len() * 4;
-        let mut x: Vec<f64> = Vec::with_capacity(capacity);
-        let mut y: Vec<f64> = Vec::with_capacity(capacity);
-        let mut categories = Vec::with_capacity(if include_categories { capacity } else { 0 });
-        for bucket in self.buckets.into_iter().flatten() {
-            for run in bucket.into_runs() {
-                if run.break_before && y.last().is_none_or(|value| !value.is_nan()) {
-                    x.push(f64::NAN);
-                    y.push(f64::NAN);
-                    if include_categories {
-                        categories.push(run.category);
-                    }
-                }
-                let mut points = [run.first, run.min, run.max, run.last];
-                points.sort_by(|a, b| a.0.total_cmp(&b.0));
-                for point in points {
-                    push(
-                        &mut x,
-                        &mut y,
-                        &mut categories,
-                        include_categories,
-                        point,
-                        run.category,
-                    );
-                }
-            }
-        }
-        (x, y, categories)
+    fn into_runs(self) -> impl Iterator<Item = Run<Identity>> {
+        self.buckets
+            .into_iter()
+            .flatten()
+            .flat_map(Bucket::into_runs)
     }
 
     fn bucket_index(&self, x: f64) -> Option<usize> {
@@ -312,6 +239,118 @@ impl M4 {
         let position = crate::numeric::inverse_lerp(lo, hi, x) * self.buckets.len() as f64;
         Some((position as usize).min(self.buckets.len() - 1))
     }
+}
+
+/// An M4 aggregator over a fixed x-domain divided into equal columns.
+///
+/// A mergeable monoid: aggregates built over chunks of a series combine with
+/// [`M4::merge`] into exactly the state a single pass would have produced, provided
+/// chunks are merged in series order (first/last are scan-order concepts).
+#[derive(Debug, Clone)]
+pub struct M4 {
+    aggregate: Aggregate<()>,
+}
+
+impl M4 {
+    /// An empty aggregator over `domain`, one bucket per raster `column`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the domain is not finite, `columns` is zero, or the requested
+    /// allocation exceeds the defensive statistics budget. Use [`M4::try_new`]
+    /// for caller-controlled geometry.
+    pub fn new(domain: (f64, f64), columns: usize) -> M4 {
+        M4::try_new(domain, columns)
+            .expect("M4::new requires a finite domain and a bounded non-empty grid")
+    }
+
+    /// Fallible counterpart to [`M4::new`] for caller-controlled column counts.
+    pub fn try_new(domain: (f64, f64), columns: usize) -> crate::Result<M4> {
+        Ok(M4 {
+            aggregate: Aggregate::try_new(domain, columns)?,
+        })
+    }
+
+    /// Accumulates one point. A non-finite `y` records a gap; points with a
+    /// non-finite `x` also record a gap, while finite out-of-domain x values are
+    /// ignored.
+    pub fn add(&mut self, x: f64, y: f64) {
+        self.aggregate.add(x, y, ());
+    }
+
+    /// Records `(x, y)` into bucket `index`. A non-finite `y` marks a gap there.
+    fn record(&mut self, index: usize, x: f64, y: f64) {
+        self.aggregate.record(index, x, y, ());
+    }
+
+    fn gap(&mut self) {
+        self.aggregate.gap();
+    }
+
+    /// Merges `later` into `self`, as if `later`'s points had been added after
+    /// `self`'s. Both sides must share the domain and column count.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the two aggregators have different domains or column counts.
+    pub fn merge(&mut self, later: &M4) {
+        self.aggregate.merge(&later.aggregate);
+    }
+
+    /// Emits the aggregated series: up to four finite points per uninterrupted run
+    /// in each column, with a gap marker (`NaN`) before every disconnected run.
+    pub fn emit(self) -> (Vec<f64>, Vec<f64>) {
+        emit(self.aggregate)
+    }
+}
+
+/// Appends a point unless it duplicates the last one written. Flat columns often
+/// repeat first/min/max/last, so this keeps the emitted representation compact.
+fn push_point(x: &mut Vec<f64>, y: &mut Vec<f64>, point: (f64, f64)) -> bool {
+    if x.last() == Some(&point.0) && y.last() == Some(&point.1) {
+        return false;
+    }
+    x.push(point.0);
+    y.push(point.1);
+    true
+}
+
+fn emit(aggregate: Aggregate<()>) -> (Vec<f64>, Vec<f64>) {
+    let capacity = aggregate.buckets.len() * 4;
+    let mut x = Vec::with_capacity(capacity);
+    let mut y = Vec::with_capacity(capacity);
+    for run in aggregate.into_runs() {
+        if run.break_before && y.last().is_none_or(|value: &f64| !value.is_nan()) {
+            x.push(f64::NAN);
+            y.push(f64::NAN);
+        }
+        for point in run.points() {
+            push_point(&mut x, &mut y, point);
+        }
+    }
+    (x, y)
+}
+
+/// Emits category identity beside each point. Gap entries carry the following
+/// run's category, though renderers deliberately ignore identity at a gap.
+fn emit_categories(aggregate: Aggregate<usize>) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
+    let capacity = aggregate.buckets.len() * 4;
+    let mut x = Vec::with_capacity(capacity);
+    let mut y = Vec::with_capacity(capacity);
+    let mut categories = Vec::with_capacity(capacity);
+    for run in aggregate.into_runs() {
+        if run.break_before && y.last().is_none_or(|value: &f64| !value.is_nan()) {
+            x.push(f64::NAN);
+            y.push(f64::NAN);
+            categories.push(run.identity);
+        }
+        for point in run.points() {
+            if push_point(&mut x, &mut y, point) {
+                categories.push(run.identity);
+            }
+        }
+    }
+    (x, y, categories)
 }
 
 /// Downsamples an x-sorted series to at most four finite points per uninterrupted
@@ -422,7 +461,7 @@ pub(crate) fn m4_mapped_categories(
     if columns == 0 || columns > super::MAX_STAT_ELEMENTS {
         return None;
     }
-    let mut aggregate = M4::try_new((0.0, 1.0), columns).ok()?;
+    let mut aggregate: Aggregate<usize> = Aggregate::try_new((0.0, 1.0), columns).ok()?;
     let mut previous_x = f64::NEG_INFINITY;
     let mut previous_category = None;
     let length = x
@@ -459,10 +498,10 @@ pub(crate) fn m4_mapped_categories(
         }
         let column = position.round();
         if (0.0..columns as f64).contains(&column) {
-            aggregate.record_category(column as usize, xv, yv, category);
+            aggregate.record(column as usize, xv, yv, category);
         }
     }
-    Some(aggregate.emit_categories())
+    Some(emit_categories(aggregate))
 }
 
 #[cfg(test)]
