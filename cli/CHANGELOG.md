@@ -5,6 +5,19 @@ malevich API.
 
 ## Unreleased
 
+## 0.2.1 — 2026-08-24
+
+- Numeric `--cols` and `--by` selectors now fail when they are outside the input
+  schema instead of silently producing empty data; oversized indices get a distinct
+  error, and diagnostics include the valid range.
+- `--time-x` rejects impossible civil dates and times, including invalid leap days,
+  out-of-range clock fields, and offsets that cross the supported timestamp range.
+- Rendering and `--emit-code` now consume the same prepared recipe and shared parsed
+  channels. This removes duplicate chart interpretation, keeps emitted programs in
+  lockstep with rendered plots, and avoids copying a shared x column for every series.
+- Checked library preset failures propagate as normal `kaz` errors instead of
+  reaching convenience assertions.
+
 ## 0.2.0 — 2026-08-15
 
 - `--emit-code` prints the equivalent malevich Rust program instead of the

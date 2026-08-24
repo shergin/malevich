@@ -5,6 +5,42 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.17.0 (The Carpenter) — 2026-08-24
+
+A code-quality release: invalid retained data now reaches one checked boundary,
+the hottest statistical and rendering paths carry less incidental structure, and
+the cell, pixel, and CLI front ends prepare a chart once. The public API remains
+compatible; new checked twins make the remaining convenience assertions avoidable.
+
+- `Cells::try_matrix` and `Cells::try_extents` expose typed failures for invalid
+  matrix geometry and extents. Configured histogram, heatmap, and 2D-histogram
+  presets use those checked paths end to end, while their infallible conveniences
+  still degrade safely for trusted literals.
+- Finite-range arithmetic is overflow-safe, calendar tick generation has an
+  explicit work budget, and retained mark values share one validity policy. These
+  close hangs and pathological allocations around enormous finite domains without
+  changing ordinary axes or plots.
+- M4 downsampling preserves gaps as path topology, including gaps between buckets
+  and across merged chunks. Its streaming state, tests, and merge contract now say
+  exactly when ordered partial reductions are equivalent to one pass. The ordinary
+  affine map is selected once and each bucket updates its current run directly;
+  ten million points now render in 31.9 ms on the recorded machine, 5.9% below 1.16.
+- Reducers compile once into execution state. Sum, count, mean, min, and max stream
+  in constant space; rolling sum and mean use their specialized sliding state;
+  percentile-like reducers retain only the samples they require. Aggregation keys
+  are interned in stable first-seen order, and KDE reuses moments and sample storage.
+- Categorical channels are interned once per mark and rendered directly. They no
+  longer expand into one masked layer per category, while stable legend order,
+  palette assignment, marker cycling, line transitions, and category-aware M4
+  retain the prior output contract.
+- Cell and device-pixel rendering share one prepared plot. The CLI likewise shares
+  one typed recipe and one set of parsed series channels between rendering and
+  `--emit-code`, removing duplicate resolution and keeping both outputs in lockstep.
+- Invalid civil timestamps and out-of-range numeric column selectors are rejected
+  with actionable CLI errors. CI now builds and tests both demo crates, terminal
+  dependency versions are aligned, and the public failure and statistical execution
+  models are documented explicitly.
+
 ## 1.16.0 (Red Square) — 2026-08-15
 
 Color speaks data. One categorical channel, a curated color vocabulary, a

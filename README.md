@@ -189,7 +189,7 @@ iTerm2) on the right, from the same plot values:
   card colors are not theme roles yet. In an Evcxr notebook:
 
   ```rust
-  :dep malevich = { version = "1.16", features = ["evcxr"] }
+  :dep malevich = { version = "1.17", features = ["evcxr"] }
   use malevich::{Line, Plot};
 
   let values = [1.0, 5.0, 2.0, 8.0];

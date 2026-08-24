@@ -996,7 +996,7 @@ dependencies = [
 
 [[package]]
 name = "malevich"
-version = "1.16.0"
+version = "1.17.0"
 dependencies = [
  "criterion",
  "crossterm",
@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "malevich-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "lexopt",
  "libc",

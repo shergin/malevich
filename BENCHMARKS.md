@@ -5,6 +5,37 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
+## 2026-08-24 baseline (1.17.0)
+
+- Revision: `7bbc202`
+- Machine, OS, compiler, profile: as in the 2026-08-07 baseline below
+
+| Measurement | Estimate | 95% interval |
+| --- | ---: | ---: |
+| `render/line_10k_80x20` | 69.182 µs | 68.837–69.594 µs |
+| `render/line_10m_80x20` | 31.878 ms | 31.752–32.034 ms |
+| `stat/fit_1m` | 5.2392 ms | 5.2163–5.2711 ms |
+| `render/color_by_100k/5_categories` | 2.0587 ms | 2.0502–2.0685 ms |
+| `render/color_by_100k/100000_categories` | 5.3453 ms | 5.3271–5.3665 ms |
+
+```sh
+cargo bench --bench render -- render/line_10k_80x20
+cargo bench --bench render -- render/line_10m_80x20
+cargo bench --bench render -- stat/fit_1m
+cargo bench --bench render -- render/color_by_100k/5_categories
+cargo bench --bench render -- render/color_by_100k/100000_categories
+```
+
+Against 1.16.0 on the same machine, the 10k render is 4.1% higher after making
+gaps explicit path topology; the ten-million-point render is 5.9% lower after
+selecting the ordinary affine map once and keeping each M4 bucket's current run
+directly addressable. The fit result is within 0.6% of its prior estimate.
+
+The categorical rows are the new structural fence. Both render the same 100,000
+points; the second also carries 100,000 distinct labels and identities. Runtime
+therefore grows with input plus legend size, not with input × category count as the
+old masked-layer expansion did.
+
 ## 2026-08-15 baseline (1.16.0)
 
 - Revision: `3b17b0d`
@@ -82,9 +113,10 @@ The pixel-exact raw-versus-M4 oracle and all rendering snapshots remained identi
 
 ## Allocation contract
 
-The same revision, optimized on the machine above, measured the 10k render at **183
-allocations and 55,908 allocated bytes**, producing 2,966 output bytes. Rust 1.88
-reported the same figures:
+At revision `7bbc202`, optimized on the machine above, the 10k render measured **183
+allocations and 58,388 allocated bytes**, producing 2,966 output bytes. A 100k-point
+plot with one unique category per point measured **67 allocations and 34,141 bytes**,
+producing 1,791 output bytes. Rust 1.88 is the CI authority for the ceilings:
 
 ```sh
 cargo bench --bench alloc
@@ -96,11 +128,11 @@ headroom for compiler and allocator details while catching structural regression
 such as an allocation per input point or a new large intermediate buffer. CI does not
 gate wall-clock time on shared runners.
 
-The two-color cell renderer added independent background color and a compact shade
-state to every surface cell. That intentionally adds 6,400 bytes to this 80×20
-render versus `4962935`, without adding allocations; a dedicated plain-text encoder
-path keeps the end-to-end line timing at the earlier baseline. The unchanged 64 KiB
-ceiling still catches a larger per-cell representation.
+The line measurement includes gap-aware M4 state and the two-color cell surface. The
+categorical measurement proves that rendering does not allocate per point or per
+category: labels and identities are retained when the mark is built, while render
+preparation borrows them. The unchanged 64 KiB ceiling still catches a larger
+per-cell representation or a manufactured intermediate.
 
 To update this record, benchmark an otherwise idle machine, record the revision,
 hardware, OS, compiler, commands, point estimates, and confidence intervals, then
