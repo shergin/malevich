@@ -66,36 +66,92 @@ impl<Identity: Copy + Eq> Run<Identity> {
 /// gaps divide that column into several runs.
 #[derive(Debug, Clone)]
 struct Bucket<Identity> {
-    first: Run<Identity>,
-    additional: Vec<Run<Identity>>,
+    completed: Vec<Run<Identity>>,
+    current: Run<Identity>,
 }
 
 impl<Identity: Copy + Eq> Bucket<Identity> {
     fn new(run: Run<Identity>) -> Self {
         Bucket {
-            first: run,
-            additional: Vec::new(),
+            completed: Vec::new(),
+            current: run,
         }
     }
 
     fn last_mut(&mut self) -> &mut Run<Identity> {
-        match self.additional.last_mut() {
+        &mut self.current
+    }
+
+    fn first(&self) -> &Run<Identity> {
+        match self.completed.first() {
             Some(run) => run,
-            None => &mut self.first,
+            None => &self.current,
+        }
+    }
+
+    fn first_mut(&mut self) -> &mut Run<Identity> {
+        match self.completed.first_mut() {
+            Some(run) => run,
+            None => &mut self.current,
         }
     }
 
     fn push(&mut self, run: Run<Identity>) {
-        self.additional.push(run);
+        let completed = std::mem::replace(&mut self.current, run);
+        self.completed.push(completed);
     }
 
-    fn append(&mut self, later: Bucket<Identity>) {
-        self.additional.push(later.first);
-        self.additional.extend(later.additional);
+    fn append(&mut self, mut later: Bucket<Identity>) {
+        let completed = std::mem::replace(&mut self.current, later.current);
+        self.completed.push(completed);
+        self.completed.append(&mut later.completed);
+    }
+
+    fn merge_first_and_append(&mut self, later: Bucket<Identity>) {
+        let mut runs = later.into_runs();
+        self.current
+            .merge(runs.next().expect("a bucket always contains one run"));
+        for run in runs {
+            self.push(run);
+        }
     }
 
     fn into_runs(self) -> impl Iterator<Item = Run<Identity>> {
-        std::iter::once(self.first).chain(self.additional)
+        self.completed
+            .into_iter()
+            .chain(std::iter::once(self.current))
+    }
+}
+
+/// A domain normalizer chosen once when the aggregate is built. Values reach it
+/// only after the inclusive domain check, so a finite span makes the direct
+/// subtraction safe; opposite-sign extreme endpoints use scaled coordinates.
+#[derive(Debug, Clone, Copy)]
+enum DomainMap {
+    Direct { start: f64, span: f64 },
+    Scaled { scale: f64, start: f64, span: f64 },
+}
+
+impl DomainMap {
+    fn new((start, end): (f64, f64)) -> Self {
+        let span = end - start;
+        if span.is_finite() {
+            return Self::Direct { start, span };
+        }
+        let scale = start.abs().max(end.abs());
+        let scaled_start = start / scale;
+        Self::Scaled {
+            scale,
+            start: scaled_start,
+            span: end / scale - scaled_start,
+        }
+    }
+
+    fn normalize(self, value: f64) -> f64 {
+        match self {
+            DomainMap::Direct { start, span } => (value - start) / span,
+            DomainMap::Scaled { scale, start, span } => (value / scale - start) / span,
+        }
     }
 }
 
@@ -105,6 +161,7 @@ impl<Identity: Copy + Eq> Bucket<Identity> {
 #[derive(Debug, Clone)]
 struct Aggregate<Identity> {
     domain: (f64, f64),
+    domain_map: DomainMap,
     buckets: Vec<Option<Bucket<Identity>>>,
     /// A gap after the last finite point makes the next run disconnected.
     pending_gap: bool,
@@ -134,6 +191,7 @@ impl<Identity: Copy + Eq> Aggregate<Identity> {
         buckets.resize(columns, None);
         Ok(Self {
             domain,
+            domain_map: DomainMap::new(domain),
             buckets,
             pending_gap: false,
         })
@@ -194,19 +252,18 @@ impl<Identity: Copy + Eq> Aggregate<Identity> {
             let Some(theirs) = theirs else { continue };
             let mut theirs = theirs.clone();
             if Some(index) == later_first && boundary_gap {
-                theirs.first.break_before = true;
+                theirs.first_mut().break_before = true;
             }
             match mine {
                 Some(bucket) => {
                     let same_boundary_bucket =
                         Some(index) == self_last && Some(index) == later_first;
-                    let same_identity = bucket.last_mut().identity == theirs.first.identity;
-                    if same_boundary_bucket && !theirs.first.break_before && same_identity {
-                        bucket.last_mut().merge(theirs.first);
-                        bucket.additional.extend(theirs.additional);
+                    let same_identity = bucket.last_mut().identity == theirs.first().identity;
+                    if same_boundary_bucket && !theirs.first().break_before && same_identity {
+                        bucket.merge_first_and_append(theirs);
                     } else {
                         if same_boundary_bucket && !same_identity {
-                            theirs.first.break_before = true;
+                            theirs.first_mut().break_before = true;
                         }
                         bucket.append(theirs);
                     }
@@ -236,7 +293,7 @@ impl<Identity: Copy + Eq> Aggregate<Identity> {
         if hi == lo {
             return Some(0);
         }
-        let position = crate::numeric::inverse_lerp(lo, hi, x) * self.buckets.len() as f64;
+        let position = self.domain_map.normalize(x) * self.buckets.len() as f64;
         Some((position as usize).min(self.buckets.len() - 1))
     }
 }

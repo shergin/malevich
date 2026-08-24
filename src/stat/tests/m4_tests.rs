@@ -55,6 +55,24 @@ fn each_column_keeps_its_extremes_and_endpoints() {
 }
 
 #[test]
+fn extreme_domains_normalize_without_overflow() {
+    let mut aggregate = M4::new((-f64::MAX, f64::MAX), 2);
+    for (x, y) in [(-f64::MAX, -1.0), (0.0, 0.0), (f64::MAX, 1.0)] {
+        aggregate.add(x, y);
+    }
+    let (x, y) = aggregate.emit();
+    assert_eq!(x, [-f64::MAX, 0.0, f64::MAX]);
+    assert_eq!(y, [-1.0, 0.0, 1.0]);
+
+    let lo = f64::from_bits(1);
+    let hi = f64::from_bits(3);
+    let mut tiny = M4::new((lo, hi), 2);
+    tiny.add(lo, 1.0);
+    tiny.add(hi, 3.0);
+    assert_eq!(tiny.emit(), (vec![lo, hi], vec![1.0, 3.0]));
+}
+
+#[test]
 fn caller_selected_column_count_is_bounded() {
     assert!(matches!(
         M4::try_new((0.0, 1.0), usize::MAX),
