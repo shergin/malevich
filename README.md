@@ -70,6 +70,37 @@ m 200 ┤          ▌           ▐███████▌
 ```
 <!-- /generated -->
 
+And the ML set: attention maps and confusion matrices on token-labeled band
+axes, decision boundaries as categorical cells, images as rgb cells, loss
+landscapes with optimizer trajectories — every one a grammar composition, none
+a preset. A logarithmic colormap keeps weights spanning decades apart, and the
+causal mask's zeros render as honest gaps:
+
+<!-- generated:attention -->
+```text
+                    attention, layer 7 head 3
+        │  █████                                            █
+    The ┤  █████                                            █
+        │  █████  █████                                     █
+  robot ┤  █████  █████                                     █ 10⁻¹
+        │  █████  █████                                     ▓
+q   ate ┤  ▓▓▓▓▓  █████ █████                               ▓
+u       │  ▓▓▓▓▓  █████ █████                               ▓
+e       │  ▓▓▓▓▓  ▓▓▓▓▓ █████  █████                        ▓
+r   the ┤  ▓▓▓▓▓  ▓▓▓▓▓ █████  █████                        ▒
+y       │  ▒▒▒▒▒  ▓▓▓▓▓ ▓▓▓▓▓  █████  █████                 ▒ 10⁻³
+    red ┤  ▒▒▒▒▒  ▓▓▓▓▓ ▓▓▓▓▓  █████  █████                 ▒
+        │  ░░░░░  ▒▒▒▒▒ ▓▓▓▓▓  ▓▓▓▓▓  █████  █████          ▒
+  apple ┤  ░░░░░  ▒▒▒▒▒ ▓▓▓▓▓  ▓▓▓▓▓  █████  █████          ░
+        │  ░░░░░  █████ ▒▒▒▒▒  ▒▒▒▒▒  ▓▓▓▓▓  █████  █████   ░
+      . ┤  ░░░░░  █████ ▒▒▒▒▒  ▒▒▒▒▒  ▓▓▓▓▓  █████  █████   ░
+        │                                                   ░ 10⁻⁵
+        └──────────────────────────────────────────────────
+            The   robot   ate    the    red  apple    .
+                                 key
+```
+<!-- /generated -->
+
 And the classic asciichart look, one glyph per column, whenever you want charts
 this quiet — with real axes underneath, which the original never had:
 
@@ -113,8 +144,9 @@ iTerm2) on the right, from the same plot values:
 
 ## Why malevich
 
-- **A small grammar, not a chart zoo.** Eight marks (line, points, bars, area, cells,
-  range, rule, text) × a stats layer × shared scales compose into the whole basic
+- **A small grammar, not a chart zoo.** Eight marks (line, points, bars, area,
+  cells — value grids, rgb images, or categorical class regions — range, rule,
+  text) × a stats layer × shared scales compose into the whole basic
   chart catalog. Every preset — `line`, `scatter`, `bar`, `hist`, `stairs`, `ecdf`,
   `heatmap`, `hist2d`, `density`, `box_plot`, `violin`, `error_bars`, `trend` — is
   proven bit-identical to its grammar expansion in tests. **Color speaks data**: a
@@ -129,8 +161,10 @@ iTerm2) on the right, from the same plot values:
   trend lines with R² and a confidence band (`trend`; `stat::Fit` is a mergeable
   online accumulator, so it fits streams and parallel reduction trees),
   ECDFs with an optional DKW confidence band, symmetric and asymmetric error
-  bars, 2D densities (with a colorbar legending the value scale) — the charts
-  science and ML actually need. One `Reducer` vocabulary — count, sum, mean,
+  bars, 2D densities (with a colorbar legending the value scale), ROC curves
+  with their area (`stat::roc`, `stat::auc`), and debiased exponential
+  smoothing (`stat::ewma`, TensorBoard's) — the charts science and ML
+  actually need. One `Reducer` vocabulary — count, sum, mean,
   median, min, max, and type-7 percentiles, the same estimator the box plot
   uses — reduces groups, rolling windows, and histogram bins alike, so a
   rolling p95 or a binned median is one call. Defaults stay one-call; configurable
@@ -141,21 +175,31 @@ iTerm2) on the right, from the same plot values:
   (`Colormap::VIRIDIS`, `MAGMA`, `CIVIDIS`, `GREYS`) and diverging
   (`RED_BLUE`, `PURPLE_ORANGE`): center one on a data value
   (`Colormap::RED_BLUE.centered_at(0.0)`) and correlation or log-fold-change
-  renders honestly, opposite signs in opposite colors and a symmetric colorbar.
+  renders honestly, opposite signs in opposite colors and a symmetric colorbar;
+  make one logarithmic (`Colormap::MAGMA.log()`) and values spanning decades —
+  attention weights, spectral power — stay distinguishable, zeros as gaps,
+  decade ticks on the colorbar.
 - **Millions of points, measured.** Large line layers are aggregated by M4 —
   min/max/first/last per raster column, bucketed by the column each point renders
   into, so the reduction is *pixel-identical* to drawing every point. Ten million
   points render end to end in tens of milliseconds single-threaded on the
   [dated baseline](BENCHMARKS.md); `cargo bench --bench render` carries the complete
-  suite. Online accumulators (`Moments`, `Fit`, `Bins`, M4) expose their merge laws;
+  suite. Cells grids denser than the raster reduce the same way lines do: every
+  screen bucket owns the cells whose centers fall inside it and shows a
+  `Reducer` over all of them — the mean box filter by default, `Max` to keep
+  the sparse spikes sampling silently drops — 4.19 million cells in ~44 ms on
+  the same baseline. Online accumulators (`Moments`, `Fit`, `Bins`, M4)
+  expose their merge laws;
   reducers and batch transforms keep distinct execution contracts instead of
   pretending every statistic has the same algebra.
 - **Axes that are actually good.** Extended-Wilkinson tick placement (Talbot, Lin,
   Hanrahan 2010), exact-decimal labels that parse back to their values, one shared SI
   prefix per axis (`2.5M`, `100µ`), log axes with superscript decades, calendar time
   axes with multi-scale labels (`14:05`, `Aug 2`, `2027`), typed axis specs
-  (`Scale::{Auto, Linear, Log, Time, Bands}`), axis titles, band scales with fitted
-  category labels, collision-aware layout that sheds furniture instead of failing.
+  (`Scale::{Auto, Linear, Log, Time, Bands}`), axis titles, band scales on either
+  axis with fitted category labels — on y they label matrix rows, so confusion
+  matrices and attention maps read in matrix order — and collision-aware layout
+  that sheds furniture instead of failing.
 - **Renders everywhere, honestly.** ASCII is the guaranteed fallback; UTF-8 auto
   detection conservatively uses old block-element quadrants. Braille, sextants, and
   Unicode 16 octants remain explicit high-density choices for fonts that cover them
