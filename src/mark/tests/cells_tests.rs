@@ -49,3 +49,44 @@ fn reversed_extents_remain_an_explicit_axis_flip() {
     let cells = Cells::matrix(2, &[1.0, 2.0][..]).extents((2.0, 0.0), (1.0, 0.0));
     assert_eq!(cells.extents, Some(((2.0, 0.0), (1.0, 0.0))));
 }
+
+#[test]
+#[should_panic(expected = "divide the pixel count")]
+fn ragged_rgb_grids_panic() {
+    Cells::rgb(3, &[(0u8, 0, 0), (1, 1, 1)][..]);
+}
+
+#[test]
+fn checked_rgb_shapes_return_typed_errors() {
+    assert!(matches!(
+        Cells::try_rgb(0, &[(0u8, 0, 0)][..]),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    assert!(matches!(
+        Cells::try_rgb(2, &[(0u8, 0, 0)][..]),
+        Err(crate::Error::NonRectangular { .. })
+    ));
+    let image = Cells::try_rgb(2, &[(0u8, 0, 0), (9, 9, 9)][..]).expect("one row");
+    assert!(image.validate().is_ok());
+    assert_eq!(image.rows(), 1);
+}
+
+#[test]
+fn a_grid_with_both_channels_fails_validation() {
+    // Unreachable through the constructors; only deserialization can build it.
+    let mut cells = Cells::matrix(1, &[1.0][..]);
+    cells.rgb = Some(vec![(0u8, 0, 0)].into());
+    assert!(matches!(
+        cells.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+}
+
+#[test]
+fn rgb_grids_detach_into_owned_pixels() {
+    let pixels = [(1u8, 2, 3), (4, 5, 6)];
+    let owned = Cells::rgb(2, &pixels[..]).into_owned();
+    assert_eq!(owned.rows(), 1);
+    let debug = format!("{owned:?}");
+    assert!(debug.contains("columns: 2"));
+}

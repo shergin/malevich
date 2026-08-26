@@ -30,7 +30,8 @@ subpixels or as box-drawing corners via `LineStyle`),
 `mark::Points`, `mark::Bars` (bands or numeric spans, zero-baseline), `mark::Area`
 (baseline fills and bands), `mark::Rule` (reference lines), and `mark::Text`
 (annotations at data coordinates), `mark::Cells` (value grids as shade ramp plus
-colormap), and `mark::Range` (intervals with optional body and marker channels —
+colormap, or direct-color images via `Cells::rgb` with a luma shade fallback),
+and `mark::Range` (intervals with optional body and marker channels —
 error bars, boxes, event ticks), joined under the closed `mark::Mark` enum. The
 family is complete.
 

@@ -172,6 +172,7 @@ fn bands_cells_and_log_scales_round_trip_as_valid_specs() {
             .layer(Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]).extents((1.0, 100.0), (1.0, 1000.0)))
             .x_scale(Scale::Log)
             .y_scale(Scale::Log),
+        Plot::new().layer(Cells::rgb(2, vec![(0u8, 0, 0), (255, 255, 255)])),
     ];
     for plot in plots {
         assert!(plot.validate().is_ok());
@@ -180,6 +181,11 @@ fn bands_cells_and_log_scales_round_trip_as_valid_specs() {
         assert!(decoded.validate().is_ok());
         assert_eq!(plot.render(&frame()), decoded.render(&frame()));
     }
+
+    // Value grids encode exactly as before the rgb channel existed.
+    let matrix = Plot::new().layer(Cells::matrix(1, &[1.0][..]));
+    let encoded = serde_json::to_string(&matrix).expect("serializes");
+    assert!(!encoded.contains("rgb"), "spurious field: {encoded}");
 }
 
 #[test]

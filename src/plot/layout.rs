@@ -22,9 +22,13 @@ fn cells_colorbar(
     layers: &[ResolvedLayer<'_>],
     plot_rows: usize,
 ) -> Option<(Colormap, f64, f64, Ticks, usize)> {
+    // An rgb grid has no value scale to legend, so only value cells qualify.
     let (values, colormap) = layers.iter().find_map(|layer| match layer {
         ResolvedLayer::Cells {
-            values, colormap, ..
+            values,
+            colormap,
+            rgb: None,
+            ..
         } => Some((*values, colormap.clone())),
         _ => None,
     })?;

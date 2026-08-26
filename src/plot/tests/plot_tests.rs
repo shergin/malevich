@@ -1055,6 +1055,42 @@ fn log_colormaps_spread_decades_and_gap_zero() {
     assert_eq!(plot.render(&Frame::plain(26, 8)), LOG_DECADES);
 }
 
+/// An rgb Cells grid draws direct colors; in plain output each pixel falls
+/// back to its luma on the shade ramp — black `░`, white `█`.
+const RGB_LUMA: &str =
+    "3 ┤▓▓▓▓▓▓▓▓\n  │▒▒▒▒▒▒▒▒\n  │░░░░▓▓▓▓\n0 ┤░░░░████\n  └┬───────┬\n   0       2";
+
+#[test]
+fn rgb_cells_render_direct_colors_with_luma_fallback() {
+    let pixels = [
+        (0u8, 0, 0),
+        (255, 255, 255),
+        (255, 0, 0),
+        (0, 0, 255),
+        (0, 255, 0),
+        (128, 128, 128),
+    ];
+    let plot = Plot::new().layer(crate::mark::Cells::rgb(2, &pixels[..]));
+    assert!(plot.validate().is_ok());
+    assert_eq!(plot.render(&Frame::plain(12, 6)), RGB_LUMA);
+
+    let mut colored = Frame::plain(12, 6);
+    colored.color = crate::ColorMode::TrueColor;
+    let ansi = plot.render(&colored);
+    assert!(ansi.contains("255;0;0"), "red pixel lost: {ansi:?}");
+    assert!(ansi.contains("0;0;255"), "blue pixel lost: {ansi:?}");
+
+    // No value scale: requesting a colorbar reserves nothing.
+    let with_bar = Plot::new()
+        .layer(crate::mark::Cells::rgb(2, &pixels[..]))
+        .colorbar();
+    assert_eq!(
+        with_bar.render(&Frame::plain(12, 6)),
+        plot.render(&Frame::plain(12, 6)),
+        "an rgb grid has no value range for a colorbar to legend"
+    );
+}
+
 /// Every escape in ANSI output must be a complete SGR sequence the encoder
 /// wrote itself; any other control character is an injection leak.
 fn assert_only_sgr_escapes(output: &str) {

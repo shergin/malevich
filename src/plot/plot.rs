@@ -409,7 +409,7 @@ impl<'a> Plot<'a> {
                     }
                 }
                 Mark::Cells(cells) => {
-                    let rows = cells.values.len() / cells.columns;
+                    let rows = cells.rows();
                     // On a band axis the grid index is the band index, so the
                     // counts must agree and data-coordinate extents cannot apply.
                     if categorical_x {

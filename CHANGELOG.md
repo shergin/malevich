@@ -5,6 +5,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `Cells::rgb` draws a grid of direct colors — an image. Raw row-major pixel
+  buffers only (decoding files stays the host's job), no colormap and no
+  colorbar, honest quantization down the color ladder, and in plain output
+  each pixel falls back to its luma on the shade ramp so images survive a
+  pipe. With the `pixel` feature the grid blits at device resolution. The
+  serde encoding is additive; value grids encode exactly as before. Gallery
+  gains `filters`, an AlexNet-style Gabor bank rendered as `Cells::rgb`
+  small multiples.
 - `Colormap::log()` makes any ramp logarithmic: equal color steps for equal
   factors, so attention weights, gradient magnitudes, and spectral power that
   span decades stay distinguishable instead of collapsing into the low end of

@@ -98,6 +98,12 @@ const GALLERY: &[(&str, &str)] = &[
          zeros rendered as honest gaps — with decade ticks on the colorbar.",
     ),
     (
+        "filters",
+        "Convolution filters as images: a Gabor bank with color opponency \
+         through Cells::rgb — direct colors, no colormap, and a luma shade \
+         ramp when the output is a plain pipe.",
+    ),
+    (
         "density2d",
         "A 2D histogram: point density on a grid, empty bins honestly blank.",
     ),

@@ -218,6 +218,7 @@ pub(crate) enum ResolvedLayer<'p> {
         values: &'p [f64],
         extents: Option<((f64, f64), (f64, f64))>,
         colormap: Colormap,
+        rgb: Option<&'p [(u8, u8, u8)]>,
     },
     Range {
         x: Coordinates<'p>,
@@ -322,10 +323,14 @@ impl ResolvedLayer<'_> {
                 columns,
                 values,
                 extents,
+                rgb,
                 ..
             } => Some(match extents {
                 Some((_, y)) => *y,
-                None => (0.0, (values.len() / (*columns).max(1)) as f64),
+                None => {
+                    let count = rgb.map_or(values.len(), <[_]>::len);
+                    (0.0, (count / (*columns).max(1)) as f64)
+                }
             }),
             ResolvedLayer::Range {
                 low,
@@ -601,6 +606,7 @@ pub(crate) fn resolve<'p>(
                 values: cells.values.as_slice(),
                 extents: cells.extents,
                 colormap: cells.colormap.clone(),
+                rgb: cells.rgb.as_deref(),
             },
             Mark::Range(range) => {
                 let (x, bands) = match &range.placement {

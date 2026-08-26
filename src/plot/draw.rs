@@ -103,11 +103,13 @@ pub(crate) fn layers<C: Canvas>(
                 values,
                 extents,
                 colormap,
+                rgb,
             } => {
                 draw_cells(
                     surface,
                     *columns,
                     values,
+                    *rgb,
                     *extents,
                     colormap.clone(),
                     x_scale,
@@ -500,6 +502,9 @@ fn draw_ranges<C: Canvas>(
 /// plot area, the nearest grid sample fills colored by the colormap — one cell per
 /// patch on glyph targets, one pixel per patch on pixel targets. Gaps stay blank.
 ///
+/// An rgb grid carries its colors directly: no colormap, and the patch intensity
+/// is the pixel's luma, so plain output shows the image on the shade ramp.
+///
 /// On a band axis the grid index is the band containing the patch — cell k fills
 /// band k exactly, top-down on y, and the padding between bands stays blank — so
 /// a labeled matrix reads as discrete categories, like the labels say.
@@ -508,6 +513,7 @@ fn draw_cells<C: Canvas>(
     surface: &mut C,
     columns: usize,
     values: &[f64],
+    rgb: Option<&[(u8, u8, u8)]>,
     extents: Option<((f64, f64), (f64, f64))>,
     colormap: Colormap,
     x_scale: &Map,
@@ -518,19 +524,27 @@ fn draw_cells<C: Canvas>(
 ) {
     let (px, py) = density;
     let (x_band, y_band) = bands;
-    let rows = values.len() / columns.max(1);
+    let count = rgb.map_or(values.len(), <[_]>::len);
+    let rows = count / columns.max(1);
     if rows == 0 {
         return;
     }
     // A log ramp positions by decade over the positive values; everything at
-    // or below zero is a gap and must not stretch the ramp.
-    let observed = if colormap.is_log() {
-        extent_positive(values)
-    } else {
-        extent(values)
-    };
-    let Some((low, high)) = observed else {
-        return;
+    // or below zero is a gap and must not stretch the ramp. An rgb grid has no
+    // value scale at all.
+    let range = match rgb {
+        Some(_) => None,
+        None => {
+            let observed = if colormap.is_log() {
+                extent_positive(values)
+            } else {
+                extent(values)
+            };
+            let Some(observed) = observed else {
+                return;
+            };
+            Some(observed)
+        }
     };
     let ((x0, x1), (y0, y1)) = extents.unwrap_or(((0.0, columns as f64), (0.0, rows as f64)));
     let (samples_x, samples_y) = surface.patch_density();
@@ -570,6 +584,11 @@ fn draw_cells<C: Canvas>(
                         row as usize
                     }
                 };
+                if let Some(pixels) = rgb {
+                    let (r, g, b) = pixels[row * columns + column];
+                    return Some((luma(r, g, b), Color::Rgb(r, g, b)));
+                }
+                let (low, high) = range?;
                 let value = values[row * columns + column];
                 if !value.is_finite() {
                     return None;
@@ -583,6 +602,12 @@ fn draw_cells<C: Canvas>(
             surface.patch(unit_col, unit_row, rect, sample);
         }
     }
+}
+
+/// Rec. 709 luma of a gamma-encoded pixel, normalized to `[0, 1]` — the shade
+/// an rgb cell shows where color is unavailable.
+fn luma(r: u8, g: u8, b: u8) -> f64 {
+    (0.2126 * f64::from(r) + 0.7152 * f64::from(g) + 0.0722 * f64::from(b)) / 255.0
 }
 
 /// Inverts a scale at a subpixel position, returning the data value if it lands
