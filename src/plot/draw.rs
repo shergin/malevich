@@ -10,7 +10,7 @@ use crate::mark::{Orientation, Placement};
 use crate::plot::layout::{Layout, Map};
 use crate::plot::resolve::{ColorChannel, Coordinates, Kind, ResolvedLayer, extent};
 use crate::render::{Canvas, Charset, Color, PlotRect, PointShape};
-use crate::scale::Colormap;
+use crate::scale::{Band, Colormap};
 
 /// Draws every resolved layer, in order, through the shared scales.
 pub(crate) fn layers<C: Canvas>(
@@ -110,6 +110,7 @@ pub(crate) fn layers<C: Canvas>(
                     colormap.clone(),
                     x_scale,
                     y_scale,
+                    (band.as_ref(), layout.y_band.as_ref()),
                     rect,
                     (px, py),
                 );
@@ -496,6 +497,10 @@ fn draw_ranges<C: Canvas>(
 /// Draws one cells layer: for every patch of the canvas's sampling grid inside the
 /// plot area, the nearest grid sample fills colored by the colormap — one cell per
 /// patch on glyph targets, one pixel per patch on pixel targets. Gaps stay blank.
+///
+/// On a band axis the grid index is the band containing the patch — cell k fills
+/// band k exactly, top-down on y, and the padding between bands stays blank — so
+/// a labeled matrix reads as discrete categories, like the labels say.
 #[allow(clippy::too_many_arguments)]
 fn draw_cells<C: Canvas>(
     surface: &mut C,
@@ -505,10 +510,12 @@ fn draw_cells<C: Canvas>(
     colormap: Colormap,
     x_scale: &Map,
     y_scale: &Map,
+    bands: (Option<&Band>, Option<&Band>),
     rect: PlotRect,
     density: (usize, usize),
 ) {
     let (px, py) = density;
+    let (x_band, y_band) = bands;
     let rows = values.len() / columns.max(1);
     if rows == 0 {
         return;
@@ -531,17 +538,29 @@ fn draw_cells<C: Canvas>(
             let sub_x = (unit_col as f64 + 0.5) * px as f64 / samples_x as f64;
             let sub_y = (unit_row as f64 + 0.5) * py as f64 / samples_y as f64;
             let sample = (|| {
-                let fx = position_on(x_scale, sub_x, x0, x1)?;
-                let fy = position_on(y_scale, sub_y, y0, y1)?;
-                let column = (crate::numeric::inverse_lerp(x0, x1, fx) * columns as f64).floor();
-                let row = (crate::numeric::inverse_lerp(y0, y1, fy) * rows as f64).floor();
-                if column < 0.0 || row < 0.0 {
-                    return None;
-                }
-                let (column, row) = (column as usize, row as usize);
-                if column >= columns || row >= rows {
-                    return None;
-                }
+                let column = match x_band {
+                    Some(band) => band.index_at(sub_x).filter(|&index| index < columns)?,
+                    None => {
+                        let fx = position_on(x_scale, sub_x, x0, x1)?;
+                        let column =
+                            (crate::numeric::inverse_lerp(x0, x1, fx) * columns as f64).floor();
+                        if !(0.0..columns as f64).contains(&column) {
+                            return None;
+                        }
+                        column as usize
+                    }
+                };
+                let row = match y_band {
+                    Some(band) => band.index_at(sub_y).filter(|&index| index < rows)?,
+                    None => {
+                        let fy = position_on(y_scale, sub_y, y0, y1)?;
+                        let row = (crate::numeric::inverse_lerp(y0, y1, fy) * rows as f64).floor();
+                        if !(0.0..rows as f64).contains(&row) {
+                            return None;
+                        }
+                        row as usize
+                    }
+                };
                 let value = values[row * columns + column];
                 if !value.is_finite() {
                     return None;

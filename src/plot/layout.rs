@@ -101,6 +101,7 @@ pub(crate) struct Layout<'p> {
     pub y_ticks: Ticks,
     pub x_ticks: Option<Ticks>,
     pub band: Option<Band>,
+    pub y_band: Option<Band>,
     pub categories: Option<&'p [String]>,
     pub colorbar: Option<Colorbar>,
 }
@@ -146,6 +147,13 @@ impl<'p> Layout<'p> {
         let has_bars = layers
             .iter()
             .any(|layer| matches!(layer, ResolvedLayer::Bars { .. }));
+        // The y axis takes bands only explicitly — no mark implies them, because
+        // no bar-family mark places itself on y. Band 0 is the top band, so a
+        // Cells matrix reads like the printed matrix.
+        let y_categories: Option<&[String]> = match y_spec {
+            Scale::Bands(categories) if !categories.is_empty() => Some(categories.as_slice()),
+            _ => None,
+        };
 
         let time_x = matches!(x_spec, Scale::Time) && categories.is_none();
         let log_x = matches!(x_spec, Scale::Log) && categories.is_none();
@@ -168,7 +176,7 @@ impl<'p> Layout<'p> {
         } else {
             union(layers.iter().map(ResolvedLayer::x_extent)).unwrap_or((0.0, 1.0))
         };
-        let mut y_data = if let Some(fixed) = domains.1 {
+        let mut y_data = if let Some(fixed) = domains.1.filter(|_| y_categories.is_none()) {
             if log_y { clamp_log(fixed) } else { fixed }
         } else if log_y {
             union(layers.iter().map(ResolvedLayer::y_extent_positive)).unwrap_or((1.0, 100.0))
@@ -200,7 +208,16 @@ impl<'p> Layout<'p> {
         // Horizontal layout: the y-label gutter is measured, not fixed — and shed
         // entirely when it would eat the plot.
         let target = (plot_rows / 2).clamp(2, 8);
-        let y_ticks = if time_y {
+        let y_ticks = if let Some(categories) = y_categories {
+            // Band labels ride the tick pipeline: each lands on its band center
+            // through the y scale, and the collision shed below drops what a
+            // short plot cannot fit. The budget keeps the gutter honest.
+            Ticks::bands(
+                categories,
+                (frame.width / 3).max(1),
+                frame.charset.chrome().ellipsis,
+            )
+        } else if time_y {
             Ticks::time(y_data.0, y_data.1, target)
         } else if log_y {
             Ticks::log10(y_data.0, y_data.1, target)
@@ -241,18 +258,20 @@ impl<'p> Layout<'p> {
 
         // A manual domain is honored exactly; an automatic one grows to its ticks
         // so the axis spans whole round numbers.
-        let y_fixed = domains.1.is_some();
+        let y_fixed = domains.1.is_some() && y_categories.is_none();
         let x_fixed = domains.0.is_some() && categories.is_none();
-        let y_domain = if y_fixed {
-            y_data
-        } else {
-            domain_with_ticks(y_data, &y_ticks)
+        let y_domain = match y_categories {
+            Some(categories) => (0.0, categories.len().saturating_sub(1) as f64),
+            None if y_fixed => y_data,
+            None => domain_with_ticks(y_data, &y_ticks),
         };
         let plot_sub_w = (plot_cols * px).max(1);
         let plot_sub_h = (plot_rows * py).max(1);
 
         // The x axis: a band scale when a bars layer is present, ticks otherwise.
         let band = categories.map(|c| Band::new(c.len(), (0.0, (plot_sub_w - 1) as f64)));
+        // The y band scale runs top-down: raster row 0 is band 0.
+        let y_band = y_categories.map(|c| Band::new(c.len(), (0.0, (plot_sub_h - 1) as f64)));
         let x_ticks = if band.is_none() && axis_rows == 2 {
             if time_x {
                 fit_time_ticks(x_data, plot_cols, plot_sub_w, px, gutter, frame.width)
@@ -279,7 +298,11 @@ impl<'p> Layout<'p> {
             None => (0.0, (plot_sub_w - 1) as f64),
         };
         let x_scale = Map::build(x_domain, x_range, log_x);
-        let y_scale = Map::build(y_domain, ((plot_sub_h - 1) as f64, 0.0), log_y);
+        let y_range = match &y_band {
+            Some(band) => (band.center(0), band.center(band.count().saturating_sub(1))),
+            None => ((plot_sub_h - 1) as f64, 0.0),
+        };
+        let y_scale = Map::build(y_domain, y_range, log_y);
 
         Layout {
             frame_width: frame.width,
@@ -306,6 +329,7 @@ impl<'p> Layout<'p> {
             y_ticks,
             x_ticks,
             band,
+            y_band,
             categories,
             colorbar,
         }

@@ -101,6 +101,24 @@ impl Ticks {
         }
     }
 
+    /// One tick per band category at its index, labels fitted to `budget` cells
+    /// with `ellipsis`. Band geometry decides where they land; this only carries
+    /// the (position, label) pairs through the tick pipeline, so band axes reuse
+    /// the same chrome as numeric ones.
+    pub(crate) fn bands(categories: &[String], budget: usize, ellipsis: char) -> Ticks {
+        Ticks {
+            ticks: categories
+                .iter()
+                .enumerate()
+                .map(|(index, category)| Tick {
+                    value: index as f64,
+                    label: crate::render::fit_width_with(category, budget, ellipsis),
+                })
+                .collect(),
+            step: Some(1.0),
+        }
+    }
+
     /// Places decade ticks (`10²`-style labels) over the positive range
     /// `[min, max]`, striding decades when there are many more than `target`.
     ///

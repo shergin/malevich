@@ -392,6 +392,30 @@ Source: [examples/correlation.rs](examples/correlation.rs)
   0.0        2.5        5.0        7.5
 ```
 
+## confusion
+
+A confusion matrix from the grammar, no preset: a Cells matrix on Bands axes — class names label rows and columns, counts sit on the cells as Text, and row 0 is the top band so the chart reads in matrix order.
+Source: [examples/confusion.rs](examples/confusion.rs)
+
+```text
+             validation confusion
+       │
+       │   █████████  ░░░░░░░░░   ░░░░░░░░░
+   cat ┤   ████38███  ░░░░░2░░░   ░░░░0░░░░
+       │   █████████  ░░░░░░░░░   ░░░░░░░░░
+t      │   ░░░░░░░░░  █████████   ░░░░░░░░░
+r      │   ░░░░░░░░░  █████████   ░░░░░░░░░
+u  dog ┤   ░░░░3░░░░  █████33██   ░░░░4░░░░
+e      │
+       │   ░░░░░░░░░  ░░░░░░░░░   █████████
+  bird ┤   ░░░░1░░░░  ░░░░░5░░░   ████34███
+       │   ░░░░░░░░░  ░░░░░░░░░   █████████
+       │
+       └──────────────────────────────────────
+              cat         dog       bird
+                       predicted
+```
+
 ## density2d
 
 A 2D histogram: point density on a grid, empty bins honestly blank.

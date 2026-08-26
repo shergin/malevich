@@ -606,15 +606,19 @@ fn zero_baseline_marks_are_rejected_on_log_axes() {
 }
 
 #[test]
-fn cells_require_continuous_axes_and_positive_log_extents() {
+fn cells_require_matching_bands_and_positive_log_extents() {
     let values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
     let bands = Plot::new()
         .layer(crate::Cells::matrix(3, values))
-        .x_scale(crate::Scale::bands(["a", "b", "c"]));
+        .x_scale(crate::Scale::bands(["a", "b"]));
     assert!(matches!(
         bands.validate(),
         Err(crate::Error::IncompatibleScale { .. })
     ));
+    let matched = Plot::new()
+        .layer(crate::Cells::matrix(3, values))
+        .x_scale(crate::Scale::bands(["a", "b", "c"]));
+    assert!(matched.validate().is_ok());
 
     let implicit_zero = Plot::new().layer(crate::Cells::matrix(3, values)).log_x();
     assert!(matches!(
@@ -966,6 +970,73 @@ fn a_colorbar_without_a_cells_layer_changes_nothing() {
     );
 }
 
+/// Matrix reading order on a banded y axis: row 0 of the Cells grid is the top
+/// band, row labels sit in the gutter at their band rows, and continuous marks
+/// (the Text) position against band indices.
+const BANDED_MATRIX: &str = "       │  ░░░░░  ▒▒▒▒▒\n       │  ░░░░░  ▒▒▒▒▒\n   top ┤  ░░░░░  ▒▒X▒▒\n       │  ▓▓▓▓▓  █████\n       │  ▓▓▓▓▓  █████\nbottom ┤  ▓▓▓▓▓  █████\n       │\n       └────────────────\n            a      b";
+
+#[test]
+fn banded_y_renders_matrix_order_with_row_labels() {
+    let plot = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[0.0, 1.0, 2.0, 3.0][..]))
+        .x_scale(crate::Scale::bands(["a", "b"]))
+        .y_scale(crate::Scale::bands(["top", "bottom"]))
+        .layer(crate::mark::Text::at(1.0, 0.0, "X"));
+    assert!(plot.validate().is_ok());
+    assert_eq!(plot.render(&Frame::plain(24, 9)), BANDED_MATRIX);
+}
+
+#[test]
+fn band_axes_reject_what_they_cannot_encode() {
+    let bars = Plot::new()
+        .layer(crate::mark::Bars::new(["a", "b"], &[1.0, 2.0][..]))
+        .y_scale(crate::Scale::bands(["p", "q"]));
+    assert!(matches!(
+        bars.validate(),
+        Err(crate::Error::IncompatibleScale { .. })
+    ));
+
+    let extents = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[1.0, 2.0][..]).extents((0.0, 1.0), (0.0, 1.0)))
+        .y_scale(crate::Scale::bands(["only"]));
+    assert!(matches!(
+        extents.validate(),
+        Err(crate::Error::IncompatibleScale { .. })
+    ));
+
+    let mismatched_rows = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]))
+        .y_scale(crate::Scale::bands(["a", "b", "c"]));
+    assert!(matches!(
+        mismatched_rows.validate(),
+        Err(crate::Error::IncompatibleScale { .. })
+    ));
+
+    let mismatched_columns = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]))
+        .x_scale(crate::Scale::bands(["a", "b", "c"]));
+    assert!(matches!(
+        mismatched_columns.validate(),
+        Err(crate::Error::IncompatibleScale { .. })
+    ));
+
+    let empty = Plot::new()
+        .layer(crate::mark::Line::y(&[1.0, 2.0][..]))
+        .y_scale(crate::Scale::Bands(Vec::new()));
+    assert!(matches!(
+        empty.validate(),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+
+    // The combination the restriction used to reject wholesale is now the
+    // labeled-matrix contract: matching grids validate on both axes.
+    let matched = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]))
+        .x_scale(crate::Scale::bands(["a", "b"]))
+        .y_scale(crate::Scale::bands(["p", "q"]));
+    assert!(matched.validate().is_ok());
+}
+
 /// Every escape in ANSI output must be a complete SGR sequence the encoder
 /// wrote itself; any other control character is an injection leak.
 fn assert_only_sgr_escapes(output: &str) {
@@ -1011,8 +1082,13 @@ fn hostile_labels_never_leak_control_bytes() {
     let bands = Plot::new()
         .layer(crate::mark::Bars::new([hostile, "ok"], &[3.0, 7.0][..]).color(crate::Color::Red))
         .title(hostile);
+    let matrix = Plot::new()
+        .layer(crate::mark::Cells::matrix(2, &[1.0, 2.0][..]))
+        .x_scale(crate::Scale::bands([hostile, "ok"]))
+        .y_scale(crate::Scale::bands([hostile]))
+        .title(hostile);
 
-    for plot in [&numeric, &bands] {
+    for plot in [&numeric, &bands, &matrix] {
         let plain = plot.render(&Frame::plain(48, 14));
         assert!(
             !plain.contains(|c: char| c != '\n' && c.is_control()),

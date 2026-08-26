@@ -52,6 +52,22 @@ impl Band {
     pub fn center(&self, index: usize) -> f64 {
         self.position(index) + self.bandwidth / 2.0
     }
+
+    /// The band whose span contains `position` — `None` in the padding between
+    /// bands and outside the outermost ones.
+    pub fn index_at(&self, position: f64) -> Option<usize> {
+        if self.count == 0 || self.step <= 0.0 {
+            return None;
+        }
+        let offset = position - self.start;
+        if offset < 0.0 {
+            return None;
+        }
+        let index = (offset / self.step).floor();
+        let within = offset - index * self.step;
+        let index = index as usize;
+        (index < self.count && within < self.bandwidth).then_some(index)
+    }
 }
 
 #[cfg(test)]

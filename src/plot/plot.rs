@@ -161,15 +161,11 @@ impl<'a> Plot<'a> {
 
     /// Sets the y axis scale.
     ///
-    /// # Panics
-    ///
-    /// Panics on [`Scale::Bands`] — categorical y axes are not supported yet.
+    /// [`Scale::Bands`] labels the rows: continuous marks position y against
+    /// band indices (0 is the top band), and a Cells matrix maps row k onto
+    /// band k — the confusion-matrix and attention-map axis.
     #[must_use]
     pub fn y_scale(mut self, scale: Scale) -> Plot<'a> {
-        assert!(
-            !matches!(scale, Scale::Bands(_)),
-            "categorical y axes are not supported yet"
-        );
         self.y = scale;
         self
     }
@@ -327,17 +323,14 @@ impl<'a> Plot<'a> {
         if let Some(palette) = &self.palette {
             palette.validate()?;
         }
-        if matches!(self.y, Scale::Bands(_)) {
-            return Err(crate::Error::IncompatibleScale {
-                detail: "Bands is supported only on the x axis",
-            });
-        }
-        if let Scale::Bands(categories) = &self.x
-            && categories.is_empty()
-        {
-            return Err(crate::Error::EmptyDimension {
-                what: "Bands categories",
-            });
+        for scale in [&self.x, &self.y] {
+            if let Scale::Bands(categories) = scale
+                && categories.is_empty()
+            {
+                return Err(crate::Error::EmptyDimension {
+                    what: "Bands categories",
+                });
+            }
         }
         // Categorical layers must agree on one ordered set of bands, and a numeric x
         // scale cannot host them — `Auto` adapts, but an explicit numeric choice is a
@@ -388,6 +381,11 @@ impl<'a> Plot<'a> {
                             detail: "Bars has a zero baseline and cannot use a log y axis",
                         });
                     }
+                    if matches!(self.y, Scale::Bands(_)) {
+                        return Err(crate::Error::IncompatibleScale {
+                            detail: "Bars encode a numeric length and cannot use a Bands y axis",
+                        });
+                    }
                     if categorical_x
                         && matches!(bars.placement, crate::mark::Placement::Spans { .. })
                     {
@@ -411,12 +409,33 @@ impl<'a> Plot<'a> {
                     }
                 }
                 Mark::Cells(cells) => {
-                    if categorical_x {
-                        return Err(crate::Error::IncompatibleScale {
-                            detail: "Cells needs a continuous x scale",
-                        });
-                    }
                     let rows = cells.values.len() / cells.columns;
+                    // On a band axis the grid index is the band index, so the
+                    // counts must agree and data-coordinate extents cannot apply.
+                    if categorical_x {
+                        if cells.extents.is_some() {
+                            return Err(crate::Error::IncompatibleScale {
+                                detail: "Cells on a Bands x axis maps columns to bands and cannot take extents",
+                            });
+                        }
+                        if bands.map_or(0, <[String]>::len) != cells.columns {
+                            return Err(crate::Error::IncompatibleScale {
+                                detail: "Cells columns must match the x axis bands",
+                            });
+                        }
+                    }
+                    if let Scale::Bands(categories) = &self.y {
+                        if cells.extents.is_some() {
+                            return Err(crate::Error::IncompatibleScale {
+                                detail: "Cells on a Bands y axis maps rows to bands and cannot take extents",
+                            });
+                        }
+                        if categories.len() != rows {
+                            return Err(crate::Error::IncompatibleScale {
+                                detail: "Cells rows must match the y axis bands",
+                            });
+                        }
+                    }
                     let (x, y) = cells
                         .extents
                         .unwrap_or(((0.0, cells.columns as f64), (0.0, rows as f64)));

@@ -110,7 +110,10 @@ module — currently `scale::Linear` (the affine map, including the raster y-fli
 (extended-Wilkinson linear placement, `Ticks::log10` decades, and `Ticks::time`
 calendar ticks over unix seconds — UTC, exact Gregorian arithmetic); the axis
 specification is `scale::Scale` (`Linear | Log | Time | Bands`) set via
-`Plot::x_scale`/`y_scale` (with `log_y()`-style sugar kept), axis titles come from
+`Plot::x_scale`/`y_scale` (with `log_y()`-style sugar kept). `Bands` works on
+either axis: on x it is the bar-family categorical axis, on y it labels matrix
+rows — band 0 is the top band, so a Cells grid reads in matrix order, and the
+grid's rows and columns must match their axis's bands exactly. Axis titles come from
 `Plot::x_label`/`y_label` (x centered below, y vertical along the left edge), and
 log/time axes are also
 enabled per plot with `Plot::log_x`/`Plot::log_y`/`Plot::time_x`.

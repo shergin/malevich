@@ -86,6 +86,12 @@ const GALLERY: &[(&str, &str)] = &[
         "Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.",
     ),
     (
+        "confusion",
+        "A confusion matrix from the grammar, no preset: a Cells matrix on Bands \
+         axes — class names label rows and columns, counts sit on the cells as \
+         Text, and row 0 is the top band so the chart reads in matrix order.",
+    ),
+    (
         "density2d",
         "A 2D histogram: point density on a grid, empty bins honestly blank.",
     ),
@@ -148,6 +154,7 @@ const EXEMPT: &[&str] = &[
     "pixels",
     "evcxr",
     "suprematist",
+    "promo",
 ];
 
 fn main() {

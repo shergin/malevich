@@ -17,9 +17,12 @@
 /// | Line, Points, Area, numeric Range, Rule, Text | yes | yes; non-positive values are gaps | yes; positions are band indices |
 /// | `Bars::new`, `Range::over` | no | no | yes |
 /// | `Bars::spans` | yes | yes | no |
-/// | Cells | yes | yes, with positive extents | no |
+/// | Cells | yes | yes, with positive extents | yes; grid indices map to bands, no extents |
 ///
-/// On y, Bands is unsupported. Linear and Time accept every mark. Log accepts Line,
+/// On y, Bands positions continuous marks against band indices exactly like x,
+/// and maps Cells rows onto the bands top-down — row 0 is the top band, so a
+/// labeled matrix reads in matrix order. Bars are rejected on a Bands y axis
+/// (their length is numeric). Linear and Time accept every mark. Log accepts Line,
 /// Points, Range, Rule, Text, banded Area, and Cells with positive extents; it rejects
 /// Bars and zero-baseline Area because zero has no logarithmic position.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -37,9 +40,10 @@ pub enum Scale {
     Log,
     /// Unix seconds (UTC): calendar-aligned ticks with multi-scale labels.
     Time,
-    /// Named bands — the categorical axis of bar charts, box plots, and violins.
-    /// Continuous layers position x against band indices (0 is the first band's
-    /// center). Only supported on the x axis.
+    /// Named bands — the categorical axis of bar charts, box plots, and violins,
+    /// and, on either axis, the labeled rows and columns of a Cells matrix
+    /// (confusion matrices, attention maps). Continuous layers position against
+    /// band indices (0 is the first band's center; on y, the top band).
     Bands(Vec<String>),
 }
 

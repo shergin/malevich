@@ -5,6 +5,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `Scale::Bands` now works on the y axis: continuous marks position y against
+  band indices exactly as they do on x, and a `Cells` matrix maps row k onto
+  band k, top-down — band 0 is the top band, so labeled matrices read in matrix
+  order. Cells grids must match their band axes cell-for-band (extents do not
+  apply there), Bars still require a numeric y, and `Plot::y_scale` no longer
+  panics on `Bands`. Confusion matrices and attention maps are now three-line
+  grammar compositions; the gallery gains `confusion` as the proof.
+
 ## 1.17.0 (The Carpenter) — 2026-08-24
 
 A code-quality release: invalid retained data now reaches one checked boundary,

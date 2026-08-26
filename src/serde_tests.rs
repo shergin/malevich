@@ -310,10 +310,12 @@ fn validate_rejects_the_malformed_payloads_render_tolerates() {
         Err(crate::Error::InvalidParameter { .. })
     ));
 
+    // A banded y axis deserializes and validates, but a Cells grid whose row
+    // count disagrees with the bands is a conflict, not a silent stretch.
     let categorical_y: Plot = serde_json::from_str(
-        r#"{"layers":[],"title":null,"x":"Linear","y":{"Bands":["a"]},"x_label":null,"y_label":null,"x_domain":null,"y_domain":null}"#,
+        r#"{"layers":[{"Cells":{"columns":1,"values":[1.0],"extents":null,"colormap":{"stops":[[0,0,0],[255,255,255]]}}}],"title":null,"x":"Linear","y":{"Bands":["a","b"]},"x_label":null,"y_label":null,"x_domain":null,"y_domain":null}"#,
     )
-    .expect("categorical y scale deserializes");
+    .expect("banded y scale deserializes");
     assert!(matches!(
         categorical_y.validate(),
         Err(crate::Error::IncompatibleScale { .. })
