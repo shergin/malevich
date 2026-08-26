@@ -62,6 +62,12 @@ const GALLERY: &[(&str, &str)] = &[
          diagonal is a labeled line.",
     ),
     (
+        "calibration",
+        "A reliability diagram from the grammar, no preset: stat::binned with \
+         a Mean reducer turns 0/1 outcomes into accuracy per confidence bin, \
+         plotted against the diagonal of perfect calibration.",
+    ),
+    (
         "qq",
         "A Q\u{2013}Q plot from the grammar, no preset: matched type-7 quantiles of two \
          samples against the identity line — the heavy tail peels off it.",

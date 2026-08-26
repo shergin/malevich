@@ -10,6 +10,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   invented rates) and the trapezoid area under a polyline, gaps contributing
   no area. Batch transforms in the `ecdf` family — order statistics, not
   mergeable accumulators — with hand-computed fixtures. Gallery gains `roc`.
+- Gallery: `calibration` — a reliability diagram from `stat::binned` with a
+  `Mean` reducer over 0/1 outcomes; the overconfident model's curve sags
+  under the diagonal. No new API: the reducer vocabulary was sufficient.
 - Gallery: `landscape` — a loss landscape with a momentum trajectory,
   composed entirely from existing marks (dense Cells on a log ramp, Line and
   glyph Points on top): the gradient-descent chart, no new machinery.

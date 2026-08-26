@@ -255,6 +255,36 @@ t 0.0 ┤⡧⠔⠉
                        false positive rate
 ```
 
+## calibration
+
+A reliability diagram from the grammar, no preset: stat::binned with a Mean reducer turns 0/1 outcomes into accuracy per confidence bin, plotted against the diagonal of perfect calibration.
+Source: [examples/calibration.rs](examples/calibration.rs)
+
+```text
+                       reliability
+                   ── perfect  ── model
+o 1.0 ┤                                                ⣀⠔⠊
+b 0.9 ┤                                             ⣀⠔⠊
+s     │                                          ⣀⠔⠊
+e 0.8 ┤                                       ⣀⠔⠊
+r     │                                    ⣀⠔⠊   ⣀o⠔⠒⠒⠉o
+v 0.7 ┤                                 ⣀⠔⠊   ⢀⠔⠊
+e 0.6 ┤                              ⣀⣔⡪o⠤⠔⠒⠒o⠁
+d     │                          ⢀⣤o⠋⠁
+  0.5 ┤                       ⣀⡴⠞⠋
+a     │                  ⢀⡠⠤⡲o⠉
+c 0.4 ┤          ⣀⠔o⠉⠉⠉⠉o⡡⠔⠉
+c 0.3 ┤       o⠤⠊     ⡠⠔⠉
+u     │  o⡠⠔⠒⠉     ⡠⠔⠉
+r 0.2 ┤         ⡠⠔⠉
+a     │      ⡠⠔⠉
+c 0.1 ┤   ⡠⠔⠉
+y 0.0 ┤⡠⠔⠉
+      └┬─────────┬─────────┬─────────┬─────────┬─────────┬
+      0.0       0.2       0.4       0.6       0.8      1.0
+                       claimed confidence
+```
+
 ## qq
 
 A Q–Q plot from the grammar, no preset: matched type-7 quantiles of two samples against the identity line — the heavy tail peels off it.
