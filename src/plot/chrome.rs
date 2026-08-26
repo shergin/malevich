@@ -123,7 +123,13 @@ pub(crate) fn draw(
         }
         if let Some(ticks) = x_ticks {
             for tick in ticks {
-                let column = (x_scale.map(tick.value).round() as usize) / px;
+                // A tick with no position on this scale (zero on a log axis)
+                // is dropped, not drawn at a fabricated column.
+                let sub = x_scale.map(tick.value);
+                if !sub.is_finite() {
+                    continue;
+                }
+                let column = (sub.round() as usize) / px;
                 surface.text(
                     (gutter + column) as i64,
                     axis_row,

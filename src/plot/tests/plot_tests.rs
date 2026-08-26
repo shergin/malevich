@@ -1116,6 +1116,37 @@ fn class_cells_shade_regions_and_legend_them() {
 }
 
 #[test]
+fn sub_decade_log_axes_keep_their_data_visible() {
+    // A log range narrower than one decade falls back to linear ticks, which
+    // can include zero. The domain must never grow to it: zero has no
+    // logarithmic position, and growing to it collapsed the whole scale.
+    let values = [0.5, 2.0, 1.2, 3.4];
+    let plot = crate::line(&values[..]).log_y();
+    let text = plot.render(&Frame::plain(30, 10));
+    assert!(
+        text.contains('\u{2820}')
+            || text
+                .matches(|c: char| ('\u{2800}'..'\u{28ff}').contains(&c))
+                .count()
+                > 8,
+        "the curve vanished from a sub-decade log axis: {text}"
+    );
+    assert!(!text.contains("\n0 ┤"), "a log axis labeled zero: {text}");
+
+    let sideways = Plot::new()
+        .layer(crate::mark::Points::xy(
+            &values[..],
+            &[1.0, 2.0, 3.0, 4.0][..],
+        ))
+        .log_x();
+    let text = sideways.render(&Frame::plain(36, 10));
+    assert!(
+        !text.contains(" 0 "),
+        "a log x axis drew a zero tick: {text}"
+    );
+}
+
+#[test]
 fn dense_grids_reduce_bucket_exactly_instead_of_sampling() {
     // One row of 10,000 zeros with a single spike. Mean-reduced, the spike
     // dilutes into its bucket; max-reduced it must survive at full intensity.

@@ -278,7 +278,7 @@ impl<'p> Layout<'p> {
         let y_domain = match y_categories {
             Some(categories) => (0.0, categories.len().saturating_sub(1) as f64),
             None if y_fixed => y_data,
-            None => domain_with_ticks(y_data, &y_ticks),
+            None => domain_with_ticks_on(y_data, &y_ticks, log_y),
         };
         let plot_sub_w = (plot_cols * px).max(1);
         let plot_sub_h = (plot_rows * py).max(1);
@@ -305,7 +305,7 @@ impl<'p> Layout<'p> {
         let x_domain = match (&band, &x_ticks) {
             (Some(band), _) => (0.0, (band.count() - 1) as f64),
             (None, Some(_)) if x_fixed => x_data,
-            (None, Some(ticks)) => domain_with_ticks(x_data, ticks),
+            (None, Some(ticks)) => domain_with_ticks_on(x_data, ticks, log_x),
             (None, None) => x_data,
         };
         let x_range = match &band {
@@ -348,6 +348,19 @@ impl<'p> Layout<'p> {
             categories,
             colorbar,
         }
+    }
+}
+
+/// [`domain_with_ticks`], except a log axis never grows to a non-positive
+/// bound: the linear-fallback ticks of a sub-decade log range can include
+/// zero, and zero has no logarithmic position — growing to it would collapse
+/// the whole scale.
+fn domain_with_ticks_on(data: (f64, f64), ticks: &Ticks, log: bool) -> (f64, f64) {
+    let (low, high) = domain_with_ticks(data, ticks);
+    if log && low <= 0.0 {
+        (data.0, high)
+    } else {
+        (low, high)
     }
 }
 

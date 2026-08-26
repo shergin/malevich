@@ -5,6 +5,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Fixed: a log axis over a range narrower than one decade no longer loses its
+  data. The linear-fallback ticks of a sub-decade log range can include zero;
+  the domain grew to that tick, zero has no logarithmic position, and the
+  whole scale collapsed. Log domains now refuse to grow to a non-positive
+  bound, and a tick without a position on its scale is dropped instead of
+  drawn at a fabricated column.
 - `stat::roc` and `stat::auc`: the classifier threshold sweep (standard step
   construction, ties grouped, one-class data returns empty rather than
   invented rates) and the trapezoid area under a polyline, gaps contributing
