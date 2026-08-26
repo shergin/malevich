@@ -111,6 +111,12 @@ const GALLERY: &[(&str, &str)] = &[
          training points sit on top.",
     ),
     (
+        "landscape",
+        "A loss landscape with an optimizer trajectory, no new machinery: \
+         Himmelblau's basins as dense Cells on a log colormap, and momentum's \
+         overshoot-and-curl as a Line with glyph-drawn step markers on top.",
+    ),
+    (
         "attention_full",
         "A million attention weights reduced bucket-exactly onto a terminal: \
          the same matrix mean-reduced and max-reduced side by side — the box \

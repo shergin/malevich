@@ -5,6 +5,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Gallery: `landscape` — a loss landscape with a momentum trajectory,
+  composed entirely from existing marks (dense Cells on a log ramp, Line and
+  glyph Points on top): the gradient-descent chart, no new machinery.
 - Cells grids denser than the raster now reduce honestly instead of sampling:
   every screen bucket owns the cells whose centers fall inside it (adjacent
   buckets partition the centers, proven by a property test) and shows a
