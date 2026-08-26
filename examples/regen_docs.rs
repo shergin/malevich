@@ -84,6 +84,13 @@ const GALLERY: &[(&str, &str)] = &[
          to drawing every point, in tens of milliseconds.",
     ),
     (
+        "ridgeline",
+        "A ridgeline of gradient distributions over training - rows rendered \
+         back to front at fixed elevation, each a lifted KDE in the corners \
+         style so nearer rows overwrite what they cross: the TensorBoard \
+         histogram view, and the terminal's honest 3D surface.",
+    ),
+    (
         "distribution",
         "Penguin body mass through automatic binning: a real, lumpy distribution.",
     ),

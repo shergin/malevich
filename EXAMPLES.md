@@ -367,6 +367,38 @@ Source: [examples/waveform.rs](examples/waveform.rs)
       0          2.0M         4.0M         6.0M         8.0M       10.0M
 ```
 
+## ridgeline
+
+A ridgeline of gradient distributions over training - rows rendered back to front at fixed elevation, each a lifted KDE in the corners style so nearer rows overwrite what they cross: the TensorBoard histogram view, and the terminal's honest 3D surface.
+Source: [examples/ridgeline.rs](examples/ridgeline.rs)
+
+```text
+                 gradient distribution by epoch
+5 ┤                          ╭────────────╮
+  │                        ╭─╯            ╰───╮
+  │                  ╭╮ ╭──╯╭─────────────╮   ╰───╮
+  │             ╭───────╯╭──╯╭─────╮      ╰──╮    ╰────╮
+4 ┤   ──────────╯   ╭╯ ╭─╯╭──╯╮    ╰──╮      ╰─╮       ╰────────
+  │                ╭───╯╭─╯╯──╰────╮  ╰──╮     ╰──╮
+  │        ╭───────╯│ ╭╭╯─╯╯─╮╰─╮  ╰╮    ╰──╮     ╰────────╮
+  │   ─────╯      ╭────╯╯╯╰╮ ╰╮ ╰─╮ ╰─╮     ╰─╮            ╰────
+3 ┤           ╭───╯ │╭╯╭╯│ ╰╮ ╰╮  ╰╮  ╰──╮    ╰───╮
+  │   ────────╯     ╭╯╯│ │  │  │   ╰╮    ╰─╮      ╰─────────
+  │              ╭──╯╭─╯ ╰╮ │  ╰╮   ╰╮     ╰─╮
+  │         ─────╯ ╭─╯    │ ╰╮  ╰╮   ╰─╮     ╰──────
+2 ┤              ╭─╯╯     │  │   ╰╮    ╰╮
+  │        ──────╯╭╯╯     │  ╰╮   ╰╮    ╰───────
+  │              ╭╯│      │   │    ╰╮
+  │            ╭─╯╭╯      ╰╮  │     ╰─╮
+1 ┤         ───╯ ╭╯│       │  ╰╮      ╰───
+  │             ╭╯╭╯       │   ╰─╮
+  │           ──╯ │        │     ╰───
+  │              ╭╯        ╰╮
+0 ┤             ─╯          ╰──
+  └┬────────┬───────┬────────┬────────┬───────┬────────┬───────┬
+ -1.0     -0.5     0.0      0.5      1.0     1.5      2.0    2.5
+```
+
 ## distribution
 
 Penguin body mass through automatic binning: a real, lumpy distribution.
