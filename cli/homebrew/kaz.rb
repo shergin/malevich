@@ -7,8 +7,8 @@
 class Kaz < Formula
   desc "Pipe data to an honest terminal plot"
   homepage "https://github.com/shergin/malevich"
-  url "https://github.com/shergin/malevich/archive/refs/tags/cli-v0.2.1.tar.gz"
-  sha256 "49ebd46de3c0a85f001afc7f8795cb68891b923ccd4bf57f8686bf8ae9f2a88a"
+  url "https://github.com/shergin/malevich/archive/refs/tags/cli-v0.3.0.tar.gz"
+  sha256 "46ca245a6aeba41a66c72e20595717f4adb2b5060fb2e911c3cc20e1d1c3daeb"
   license any_of: ["MIT", "Apache-2.0"]
   head "https://github.com/shergin/malevich.git", branch: "main"
 
