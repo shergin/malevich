@@ -5,6 +5,17 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.0 (The Knife Grinder) — 2026-08-26
+
+The machine-learning release. Band scales on both axes, a logarithmic
+colormap, two new cells channels, and bucket-exact matrix reduction turn the
+charts ML actually reads — confusion matrices, attention maps, decision
+boundaries, images, loss landscapes — into grammar compositions; `roc`,
+`auc`, and `ewma` fill out the statistical set, and a nine-chart gallery
+wave plus a showcase ML corner prove the vocabulary was sufficient.
+Everything is additive, and a long-standing sub-decade log-axis bug died on
+the way through.
+
 - The showcase tour grows an ML corner: a confusion matrix on band axes, a
   log-colormap attention head with a colorbar, a learned filter as rgb cells,
   1-NN decision regions with the training scatter, a momentum trajectory over

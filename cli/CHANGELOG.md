@@ -5,6 +5,8 @@ malevich API.
 
 ## Unreleased
 
+## 0.3.0 — 2026-08-26
+
 - Heatmaps grow the ML face of the core's new machinery: `--labels-x` and
   `--labels-y` put band labels on both axes (rows read top to bottom, like
   the printed matrix — confusion matrices and attention maps), `--log-color`

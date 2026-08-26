@@ -5,8 +5,9 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
-## 2026-08-25 addition (unreleased)
+## 2026-08-25 addition (released in 1.18.0)
 
+- Revision: `b0887bc` (the commit introducing the measured reduction)
 - Machine, OS, compiler, profile: as in the 2026-08-07 baseline below
 
 | Measurement | Estimate | 95% interval |
