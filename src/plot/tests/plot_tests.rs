@@ -1037,6 +1037,24 @@ fn band_axes_reject_what_they_cannot_encode() {
     assert!(matched.validate().is_ok());
 }
 
+/// A log colormap gives each decade its own shade instead of collapsing the
+/// low rows into one, drops the zero row as a gap, and the colorbar labels
+/// decades at logarithmic heights.
+const LOG_DECADES: &str = "6 ┤████████████████  █ 10⁴\n  │████████████████  █\n  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓\n3 ┤▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▒ 10²\n  │░░░░░░░░░░░░░░░░  ░\n0 ┤                  ░ 1\n  └┬───────────────┬\n   0               1";
+
+#[test]
+fn log_colormaps_spread_decades_and_gap_zero() {
+    let values = [0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0];
+    let plot = Plot::new()
+        .layer(
+            crate::mark::Cells::matrix(1, &values[..])
+                .colormap(crate::scale::Colormap::GREYS.log()),
+        )
+        .colorbar();
+    assert!(plot.validate().is_ok());
+    assert_eq!(plot.render(&Frame::plain(26, 8)), LOG_DECADES);
+}
+
 /// Every escape in ANSI output must be a complete SGR sequence the encoder
 /// wrote itself; any other control character is an injection leak.
 fn assert_only_sgr_escapes(output: &str) {

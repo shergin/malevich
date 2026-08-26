@@ -92,6 +92,12 @@ const GALLERY: &[(&str, &str)] = &[
          Text, and row 0 is the top band so the chart reads in matrix order.",
     ),
     (
+        "attention",
+        "An attention map: token labels on both axes, a logarithmic colormap so \
+         weights spanning decades stay distinguishable, and the causal mask's \
+         zeros rendered as honest gaps — with decade ticks on the colorbar.",
+    ),
+    (
         "density2d",
         "A 2D histogram: point density on a grid, empty bins honestly blank.",
     ),

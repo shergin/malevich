@@ -239,6 +239,23 @@ fn a_centered_colormap_round_trips_and_legacy_maps_stay_linear() {
         serde_json::from_str(r#"{"stops":[[0,0,0],[255,255,255]]}"#).expect("deserializes");
     assert_eq!(legacy.midpoint(), None);
     assert_eq!(legacy.position_in(1.0, 0.0, 4.0), 0.25);
+
+    // The log flag rides the same additive contract: present when set, absent
+    // otherwise, defaulting to linear in legacy payloads (checked above), and
+    // an adversarial centered-and-log payload fails validation, not rendering.
+    let log = Colormap::MAGMA.log();
+    let encoded = serde_json::to_string(&log).expect("serializes");
+    assert!(encoded.contains("\"log\":true"), "log missing: {encoded}");
+    let decoded: Colormap = serde_json::from_str(&encoded).expect("deserializes");
+    assert_eq!(decoded, log);
+    assert!(!linear.contains("log"), "spurious log field: {linear}");
+    let contradictory: Colormap =
+        serde_json::from_str(r#"{"stops":[[0,0,0],[255,255,255]],"midpoint":0.0,"log":true}"#)
+            .expect("deserializes");
+    assert!(matches!(
+        contradictory.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
 }
 
 #[test]

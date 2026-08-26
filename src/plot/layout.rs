@@ -28,11 +28,21 @@ fn cells_colorbar(
         } => Some((*values, colormap.clone())),
         _ => None,
     })?;
-    let (low, high) = extent(values)?;
     // The colorbar must label the same value range the cells were colored
-    // by — for a centered map, the symmetric span around its midpoint.
+    // by — for a centered map, the symmetric span around its midpoint; for a
+    // log map, the positive values with decade ticks.
+    let (low, high) = if colormap.is_log() {
+        crate::plot::resolve::extent_positive(values)?
+    } else {
+        extent(values)?
+    };
     let (low, high) = colormap.display_domain(low, high);
-    let ticks = Ticks::linear(low, high, (plot_rows / 2).clamp(2, 5));
+    let target = (plot_rows / 2).clamp(2, 5);
+    let ticks = if colormap.is_log() && low > 0.0 && high > 0.0 {
+        Ticks::log10(low, high, target)
+    } else {
+        Ticks::linear(low, high, target)
+    };
     let label_width = ticks
         .iter()
         .map(|tick| display_width(&tick.label))

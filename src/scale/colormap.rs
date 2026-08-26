@@ -48,6 +48,11 @@ pub struct Colormap {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     midpoint: Option<Midpoint>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "core::ops::Not::not")
+    )]
+    log: bool,
 }
 
 impl Colormap {
@@ -146,6 +151,7 @@ impl Colormap {
         Colormap {
             stops: Cow::Borrowed(stops),
             midpoint: None,
+            log: false,
         }
     }
 
@@ -167,6 +173,7 @@ impl Colormap {
         Ok(Colormap {
             stops: Cow::Owned(stops),
             midpoint: None,
+            log: false,
         })
     }
 
@@ -186,6 +193,26 @@ impl Colormap {
         );
         self.midpoint = Some(Midpoint(midpoint));
         self
+    }
+
+    /// Makes the ramp logarithmic: equal color steps for equal factors, so
+    /// values spanning decades — attention weights, gradient magnitudes,
+    /// spectral power — stay distinguishable instead of collapsing into the
+    /// low end of a linear ramp. Values at or below zero have no logarithmic
+    /// position and render as gaps, the same rule log axes follow. The
+    /// colorbar shows decade ticks.
+    ///
+    /// Logarithmic and centered are mutually exclusive; combining them fails
+    /// validation.
+    #[must_use]
+    pub fn log(mut self) -> Colormap {
+        self.log = true;
+        self
+    }
+
+    /// Whether the ramp is logarithmic.
+    pub fn is_log(&self) -> bool {
+        self.log
     }
 
     /// The centered data value, when this map has one.
@@ -211,6 +238,11 @@ impl Colormap {
         {
             return Err(crate::Error::InvalidParameter {
                 detail: "a colormap midpoint must be finite",
+            });
+        }
+        if self.log && self.midpoint.is_some() {
+            return Err(crate::Error::InvalidParameter {
+                detail: "a colormap cannot be centered and logarithmic at once",
             });
         }
         Ok(())
@@ -240,7 +272,27 @@ impl Colormap {
     /// `[low, high]` — linear across the range, or centered per
     /// [`centered_at`](Colormap::centered_at). `NaN` maps to the low end,
     /// matching [`color`](Colormap::color).
+    ///
+    /// A [`log`](Colormap::log) ramp positions by decade instead, and returns
+    /// `NaN` — a gap — for any value at or below zero, and for every value
+    /// when the observed range is not positive.
     pub fn position_in(&self, value: f64, low: f64, high: f64) -> f64 {
+        if self.log {
+            if !(value > 0.0 && low > 0.0 && high > 0.0) {
+                return f64::NAN;
+            }
+            let (start, end) = (low.log10(), high.log10());
+            let position = if end > start {
+                crate::numeric::inverse_lerp(start, end, value.log10())
+            } else {
+                0.0
+            };
+            return if position.is_finite() {
+                position.clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+        }
         let (start, end) = self.display_domain(low, high);
         let position = if end > start {
             crate::numeric::inverse_lerp(start, end, value)

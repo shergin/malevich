@@ -125,7 +125,10 @@ configured palettes move into `try_from_stops`, exposing their RGB stops read-on
 through `stops`. A diverging map becomes one by anchoring: `centered_at(mid)` pins a
 data value to the ramp middle and the value range spans the larger side
 symmetrically, so equal magnitudes get equal intensity and the colorbar admits the
-widened span. `scale::Palette` is the categorical color scale `color_by` channels
+widened span. A sequential map becomes logarithmic with `log()`: positions by
+decade, values at or below zero render as gaps (the log-axis rule), decade ticks
+on the colorbar; logarithmic and centered are mutually exclusive.
+`scale::Palette` is the categorical color scale `color_by` channels
 draw from — Okabe–Ito (Wong 2011, print-black omitted) by default, replaceable per
 plot with `Plot::palette`; categories past the palette wrap, with marker-shape
 cycling keeping them separable where color cannot.

@@ -205,10 +205,18 @@ fn draw_colorbar(surface: &mut Surface, bar: &Colorbar, plot_top: usize, plot_ro
             bar.colormap.color(position),
         );
     }
-    let spread = bar.high - bar.low;
+    // A log ramp spaces its decade ticks logarithmically down the strip.
+    let log = bar.colormap.is_log() && bar.low > 0.0 && bar.high > 0.0;
+    let (low, high) = if log {
+        (bar.low.log10(), bar.high.log10())
+    } else {
+        (bar.low, bar.high)
+    };
+    let spread = high - low;
     for tick in bar.ticks.iter() {
+        let value = if log { tick.value.log10() } else { tick.value };
         let fraction = if spread > 0.0 {
-            (tick.value - bar.low) / spread
+            (value - low) / spread
         } else {
             0.5
         };

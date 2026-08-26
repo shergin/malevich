@@ -8,7 +8,9 @@
 use crate::mark::{LineStyle, PointStyle};
 use crate::mark::{Orientation, Placement};
 use crate::plot::layout::{Layout, Map};
-use crate::plot::resolve::{ColorChannel, Coordinates, Kind, ResolvedLayer, extent};
+use crate::plot::resolve::{
+    ColorChannel, Coordinates, Kind, ResolvedLayer, extent, extent_positive,
+};
 use crate::render::{Canvas, Charset, Color, PlotRect, PointShape};
 use crate::scale::{Band, Colormap};
 
@@ -520,7 +522,14 @@ fn draw_cells<C: Canvas>(
     if rows == 0 {
         return;
     }
-    let Some((low, high)) = extent(values) else {
+    // A log ramp positions by decade over the positive values; everything at
+    // or below zero is a gap and must not stretch the ramp.
+    let observed = if colormap.is_log() {
+        extent_positive(values)
+    } else {
+        extent(values)
+    };
+    let Some((low, high)) = observed else {
         return;
     };
     let ((x0, x1), (y0, y1)) = extents.unwrap_or(((0.0, columns as f64), (0.0, rows as f64)));
@@ -566,6 +575,9 @@ fn draw_cells<C: Canvas>(
                     return None;
                 }
                 let position = colormap.position_in(value, low, high);
+                if !position.is_finite() {
+                    return None;
+                }
                 Some((position, colormap.color(position)))
             })();
             surface.patch(unit_col, unit_row, rect, sample);

@@ -109,6 +109,7 @@ fn a_deserialized_non_finite_midpoint_degrades_and_fails_validation() {
     let map = Colormap {
         stops: Colormap::RED_BLUE.stops().to_vec().into(),
         midpoint: Some(super::Midpoint(f64::NAN)),
+        log: false,
     };
     assert!(map.validate().is_err());
     // Rendering paths degrade to the linear mapping instead of spreading NaN.
@@ -153,4 +154,40 @@ fn named_maps_survive_the_color_ladder_distinguishably() {
             }
         }
     }
+}
+
+#[test]
+fn log_ramps_position_by_decade() {
+    let map = Colormap::GREYS.log();
+    assert!(map.is_log());
+    let position = map.position_in(10.0, 1.0, 1000.0);
+    assert!((position - 1.0 / 3.0).abs() < 1e-12, "got {position}");
+    assert_eq!(map.position_in(1.0, 1.0, 1000.0), 0.0);
+    assert_eq!(map.position_in(1000.0, 1.0, 1000.0), 1.0);
+    // The same value on the linear ramp sits at the very bottom — the
+    // collapse log() exists to prevent.
+    assert!(Colormap::GREYS.position_in(10.0, 1.0, 1000.0) < 0.01);
+}
+
+#[test]
+fn log_ramps_gap_nonpositive_values_and_ranges() {
+    let map = Colormap::GREYS.log();
+    assert!(map.position_in(0.0, 1.0, 1000.0).is_nan());
+    assert!(map.position_in(-5.0, 1.0, 1000.0).is_nan());
+    assert!(map.position_in(f64::NAN, 1.0, 1000.0).is_nan());
+    // A non-positive observed range has no ramp at all.
+    assert!(map.position_in(5.0, -1.0, 1000.0).is_nan());
+    assert!(map.position_in(5.0, 0.0, 0.0).is_nan());
+    // Degenerate positive range: everything at the low end, like linear.
+    assert_eq!(map.position_in(7.0, 7.0, 7.0), 0.0);
+}
+
+#[test]
+fn centered_and_log_together_fail_validation() {
+    let map = Colormap::RED_BLUE.centered_at(0.0).log();
+    assert!(matches!(
+        map.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+    assert!(Colormap::MAGMA.log().validate().is_ok());
 }

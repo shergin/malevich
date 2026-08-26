@@ -416,6 +416,34 @@ e      │
                        predicted
 ```
 
+## attention
+
+An attention map: token labels on both axes, a logarithmic colormap so weights spanning decades stay distinguishable, and the causal mask's zeros rendered as honest gaps — with decade ticks on the colorbar.
+Source: [examples/attention.rs](examples/attention.rs)
+
+```text
+                    attention, layer 7 head 3
+        │  █████                                            █
+    The ┤  █████                                            █
+        │  █████  █████                                     █
+  robot ┤  █████  █████                                     █ 10⁻¹
+        │  █████  █████                                     ▓
+q   ate ┤  ▓▓▓▓▓  █████ █████                               ▓
+u       │  ▓▓▓▓▓  █████ █████                               ▓
+e       │  ▓▓▓▓▓  ▓▓▓▓▓ █████  █████                        ▓
+r   the ┤  ▓▓▓▓▓  ▓▓▓▓▓ █████  █████                        ▒
+y       │  ▒▒▒▒▒  ▓▓▓▓▓ ▓▓▓▓▓  █████  █████                 ▒ 10⁻³
+    red ┤  ▒▒▒▒▒  ▓▓▓▓▓ ▓▓▓▓▓  █████  █████                 ▒
+        │  ░░░░░  ▒▒▒▒▒ ▓▓▓▓▓  ▓▓▓▓▓  █████  █████          ▒
+  apple ┤  ░░░░░  ▒▒▒▒▒ ▓▓▓▓▓  ▓▓▓▓▓  █████  █████          ░
+        │  ░░░░░  █████ ▒▒▒▒▒  ▒▒▒▒▒  ▓▓▓▓▓  █████  █████   ░
+      . ┤  ░░░░░  █████ ▒▒▒▒▒  ▒▒▒▒▒  ▓▓▓▓▓  █████  █████   ░
+        │                                                   ░ 10⁻⁵
+        └──────────────────────────────────────────────────
+            The   robot   ate    the    red  apple    .
+                                 key
+```
+
 ## density2d
 
 A 2D histogram: point density on a grid, empty bins honestly blank.

@@ -5,6 +5,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `Colormap::log()` makes any ramp logarithmic: equal color steps for equal
+  factors, so attention weights, gradient magnitudes, and spectral power that
+  span decades stay distinguishable instead of collapsing into the low end of
+  a linear ramp. Values at or below zero have no logarithmic position and
+  render as gaps — the same rule log axes follow — and the colorbar places
+  decade ticks logarithmically. Logarithmic and `centered_at` are mutually
+  exclusive (validation catches the combination, including deserialized
+  specs); the serde encoding stays byte-identical for existing maps. The
+  gallery gains `attention` — token-labeled bands on both axes and a log
+  MAGMA ramp.
 - `Scale::Bands` now works on the y axis: continuous marks position y against
   band indices exactly as they do on x, and a `Cells` matrix maps row k onto
   band k, top-down — band 0 is the top band, so labeled matrices read in matrix
