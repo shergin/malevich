@@ -22,6 +22,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   invented rates) and the trapezoid area under a polyline, gaps contributing
   no area. Batch transforms in the `ecdf` family — order statistics, not
   mergeable accumulators — with hand-computed fixtures. Gallery gains `roc`.
+- Gallery: `spectrogram` — time × frequency power as dense Cells with a log
+  frequency axis and a log colormap; the exponential chirp is a straight
+  ridge. The energy is synthesized analytically: no FFT enters the crate.
 - Gallery: `ridgeline` — distributions over training epochs as lifted KDE
   rows, painter's algorithm back to front, no camera and no new machinery:
   the TensorBoard histogram view and the honest terminal answer to a 3D

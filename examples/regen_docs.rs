@@ -95,6 +95,13 @@ const GALLERY: &[(&str, &str)] = &[
         "Penguin body mass through automatic binning: a real, lumpy distribution.",
     ),
     (
+        "spectrogram",
+        "A spectrogram: time-frequency power as dense Cells, seconds by hertz \
+         through extents, a log frequency axis, and a log colormap - the \
+         exponential chirp renders as a straight ridge. The energy is \
+         synthesized; FFTs stay the host's job.",
+    ),
+    (
         "powerlaw",
         "Log-log axes: power laws render straight, with decade ticks on both axes.",
     ),
