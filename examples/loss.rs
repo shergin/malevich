@@ -1,11 +1,11 @@
-//! A real training log: per-step minibatch loss of poorgrad's makemore bigram
+//! A real training log: per-step minibatch loss of topos's makemore bigram
 //! model (see examples/data/README.md), its rolling mean, and the corpus's known
 //! bigram limit as a target rule. No synthetic data — this training actually ran.
 
 use malevich::{Frame, Line, Plot, Rule};
 
 fn main() {
-    let (steps, losses): (Vec<f64>, Vec<f64>) = include_str!("data/poorgrad_loss.csv")
+    let (steps, losses): (Vec<f64>, Vec<f64>) = include_str!("data/topos_loss.csv")
         .lines()
         .filter_map(|line| {
             let (step, loss) = line.split_once(',')?;
@@ -20,7 +20,7 @@ fn main() {
         .layer(Line::xy(&steps[..], &losses[..]).label("minibatch"))
         .layer(Line::xy(&steps[..], &smoothed[..]).label("rolling mean"))
         .layer(Rule::h(2.45).label("bigram limit"))
-        .title("poorgrad: bigram training on 32k names")
+        .title("topos: bigram training on 32k names")
         .x_label("step")
         .y_label("loss");
     println!("{}", plot.render_best(&Frame::plain(76, 19)));

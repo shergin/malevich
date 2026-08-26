@@ -22,7 +22,7 @@ const GALLERY: &[(&str, &str)] = &[
     ),
     (
         "loss",
-        "A real training log: poorgrad's bigram model on 32k names — per-step loss, \
+        "A real training log: topos's bigram model on 32k names — per-step loss, \
          rolling mean, and the known bigram limit as a rule.",
     ),
     (

@@ -5,6 +5,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- The loss example's training log now credits topos by its current name —
+  the library was renamed from poorgrad — and the data file moved to
+  `examples/data/topos_loss.csv` accordingly.
 - Fixed: a log axis over a range narrower than one decade no longer loses its
   data. The linear-fallback ticks of a sub-decade log range can include zero;
   the domain grew to that tick, zero has no logarithmic position, and the

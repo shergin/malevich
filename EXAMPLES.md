@@ -36,11 +36,11 @@ Source: [examples/sine.rs](examples/sine.rs)
 
 ## loss
 
-A real training log: poorgrad's bigram model on 32k names — per-step loss, rolling mean, and the known bigram limit as a rule.
+A real training log: topos's bigram model on 32k names — per-step loss, rolling mean, and the known bigram limit as a rule.
 Source: [examples/loss.rs](examples/loss.rs)
 
 ```text
-                   poorgrad: bigram training on 32k names
+                    topos: bigram training on 32k names
                ── minibatch  ── rolling mean  ── bigram limit
   3.3 ┤⡇
   3.2 ┤⣧
