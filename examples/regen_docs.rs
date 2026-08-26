@@ -56,6 +56,12 @@ const GALLERY: &[(&str, &str)] = &[
          from one mergeable Fit accumulator — slope, intercept, and R² included.",
     ),
     (
+        "roc",
+        "An ROC curve from the grammar, no preset: stat::roc sweeps the \
+         thresholds, stat::auc puts the area in the title, and the chance \
+         diagonal is a labeled line.",
+    ),
+    (
         "qq",
         "A Q\u{2013}Q plot from the grammar, no preset: matched type-7 quantiles of two \
          samples against the identity line — the heavy tail peels off it.",

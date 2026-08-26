@@ -5,6 +5,11 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `stat::roc` and `stat::auc`: the classifier threshold sweep (standard step
+  construction, ties grouped, one-class data returns empty rather than
+  invented rates) and the trapezoid area under a polyline, gaps contributing
+  no area. Batch transforms in the `ecdf` family — order statistics, not
+  mergeable accumulators — with hand-computed fixtures. Gallery gains `roc`.
 - Gallery: `landscape` — a loss landscape with a momentum trajectory,
   composed entirely from existing marks (dense Cells on a log ramp, Line and
   glyph Points on top): the gradient-descent chart, no new machinery.

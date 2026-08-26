@@ -225,6 +225,36 @@ e    │        ⣀⣠⣴⣶⣿⠿⠛⠉⠁  ⠂
                                      dose
 ```
 
+## roc
+
+An ROC curve from the grammar, no preset: stat::roc sweeps the thresholds, stat::auc puts the area in the title, and the chance diagonal is a labeled line.
+Source: [examples/roc.rs](examples/roc.rs)
+
+```text
+                      ROC, AUC 0.768
+                   ── chance  ── model
+t 1.0 ┤                                  ⢠⠤⠤⠤⠖⠒⠋⠉⠉⠉⠉⠉⠉⠉⣉⠝⠋
+r 0.9 ┤                          ⣀⣀⣀⡤⠤⠤⠴⠋⠉          ⣀⠔⠊
+u     │                       ⡖⠒⠋⠁               ⣀⠔⠊
+e 0.8 ┤                     ⣀⡏⠁               ⣀⠔⠊
+      │                  ⣠⠖⠚⠁              ⣀⠔⠊
+p 0.7 ┤               ⢠⠴⠚⠁              ⣀⠔⠊
+o 0.6 ┤             ⢰⠚⠉              ⣀⠔⠊
+s     │           ⡴⠒⠋             ⣀⠔⠊
+i 0.5 ┤         ⡤⠞⠁            ⡠⠔⠊
+t     │   ⢀⣀⣀⣠⠖⠋⠁           ⡠⠔⠉
+i 0.4 ┤  ⢠⠞              ⡠⠔⠉
+v 0.3 ┤ ⢀⡏            ⡠⠔⠉
+e     │⢠⠏          ⡠⠔⠉
+  0.2 ┤⢸        ⡠⠔⠉
+r     │⣸     ⡠⠔⠉
+a 0.1 ┤⡇  ⡠⠔⠉
+t 0.0 ┤⡧⠔⠉
+      └┬─────────┬─────────┬─────────┬─────────┬─────────┬
+      0.0       0.2       0.4       0.6       0.8      1.0
+                       false positive rate
+```
+
 ## qq
 
 A Q–Q plot from the grammar, no preset: matched type-7 quantiles of two samples against the identity line — the heavy tail peels off it.

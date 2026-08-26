@@ -71,6 +71,8 @@ orchestration, or a batch transform. Maps to the `stat` module: `stat::M4` (with
 (histograms), `stat::Agg` (group-by with the shared reducer vocabulary),
 `stat::BoxStats` (type-7 quartiles, Tukey whiskers), `stat::kde` (Silverman
 bandwidth, linear binning), `stat::Window` (trailing rolling reduces), `stat::ecdf`,
+`stat::roc`/`stat::auc` (the classifier threshold sweep and the trapezoid area
+under a polyline),
 `stat::stack`, `stat::lttb`, `stat::Moments`, and `stat::Fit` (streaming ordinary
 least squares — bivariate Welford accumulation with Chan's merge; slope, intercept,
 R², and the standard error of the mean response, feeding the `trend` preset's line
@@ -101,6 +103,7 @@ operation. Maps to `stat::Reducer`.
 
 An operation that consumes a complete ordered collection and emits another
 collection or structured result. `stat::Window`, `stat::kde`, `stat::ecdf`,
+`stat::roc`, `stat::auc`,
 `stat::lttb`, contours, stacking, `bins2`, and `BoxStats` are batch transforms.
 They may use online accumulators internally, but that does not make the transform
 itself mergeable.

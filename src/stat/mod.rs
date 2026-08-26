@@ -18,6 +18,7 @@ mod lttb;
 mod m4;
 mod moments;
 mod reducer;
+mod roc;
 mod stack;
 mod window;
 
@@ -37,5 +38,6 @@ pub(crate) use m4::{m4_mapped, m4_mapped_categories};
 pub use moments::Moments;
 pub(crate) use reducer::ReducerState;
 pub use reducer::{Reducer, quantiles};
+pub use roc::{auc, roc};
 pub use stack::stack;
 pub use window::Window;
