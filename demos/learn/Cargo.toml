@@ -1,0 +1,12 @@
+[package]
+name = "learn"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "A neural network trained by topos, charted by malevich — not published"
+
+[dependencies]
+malevich = { path = "../.." }
+topos = "0.12"

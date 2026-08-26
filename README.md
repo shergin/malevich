@@ -207,9 +207,12 @@ iTerm2) on the right, from the same plot values:
   on `ratatui-core`), `plot.widget()` drops any chart into a TUI — cells written
   straight into the buffer, colors as styles, your app keeps the terminal
   (`cargo run --example tui --features ratatui`). For full apps, [`demos/`](demos/)
-  has `fred` — a five-view Federal Reserve data browser (`cargo run -p fred`) — and
+  has `fred` — a five-view Federal Reserve data browser (`cargo run -p fred`) —
   `sysmon` — a live system monitor streaming CPU/memory/network through
-  `stream::Ring` into a per-core heatmap (`cargo run -p sysmon`).
+  `stream::Ring` into a per-core heatmap (`cargo run -p sysmon`) — and `learn` —
+  a two-moons MLP trained by [topos](https://crates.io/crates/topos), its loss
+  curve with EWMA smoothing and the learned decision regions charted as it
+  trains (`cargo run -p learn --release`).
 - **Serializable specs, no lies.** With the `serde` feature, [`Document`](SERDE.md)
   is the validated, versioned format for files, caches, and network messages; golden
   v1 fixtures keep compatibility testable. Raw spec types still round-trip for

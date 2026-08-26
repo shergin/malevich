@@ -19,7 +19,7 @@ exclude = ["examples/*.png", "examples/*.jpg", "fuzz/"]
 # is a member too — published, but versioned on its own and kept out of the
 # default set so core CI and `cargo test` stay the library alone.
 [workspace]
-members = ["cli", "demos/fred", "demos/sysmon"]
+members = ["cli", "demos/fred", "demos/learn", "demos/sysmon"]
 # Keep the default build/test/lint set to malevich alone, so CI and `cargo test`
 # never pull the demos' or the CLI's deps. Build a member explicitly with `-p`.
 default-members = ["."]

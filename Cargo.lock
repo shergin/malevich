@@ -244,6 +244,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
+name = "cow_vec"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "044c946bbc7cad9b59b3bb9b40d0ff305f491f716ab58bd210d00be919f7cdcc"
+dependencies = [
+ "typed-arena",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -914,6 +923,14 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+
+[[package]]
+name = "learn"
+version = "0.0.0"
+dependencies = [
+ "malevich",
+ "topos",
+]
 
 [[package]]
 name = "lexopt"
@@ -2118,6 +2135,25 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "topos"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6cab043912978925fb8c17a43c322aa9a1c87b6d2129731a74966165012257a"
+dependencies = [
+ "cow_vec",
+ "libm",
+ "smallvec",
+ "static_assertions",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "typed-arena"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typenum"
