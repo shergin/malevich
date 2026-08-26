@@ -24,6 +24,10 @@ _kaz() {
     '--bins[histogram bin count]:n:' \
     '--colormap[heatmap/hist2d colors]:map:(viridis magma cividis greys red-blue purple-orange)' \
     '--midpoint[center the colormap on a value]:v:' \
+    '--log-color[logarithmic colormap]' \
+    '--labels-x[heatmap band labels across the columns]:labels:' \
+    '--labels-y[heatmap band labels down the rows]:labels:' \
+    '--reduce[dense-heatmap bucket summary]:reducer:(mean max min median)' \
     '--cols[select and reorder columns]:list:' \
     '--by[scatter: color by this column]:col:' \
     '--emit-code[print the equivalent malevich program]' \

@@ -58,6 +58,9 @@ pub(crate) enum Chart {
         values: Vec<f64>,
         extents: Option<((f64, f64), (f64, f64))>,
         colormap: Colormap,
+        labels_x: Option<Vec<String>>,
+        labels_y: Option<Vec<String>>,
+        reduce: Option<malevich::stat::Reducer>,
     },
     Empty,
 }
@@ -175,16 +178,38 @@ pub(crate) fn prepare(args: &Args, mut table: Table) -> Result<Recipe, PrepareEr
                         .collect(),
                     extents: Some((grid.x, grid.y)),
                     colormap: args.colormap.clone().unwrap_or(options.colormap),
+                    labels_x: None,
+                    labels_y: None,
+                    reduce: None,
                 },
                 None => Chart::Empty,
             };
             (chart, unparsed)
         }
         (Command::Heatmap, _) => {
-            let (columns, values, unparsed) = series::matrix(&table);
+            let (columns, values, unparsed) = series::matrix(&table, args.labels_y.is_none());
             let chart = if columns == 0 {
                 Chart::Empty
             } else {
+                // Band labels must match the grid before anything renders; the
+                // error names the mismatch instead of quietly dropping rows.
+                if let Some(labels) = &args.labels_x
+                    && labels.len() != columns
+                {
+                    return Err(PrepareError::Input(format!(
+                        "--labels-x names {} columns, but the matrix has {columns}",
+                        labels.len()
+                    )));
+                }
+                let rows = values.len() / columns;
+                if let Some(labels) = &args.labels_y
+                    && labels.len() != rows
+                {
+                    return Err(PrepareError::Input(format!(
+                        "--labels-y names {} rows, but the matrix has {rows}",
+                        labels.len()
+                    )));
+                }
                 Chart::Grid {
                     columns,
                     values,
@@ -193,6 +218,9 @@ pub(crate) fn prepare(args: &Args, mut table: Table) -> Result<Recipe, PrepareEr
                         .colormap
                         .clone()
                         .unwrap_or(malevich::scale::Colormap::DEFAULT),
+                    labels_x: args.labels_x.clone(),
+                    labels_y: args.labels_y.clone(),
+                    reduce: args.reduce,
                 }
             };
             (chart, unparsed)

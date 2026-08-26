@@ -196,9 +196,13 @@ fn xy_takes_the_first_two_columns() {
 fn matrix_flips_rows_so_the_first_line_is_on_top() {
     // Input rows: bottom line becomes heatmap row 0 (the bottom).
     let table = frame("1 2\n3 4\n", None, false);
-    let (columns, values, unparsed) = matrix(&table);
+    let (columns, values, unparsed) = matrix(&table, true);
     assert_eq!(columns, 2);
     // row 0 (bottom) = last input line `3 4`, then `1 2` above it.
     assert_eq!(values, vec![3.0, 4.0, 1.0, 2.0]);
     assert_eq!(unparsed, 0);
+
+    // A banded y axis reads top-down already, so the rows pass through.
+    let (_, values, _) = matrix(&table, false);
+    assert_eq!(values, vec![1.0, 2.0, 3.0, 4.0]);
 }

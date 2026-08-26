@@ -285,17 +285,18 @@ pub fn xy(table: &Table, time_x: bool) -> (Vec<f64>, Vec<f64>, usize) {
     (x, y, ux + uy)
 }
 
-/// The rows as a row-major grid for a heatmap: the column count, the values with
-/// row 0 at the bottom, and the unparsed tally. Input rows are flipped so a matrix
-/// typed top-to-bottom appears the same way.
-pub fn matrix(table: &Table) -> (usize, Vec<f64>, usize) {
+/// The rows as a row-major grid for a heatmap: the column count, the values,
+/// and the unparsed tally. Either way, a matrix typed top-to-bottom displays
+/// the same way: on a numeric y axis grid row 0 is the *bottom*, so `flip`
+/// reverses the input rows; on a banded y axis (`--labels-y`) row 0 is already
+/// the top band and the rows pass through in input order.
+pub fn matrix(table: &Table, flip: bool) -> (usize, Vec<f64>, usize) {
     let (columns, unparsed) = numeric_columns(table);
     let cols = columns.len();
     let rows = table.rows.len();
     let mut values = Vec::with_capacity(cols * rows);
     for heat_row in 0..rows {
-        // Heatmap row 0 is the bottom; the input's last line lands there.
-        let source = rows - 1 - heat_row;
+        let source = if flip { rows - 1 - heat_row } else { heat_row };
         for column in &columns {
             values.push(column[source]);
         }

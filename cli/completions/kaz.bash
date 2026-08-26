@@ -10,7 +10,7 @@ _kaz() {
 
     local subcommands="line scatter bar hist count density ecdf box violin hist2d heatmap"
     local flags="-o -O -d -H --fmt -w -h -t --xlabel --ylabel --xlim --ylim \
-        --log-x --log-y --time-x --bins --colormap --midpoint --cols --by --emit-code \
+        --log-x --log-y --time-x --bins --colormap --midpoint --log-color --labels-x --labels-y --reduce --cols --by --emit-code \
         --color --charset --pixels -q \
         --live --window --fps --rate --version --help"
 
@@ -19,6 +19,10 @@ _kaz() {
             COMPREPLY=( $(compgen -W "auto always never" -- "$cur") ); return ;;
         --charset)
             COMPREPLY=( $(compgen -W "auto ascii half quad sextant braille octant" -- "$cur") ); return ;;
+        --reduce)
+            COMPREPLY=($(compgen -W "mean max min median" -- "$cur"))
+            return
+            ;;
         --colormap)
             COMPREPLY=( $(compgen -W "viridis magma cividis greys red-blue purple-orange" -- "$cur") ); return ;;
         --fmt)

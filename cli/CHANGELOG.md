@@ -5,6 +5,15 @@ malevich API.
 
 ## Unreleased
 
+- Heatmaps grow the ML face of the core's new machinery: `--labels-x` and
+  `--labels-y` put band labels on both axes (rows read top to bottom, like
+  the printed matrix — confusion matrices and attention maps), `--log-color`
+  makes the colormap logarithmic for values spanning decades (mutually
+  exclusive with `--midpoint`; zeros render as gaps), and `--reduce
+  mean|max|min|median` chooses how a matrix denser than the terminal
+  summarizes each screen bucket (`max` keeps sparse spikes visible).
+  `--emit-code` covers all of it, compile-tested as always.
+
 ## 0.2.1 — 2026-08-24
 
 - Numeric `--cols` and `--by` selectors now fail when they are outside the input

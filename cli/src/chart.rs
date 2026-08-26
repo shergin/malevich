@@ -1,7 +1,7 @@
 //! [`crate::recipe::Recipe`] → [`Plot`]. Zero input interpretation and zero
 //! rendering logic: each recipe shape maps directly onto public malevich grammar.
 
-use malevich::{Bars, Cells, Line, Plot, Points};
+use malevich::{Bars, Cells, Line, Plot, Points, Scale};
 
 use crate::recipe::{Chart, DistributionKind, Furniture, GroupedKind, Recipe, ValueMark};
 use crate::series::{Dataset, Series};
@@ -49,12 +49,25 @@ pub fn build(recipe: &Recipe) -> malevich::Result<Built<'_>> {
             values,
             extents,
             colormap,
+            labels_x,
+            labels_y,
+            reduce,
         } => {
             let mut cells = Cells::try_matrix(*columns, values)?.colormap(colormap.clone());
+            if let Some(reducer) = reduce {
+                cells = cells.reduce(*reducer);
+            }
             if let Some((x, y)) = extents {
                 cells = cells.try_extents(*x, *y)?;
             }
-            Plot::new().layer(cells).colorbar()
+            let mut plot = Plot::new().layer(cells).colorbar();
+            if let Some(labels) = labels_x {
+                plot = plot.x_scale(Scale::bands(labels.iter().map(String::as_str)));
+            }
+            if let Some(labels) = labels_y {
+                plot = plot.y_scale(Scale::bands(labels.iter().map(String::as_str)));
+            }
+            plot
         }
         Chart::Empty => Plot::new(),
     };

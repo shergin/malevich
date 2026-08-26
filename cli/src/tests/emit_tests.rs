@@ -76,7 +76,7 @@ fn a_centered_colormap_emits_its_named_constant() {
 /// every emission shape as its own binary.
 #[test]
 fn emitted_programs_compile() {
-    let cases: [(&[&str], &str); 8] = [
+    let cases: [(&[&str], &str); 9] = [
         (
             &["line", "--fmt", "xyy", "-t", "training"],
             "1 4 5\n2 3 4\n3 2.5 3.5\n",
@@ -103,6 +103,19 @@ fn emitted_programs_compile() {
                 "12",
             ],
             "1 -1\n-0.5 0.5\n",
+        ),
+        (
+            &[
+                "heatmap",
+                "--labels-x",
+                "a,b",
+                "--labels-y",
+                "p,q",
+                "--log-color",
+                "--reduce",
+                "max",
+            ],
+            "1 10\n100 1000\n",
         ),
     ];
 

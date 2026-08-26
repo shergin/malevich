@@ -123,6 +123,10 @@ the data upstream (`xsv select …`, `mlr --c2t …`) and pipe the result in.
 --by COL       scatter: color points by this column's categories
 --colormap M   heatmap/hist2d: viridis | magma | cividis | greys | red-blue | purple-orange
 --midpoint V   center the colormap on a value (signed data)
+--log-color    logarithmic colormap (decades share equal color steps)
+--labels-x A,B band labels across heatmap columns
+--labels-y A,B band labels down heatmap rows, top to bottom
+--reduce R     dense-heatmap bucket summary: mean | max | min | median
 --emit-code    print the equivalent malevich Rust program, data inlined
 --color WHEN   auto | always | never
 --charset SET  auto | ascii | half | quad | sextant | braille | octant

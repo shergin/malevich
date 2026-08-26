@@ -35,7 +35,18 @@ pub fn program(recipe: &Recipe) -> String {
             values,
             extents,
             colormap,
-        } => grid(&mut body, *columns, values, *extents, colormap),
+            labels_x,
+            labels_y,
+            reduce,
+        } => grid(
+            &mut body,
+            *columns,
+            values,
+            *extents,
+            colormap,
+            (labels_x.as_deref(), labels_y.as_deref()),
+            *reduce,
+        ),
         Chart::Empty => "malevich::Plot::new()".to_string(),
     };
     let chart = furniture(plot, &recipe.furniture);
@@ -157,12 +168,17 @@ fn grid(
     values: &[f64],
     extents: Option<((f64, f64), (f64, f64))>,
     map: &Colormap,
+    labels: (Option<&[String]>, Option<&[String]>),
+    reduce: Option<malevich::stat::Reducer>,
 ) -> String {
     let _ = writeln!(body, "    let values: Vec<f64> = {};", floats(values));
     let mut cells = format!(
         "malevich::Cells::matrix({columns}, values)\n            .colormap({})",
         colormap(map)
     );
+    if let Some(reducer) = reduce {
+        let _ = write!(cells, "\n            .reduce({})", reducer_name(reducer));
+    }
     if let Some((x, y)) = extents {
         let _ = write!(
             cells,
@@ -173,7 +189,33 @@ fn grid(
             float(y.1)
         );
     }
-    format!("malevich::Plot::new()\n        .layer({cells})\n        .colorbar()")
+    let mut chart = format!("malevich::Plot::new()\n        .layer({cells})\n        .colorbar()");
+    if let Some(names) = labels.0 {
+        let _ = write!(
+            chart,
+            "\n        .x_scale(malevich::Scale::bands({}))",
+            strings(names)
+        );
+    }
+    if let Some(names) = labels.1 {
+        let _ = write!(
+            chart,
+            "\n        .y_scale(malevich::Scale::bands({}))",
+            strings(names)
+        );
+    }
+    chart
+}
+
+/// The path expression for a CLI-reachable reducer.
+fn reducer_name(reducer: malevich::stat::Reducer) -> &'static str {
+    use malevich::stat::Reducer;
+    match reducer {
+        Reducer::Max => "malevich::stat::Reducer::Max",
+        Reducer::Min => "malevich::stat::Reducer::Min",
+        Reducer::Median => "malevich::stat::Reducer::Median",
+        _ => "malevich::stat::Reducer::Mean",
+    }
 }
 
 /// Shared plot furniture as chained builder calls.
@@ -226,9 +268,10 @@ fn colormap(map: &Colormap) -> String {
             "malevich::scale::Colormap::DEFAULT".to_string(),
             |(name, _)| format!("malevich::scale::Colormap::{name}"),
         );
-    match map.midpoint() {
-        Some(midpoint) => format!("{base}.centered_at({})", float(midpoint)),
-        None => base,
+    match (map.midpoint(), map.is_log()) {
+        (Some(midpoint), _) => format!("{base}.centered_at({})", float(midpoint)),
+        (None, true) => format!("{base}.log()"),
+        (None, false) => base,
     }
 }
 

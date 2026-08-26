@@ -75,6 +75,10 @@ Options:
   --colormap M   heatmap/hist2d colors: viridis (default) | magma | cividis |
                  greys | red-blue | purple-orange
   --midpoint V   center the colormap on value V (for signed data; heatmap/hist2d)
+  --log-color    logarithmic colormap: equal color steps per decade, zeros blank
+  --labels-x A,B band labels across heatmap columns (comma-separated)
+  --labels-y A,B band labels down heatmap rows, top to bottom
+  --reduce R     dense-heatmap bucket summary: mean (default) | max | min | median
   --color WHEN   auto (default) | always | never
   --charset SET  auto (default) | ascii | half | quad | sextant | braille | octant
   --pixels WHEN  auto (default) | always | never   — sixel/kitty/iTerm2 image panel
@@ -306,12 +310,19 @@ value with a colorbar. Missing cells stay blank.
 Pick colors with --colormap (viridis, magma, cividis, greys, red-blue,
 purple-orange); for signed data, --midpoint V centers the map on V so the
 colorbar spans symmetrically — the honest encoding for correlations and
-differences.
+differences; for data spanning decades (attention weights, spectral power),
+--log-color gives every decade equal color steps and renders zeros as gaps.
+
+Label the rows and columns with --labels-x/--labels-y (comma-separated band
+names, rows top to bottom) — confusion matrices and attention maps. A matrix
+denser than the terminal reduces honestly per screen bucket: the mean by
+default, or --reduce max to keep sparse spikes visible.
 
 Examples:
-  kaz heatmap confusion.tsv
+  kaz heatmap confusion.tsv --labels-x cat,dog --labels-y cat,dog
   awk '{print $2, $3, $4, $5}' grid.tsv | kaz heatmap
   kaz heatmap correlations.tsv --colormap red-blue --midpoint 0
+  kaz heatmap attention.tsv --log-color --reduce max
 
 Shared options: kaz --help
 ";

@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use lexopt::prelude::*;
 use malevich::Charset;
 use malevich::scale::Colormap;
+use malevich::stat::Reducer;
 
 const MAX_FRAME_DIMENSION: usize = 4096;
 const MAX_FRAME_CELLS: usize = 4 * 1024 * 1024;
@@ -183,9 +184,15 @@ pub struct Args {
     pub time_x: bool,
     /// Explicit histogram bin count (`--bins`); auto when absent.
     pub bins: Option<usize>,
-    /// Heatmap/hist2d colormap (`--colormap`, centered by `--midpoint`); the
-    /// default map when absent.
+    /// Heatmap/hist2d colormap (`--colormap`, centered by `--midpoint`,
+    /// logarithmic via `--log-color`); the default map when absent.
     pub colormap: Option<Colormap>,
+    /// Heatmap band labels across the columns (`--labels-x`).
+    pub labels_x: Option<Vec<String>>,
+    /// Heatmap band labels down the rows, top to bottom (`--labels-y`).
+    pub labels_y: Option<Vec<String>>,
+    /// Heatmap bucket reduction (`--reduce`); the mean box filter when absent.
+    pub reduce: Option<Reducer>,
     /// Column projection (`--cols`): selectors (header names or 0-based
     /// indices) applied to the framed table before any chart reads it.
     pub cols: Option<Vec<String>>,
@@ -260,6 +267,10 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
     let mut bins = None;
     let mut colormap = None;
     let mut midpoint = None;
+    let mut log_color = false;
+    let mut labels_x = None;
+    let mut labels_y = None;
+    let mut reduce = None;
     let mut cols = None;
     let mut by = None;
     let mut emit_code = false;
@@ -377,6 +388,27 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
                         Colormap::NAMES.join("|")
                     ))
                 })?);
+            }
+            Long("log-color") => log_color = true,
+            Long("labels-x") => {
+                labels_x = Some(parse_labels("--labels-x", &parser.value()?.string()?)?)
+            }
+            Long("labels-y") => {
+                labels_y = Some(parse_labels("--labels-y", &parser.value()?.string()?)?)
+            }
+            Long("reduce") => {
+                let value = parser.value()?.string()?;
+                reduce = Some(match value.as_str() {
+                    "mean" => Reducer::Mean,
+                    "max" => Reducer::Max,
+                    "min" => Reducer::Min,
+                    "median" => Reducer::Median,
+                    _ => {
+                        return Err(Fail(format!(
+                            "--reduce is mean|max|min|median, got `{value}`"
+                        )));
+                    }
+                });
             }
             Long("midpoint") => {
                 let value = parser.value()?.string()?;
@@ -516,11 +548,28 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
             "--width × --height must not exceed {MAX_FRAME_CELLS} cells"
         )));
     }
-    if (colormap.is_some() || midpoint.is_some())
+    if (colormap.is_some() || midpoint.is_some() || log_color)
         && !matches!(command, Command::Heatmap | Command::Hist2d)
     {
         return Err(Fail(format!(
-            "--colormap and --midpoint only apply to heatmap and hist2d, not `{}`",
+            "--colormap, --midpoint, and --log-color only apply to heatmap and hist2d, not `{}`",
+            command.name()
+        )));
+    }
+    if log_color && midpoint.is_some() {
+        return Err(Fail(
+            "--log-color and --midpoint are mutually exclusive: a ramp is centered or logarithmic, not both".into(),
+        ));
+    }
+    if (labels_x.is_some() || labels_y.is_some()) && command != Command::Heatmap {
+        return Err(Fail(format!(
+            "--labels-x and --labels-y only apply to heatmap, not `{}`",
+            command.name()
+        )));
+    }
+    if reduce.is_some() && command != Command::Heatmap {
+        return Err(Fail(format!(
+            "--reduce only applies to heatmap, not `{}` (hist2d already aggregates its bins)",
             command.name()
         )));
     }
@@ -536,10 +585,11 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
         ));
     }
     // One resolved value for the chart builders: a bare --midpoint centers the
-    // default map.
-    let colormap = match (colormap, midpoint) {
-        (map, Some(center)) => Some(map.unwrap_or_default().centered_at(center)),
-        (map, None) => map,
+    // default map, a bare --log-color makes it logarithmic.
+    let colormap = match (colormap, midpoint, log_color) {
+        (map, Some(center), _) => Some(map.unwrap_or_default().centered_at(center)),
+        (map, None, true) => Some(map.unwrap_or_default().log()),
+        (map, None, false) => map,
     };
 
     Ok(Outcome::Run(Box::new(Args {
@@ -562,6 +612,9 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
         time_x,
         bins,
         colormap,
+        labels_x,
+        labels_y,
+        reduce,
         cols,
         by,
         emit_code,
@@ -574,6 +627,20 @@ pub(crate) fn parse_from(mut parser: lexopt::Parser) -> Result<Outcome, Fail> {
         fps,
         rate,
     })))
+}
+
+/// Parses a comma-separated label list for `--labels-x` / `--labels-y`.
+fn parse_labels(flag: &str, value: &str) -> Result<Vec<String>, Fail> {
+    let labels: Vec<String> = value
+        .split(',')
+        .map(|label| label.trim().to_owned())
+        .collect();
+    if labels.iter().any(String::is_empty) {
+        return Err(Fail(format!(
+            "{flag} wants comma-separated band labels, got `{value}`"
+        )));
+    }
+    Ok(labels)
 }
 
 fn parse_bounded(flag: &str, value: &str, minimum: usize, maximum: usize) -> Result<usize, Fail> {

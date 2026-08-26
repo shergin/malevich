@@ -125,6 +125,24 @@ Heatmap/hist2d colors: \fBviridis\fR (default), \fBmagma\fR, \fBcividis\fR,
 Center the colormap on value \fIV\fR, spanning the colorbar symmetrically \(em
 the honest encoding for signed data (heatmap/hist2d).
 .TP
+.B \-\-log\-color
+Logarithmic colormap: equal color steps per decade, for values spanning orders
+of magnitude (attention weights, spectral power). Zeros and negatives render
+as gaps. Mutually exclusive with \fB\-\-midpoint\fR.
+.TP
+.BI \-\-labels\-x " A,B,..."
+Band labels across the heatmap columns (comma\-separated). The count must
+match the matrix.
+.TP
+.BI \-\-labels\-y " A,B,..."
+Band labels down the heatmap rows, top to bottom. With labels the matrix reads
+in input order, like the printed matrix.
+.TP
+.BI \-\-reduce " R"
+How a heatmap denser than the terminal summarizes each screen bucket:
+\fBmean\fR (default), \fBmax\fR, \fBmin\fR, or \fBmedian\fR.
+\fBmax\fR keeps sparse spikes visible.
+.TP
 .BI \-\-color " WHEN"
 \fBauto\fR (default), \fBalways\fR, or \fBnever\fR.
 .TP

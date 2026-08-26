@@ -299,3 +299,44 @@ fn title_and_axis_labels() {
     assert_eq!(args.xlabel.as_deref(), Some("step"));
     assert_eq!(args.ylabel.as_deref(), Some("value"));
 }
+
+#[test]
+fn heatmap_band_and_reduction_flags_parse() {
+    let args = run(&[
+        "heatmap",
+        "--labels-x",
+        "cat, dog",
+        "--labels-y",
+        "p,q",
+        "--reduce",
+        "max",
+        "--log-color",
+    ]);
+    assert_eq!(
+        args.labels_x.as_deref(),
+        Some(&["cat".to_string(), "dog".to_string()][..])
+    );
+    assert_eq!(
+        args.labels_y.as_deref(),
+        Some(&["p".to_string(), "q".to_string()][..])
+    );
+    assert!(matches!(args.reduce, Some(malevich::stat::Reducer::Max)));
+    assert!(args.colormap.as_ref().is_some_and(|map| map.is_log()));
+}
+
+#[test]
+fn heatmap_flags_stay_off_other_charts_and_conflicts_fail() {
+    assert!(parse(&["line", "--labels-x", "a"]).is_err());
+    assert!(parse(&["hist2d", "--reduce", "max"]).is_err());
+    assert!(parse(&["line", "--log-color"]).is_err());
+    assert!(parse(&["heatmap", "--log-color", "--midpoint", "0"]).is_err());
+    assert!(parse(&["heatmap", "--reduce", "p95"]).is_err());
+    assert!(parse(&["heatmap", "--labels-x", "a,,b"]).is_err());
+    // hist2d keeps --log-color: its counts span decades too.
+    assert!(
+        run(&["hist2d", "--log-color"])
+            .colormap
+            .as_ref()
+            .is_some_and(|map| map.is_log())
+    );
+}
