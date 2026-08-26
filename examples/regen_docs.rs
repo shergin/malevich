@@ -104,6 +104,13 @@ const GALLERY: &[(&str, &str)] = &[
          ramp when the output is a plain pipe.",
     ),
     (
+        "boundary",
+        "A decision boundary from the grammar, no preset: Cells::classes colors \
+         the feature plane by predicted class through the categorical palette, \
+         each region keeps a stable shade with matching legend swatches, and the \
+         training points sit on top.",
+    ),
+    (
         "density2d",
         "A 2D histogram: point density on a grid, empty bins honestly blank.",
     ),

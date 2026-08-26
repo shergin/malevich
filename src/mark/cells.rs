@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::Categories;
 use crate::scale::Colormap;
 
 /// A grid of values — a heatmap, a matrix, a 2D histogram — or, through
@@ -26,6 +27,11 @@ pub struct Cells<'a> {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub(crate) rgb: Option<Cow<'a, [(u8, u8, u8)]>>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub(crate) classes: Option<Categories>,
 }
 
 impl<'a> Cells<'a> {
@@ -56,6 +62,7 @@ impl<'a> Cells<'a> {
             extents: None,
             colormap: Colormap::DEFAULT,
             rgb: None,
+            classes: None,
         };
         cells.validate()?;
         Ok(cells)
@@ -94,6 +101,48 @@ impl<'a> Cells<'a> {
             extents: None,
             colormap: Colormap::DEFAULT,
             rgb: Some(pixels.into()),
+            classes: None,
+        };
+        cells.validate()?;
+        Ok(cells)
+    }
+
+    /// Categorical regions: a grid of class labels, colored through the plot's
+    /// [`Palette`](crate::scale::Palette) with a categorical legend — the
+    /// decision-boundary grid. Categories take the distinct labels in first
+    /// appearance order, exactly like `color_by`. In plain output each class
+    /// keeps its own shade-ramp glyph, and the legend swatches carry the same
+    /// glyphs, so regions stay separable without color.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `columns` is zero or does not divide the label count evenly.
+    pub fn classes(
+        columns: usize,
+        labels: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Cells<'a> {
+        Cells::try_classes(columns, labels)
+            .expect("Cells::classes requires columns to divide the label count evenly")
+    }
+
+    /// Fallible counterpart to [`Cells::classes`] for data-driven grid shapes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::EmptyDimension`](crate::Error::EmptyDimension) when
+    /// `columns` is zero, or [`Error::NonRectangular`](crate::Error::NonRectangular)
+    /// when the labels do not fill complete rows.
+    pub fn try_classes(
+        columns: usize,
+        labels: impl IntoIterator<Item = impl Into<String>>,
+    ) -> crate::Result<Cells<'a>> {
+        let cells = Cells {
+            columns,
+            values: Vec::<f64>::new().into_series(),
+            extents: None,
+            colormap: Colormap::DEFAULT,
+            rgb: None,
+            classes: Some(Categories::new(labels)),
         };
         cells.validate()?;
         Ok(cells)
@@ -133,7 +182,13 @@ impl<'a> Cells<'a> {
 
     /// The grid's row count, whichever channel carries the grid.
     pub(crate) fn rows(&self) -> usize {
-        let count = self.rgb.as_ref().map_or(self.values.len(), |p| p.len());
+        let count = if let Some(classes) = &self.classes {
+            classes.len()
+        } else if let Some(pixels) = &self.rgb {
+            pixels.len()
+        } else {
+            self.values.len()
+        };
         count / self.columns.max(1)
     }
 
@@ -150,20 +205,31 @@ impl<'a> Cells<'a> {
                 shape: (self.values.len(), self.columns),
             });
         }
-        if let Some(pixels) = &self.rgb {
-            if !pixels.len().is_multiple_of(self.columns) {
-                return Err(crate::Error::NonRectangular {
-                    mark: "Cells",
-                    shape: (pixels.len(), self.columns),
-                });
-            }
-            // Only deserialization can populate both channels; the constructors
-            // fill exactly one.
-            if !self.values.is_empty() {
-                return Err(crate::Error::InvalidParameter {
-                    detail: "Cells carries either values or rgb pixels, not both",
-                });
-            }
+        if let Some(pixels) = &self.rgb
+            && !pixels.len().is_multiple_of(self.columns)
+        {
+            return Err(crate::Error::NonRectangular {
+                mark: "Cells",
+                shape: (pixels.len(), self.columns),
+            });
+        }
+        if let Some(classes) = &self.classes
+            && !classes.len().is_multiple_of(self.columns)
+        {
+            return Err(crate::Error::NonRectangular {
+                mark: "Cells",
+                shape: (classes.len(), self.columns),
+            });
+        }
+        // Only deserialization can populate several channels; the constructors
+        // fill exactly one.
+        let channels = usize::from(!self.values.is_empty())
+            + usize::from(self.rgb.is_some())
+            + usize::from(self.classes.is_some());
+        if channels > 1 {
+            return Err(crate::Error::InvalidParameter {
+                detail: "Cells carries exactly one of values, rgb pixels, or classes",
+            });
         }
         self.colormap.validate()?;
         if let Some((x, y)) = self.extents {
@@ -189,6 +255,7 @@ impl<'a> Cells<'a> {
             extents: self.extents,
             colormap: self.colormap,
             rgb: self.rgb.map(|pixels| Cow::Owned(pixels.into_owned())),
+            classes: self.classes,
         }
     }
 }

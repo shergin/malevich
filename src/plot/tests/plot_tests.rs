@@ -1091,6 +1091,30 @@ fn rgb_cells_render_direct_colors_with_luma_fallback() {
     );
 }
 
+/// Class cells paint one stable shade per category and legend the classes
+/// with matching shade swatches, so regions stay separable without color.
+const CLASS_REGIONS: &str = "     ░░ hot  ▒▒ cold\n2 ┤▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░\n  │▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░\n  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n  │░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒\n0 ┤░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒\n  └┬─────────────────────┬\n   0                     2";
+
+#[test]
+fn class_cells_shade_regions_and_legend_them() {
+    let plot = Plot::new().layer(crate::mark::Cells::classes(
+        2,
+        ["hot", "cold", "cold", "hot"],
+    ));
+    assert!(plot.validate().is_ok());
+    assert_eq!(plot.render(&Frame::plain(26, 8)), CLASS_REGIONS);
+
+    // No value scale: a requested colorbar reserves nothing.
+    let with_bar = Plot::new()
+        .layer(crate::mark::Cells::classes(2, ["a", "b", "b", "a"]))
+        .colorbar();
+    let without = Plot::new().layer(crate::mark::Cells::classes(2, ["a", "b", "b", "a"]));
+    assert_eq!(
+        with_bar.render(&Frame::plain(26, 8)),
+        without.render(&Frame::plain(26, 8)),
+    );
+}
+
 /// Every escape in ANSI output must be a complete SGR sequence the encoder
 /// wrote itself; any other control character is an injection leak.
 fn assert_only_sgr_escapes(output: &str) {

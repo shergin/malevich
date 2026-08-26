@@ -28,6 +28,7 @@ fn cells_colorbar(
             values,
             colormap,
             rgb: None,
+            classes: None,
             ..
         } => Some((*values, colormap.clone())),
         _ => None,

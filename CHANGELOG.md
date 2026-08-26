@@ -5,6 +5,13 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `Cells::classes` draws categorical regions: a grid of class labels colored
+  through the plot's categorical `Palette` with a categorical legend — the
+  decision-boundary chart. Labels intern in first-appearance order exactly
+  like `color_by`; in plain output each class keeps a stable shade-ramp glyph
+  and the legend swatches carry the same glyphs, so regions stay separable
+  with no color at all. Gallery gains `boundary`, 5-NN decision regions with
+  the training scatter on top.
 - `Cells::rgb` draws a grid of direct colors — an image. Raw row-major pixel
   buffers only (decoding files stays the host's job), no colormap and no
   colorbar, honest quantization down the color ladder, and in plain output

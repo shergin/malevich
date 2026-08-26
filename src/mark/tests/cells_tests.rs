@@ -90,3 +90,40 @@ fn rgb_grids_detach_into_owned_pixels() {
     let debug = format!("{owned:?}");
     assert!(debug.contains("columns: 2"));
 }
+
+#[test]
+#[should_panic(expected = "divide the label count")]
+fn ragged_class_grids_panic() {
+    Cells::classes(3, ["a", "b"]);
+}
+
+#[test]
+fn checked_class_shapes_return_typed_errors() {
+    assert!(matches!(
+        Cells::try_classes(0, ["a"]),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    assert!(matches!(
+        Cells::try_classes(2, ["a", "b", "c"]),
+        Err(crate::Error::NonRectangular { .. })
+    ));
+    let regions = Cells::try_classes(2, ["a", "b", "b", "a"]).expect("rectangular");
+    assert!(regions.validate().is_ok());
+    assert_eq!(regions.rows(), 2);
+    // Extents apply — the decision-boundary grid maps onto feature space.
+    assert!(
+        Cells::classes(2, ["a", "b", "b", "a"])
+            .try_extents((-1.0, 1.0), (-1.0, 1.0))
+            .is_ok()
+    );
+}
+
+#[test]
+fn a_grid_with_several_channels_fails_validation() {
+    let mut cells = Cells::classes(1, ["a"]);
+    cells.rgb = Some(vec![(0u8, 0, 0)].into());
+    assert!(matches!(
+        cells.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+}

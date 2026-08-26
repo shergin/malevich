@@ -219,6 +219,7 @@ pub(crate) enum ResolvedLayer<'p> {
         extents: Option<((f64, f64), (f64, f64))>,
         colormap: Colormap,
         rgb: Option<&'p [(u8, u8, u8)]>,
+        classes: Option<ColorChannel<'p>>,
     },
     Range {
         x: Coordinates<'p>,
@@ -324,11 +325,16 @@ impl ResolvedLayer<'_> {
                 values,
                 extents,
                 rgb,
+                classes,
                 ..
             } => Some(match extents {
                 Some((_, y)) => *y,
                 None => {
-                    let count = rgb.map_or(values.len(), <[_]>::len);
+                    let count = match (classes, rgb) {
+                        (Some(ColorChannel::Categories { ids, .. }), _) => ids.len(),
+                        (_, Some(pixels)) => pixels.len(),
+                        _ => values.len(),
+                    };
                     (0.0, (count / (*columns).max(1)) as f64)
                 }
             }),
@@ -420,6 +426,10 @@ impl ResolvedLayer<'_> {
             ResolvedLayer::Area { label, .. } | ResolvedLayer::Rule { label, .. } => {
                 label.is_some()
             }
+            ResolvedLayer::Cells {
+                classes: Some(channel),
+                ..
+            } => channel.has_legend(),
             ResolvedLayer::Text { .. } | ResolvedLayer::Cells { .. } => false,
         }
     }
@@ -459,12 +469,29 @@ impl ResolvedLayer<'_> {
                 label: Some(label),
                 ..
             } => visit(if ascii { "--" } else { "\u{2500}\u{2500}" }, *color, label),
+            ResolvedLayer::Cells {
+                classes: Some(channel),
+                ..
+            } => channel.for_each_legend_entry(class_swatch, &mut visit),
             ResolvedLayer::Area { label: None, .. }
             | ResolvedLayer::Rule { label: None, .. }
             | ResolvedLayer::Text { .. }
             | ResolvedLayer::Cells { .. } => {}
         }
     }
+}
+
+/// Legend swatches for class cells mirror the shade each class paints in the
+/// grid, so plain output can match regions to names without color.
+pub(crate) const CLASS_SWATCHES: [&str; 4] = [
+    "\u{2591}\u{2591}",
+    "\u{2592}\u{2592}",
+    "\u{2593}\u{2593}",
+    "\u{2588}\u{2588}",
+];
+
+fn class_swatch(category: Option<usize>) -> &'static str {
+    CLASS_SWATCHES[category.unwrap_or(0) % CLASS_SWATCHES.len()]
 }
 
 fn series_swatch(
@@ -607,6 +634,9 @@ pub(crate) fn resolve<'p>(
                 extents: cells.extents,
                 colormap: cells.colormap.clone(),
                 rgb: cells.rgb.as_deref(),
+                classes: cells.classes.as_ref().map(|categories| {
+                    colors.categories(categories, Cow::Borrowed(categories.ids()))
+                }),
             },
             Mark::Range(range) => {
                 let (x, bands) = match &range.placement {
