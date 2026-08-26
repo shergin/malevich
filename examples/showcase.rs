@@ -8,8 +8,12 @@
 //! deterministic gallery — its output depends on where you run it, which is the
 //! point. For the moving version of this tour, run `cargo run --example live`.
 
-use malevich::scale::Palette;
-use malevich::{Area, Color, Frame, Grid, Line, LineStyle, Plot, Points, Range, Rule, Text};
+use malevich::scale::{Colormap, Palette};
+use malevich::stat::{Bins, Reducer, binned, ewma};
+use malevich::{
+    Area, Cells, Color, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points, Range, Rule, Scale,
+    Text,
+};
 
 /// The tour's render: one chart per row, or a cells-versus-pixels comparison
 /// when the terminal offers a pixel protocol.
@@ -493,7 +497,7 @@ fn main() {
         price = closed;
     }
     println!(
-        "{}",
+        "{}\n",
         Plot::new()
             .layer(
                 Range::xy(&t[..], &low[..], &high[..])
@@ -505,6 +509,218 @@ fn main() {
                 Color::Rgb(213, 94, 0),
             ]))
             .title("daily candles (synthetic)")
+            .show(&frame)
+    );
+
+    // ── The ML corner: the charts training loops actually need. ──
+
+    // A confusion matrix: a Cells grid on Bands axes reading in matrix order,
+    // per-cell counts as Text.
+    let labels = ["cat", "dog", "bird"];
+    let counts = [38.0, 2.0, 0.0, 3.0, 33.0, 4.0, 1.0, 5.0, 34.0];
+    let mut confusion = Plot::new()
+        .layer(Cells::matrix(3, &counts[..]).colormap(Colormap::GREYS))
+        .x_scale(Scale::bands(labels))
+        .y_scale(Scale::bands(labels))
+        .x_label("predicted")
+        .y_label("true")
+        .title("confusion matrix (synthetic)");
+    for (i, &count) in counts.iter().enumerate() {
+        confusion = confusion.layer(Text::at(
+            (i % 3) as f64,
+            (i / 3) as f64,
+            format!("{count:.0}"),
+        ));
+    }
+    println!("{}\n", confusion.show(&frame));
+
+    // An attention head: token bands on both axes, a logarithmic colormap so
+    // decades stay apart, and the causal mask's zeros as honest gaps.
+    let tokens = ["The", "robot", "ate", "the", "red", "apple", "."];
+    let width = tokens.len();
+    let mut weights = vec![0.0f64; width * width];
+    for query in 0..width {
+        for key in 0..=query {
+            weights[query * width + key] = (-1.9 * (query - key) as f64).exp();
+        }
+    }
+    weights[6 * width + 1] = 0.35;
+    for query in 0..width {
+        let row = &mut weights[query * width..(query + 1) * width];
+        let sum: f64 = row.iter().sum();
+        for weight in row {
+            *weight /= sum;
+        }
+    }
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(Cells::matrix(width, &weights[..]).colormap(Colormap::MAGMA.log()))
+            .x_scale(Scale::bands(tokens))
+            .y_scale(Scale::bands(tokens))
+            .x_label("key")
+            .y_label("query")
+            .colorbar()
+            .title("attention, log colormap (synthetic)")
+            .show(&frame)
+    );
+
+    // A first-layer filter as an image: direct rgb cells, no colormap — luma
+    // shades in cells, true color in the pixel pane.
+    let side = 24usize;
+    let filter: Vec<(u8, u8, u8)> = (0..side * side)
+        .map(|i| {
+            let x = (i % side) as f64 / (side - 1) as f64 * 2.0 - 1.0;
+            let y = (i / side) as f64 / (side - 1) as f64 * 2.0 - 1.0;
+            let along = x * 0.5f64.cos() + y * 0.5f64.sin();
+            let envelope = (-(x * x + y * y) / 0.5).exp();
+            let level = |phase: f64| {
+                let wave = (std::f64::consts::TAU * along / 0.5 + phase).cos();
+                ((0.5 + 0.5 * wave * envelope) * 255.0).round() as u8
+            };
+            (level(0.0), level(2.1), level(4.2))
+        })
+        .collect();
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(Cells::rgb(side, filter))
+            .title("a learned filter as rgb cells (synthetic)")
+            .show(&frame)
+    );
+
+    // Decision regions: class cells through the categorical palette with a
+    // legend, the training scatter on top.
+    let centers = [(-1.5, -0.9, "a"), (1.6, -0.5, "b"), (0.1, 1.5, "c")];
+    let (mut tx, mut ty, mut tclass) = (Vec::new(), Vec::new(), Vec::new());
+    for (blob_index, &(cx, cy, name)) in centers.iter().enumerate() {
+        for i in 0..12 {
+            tx.push(cx + noise(i, blob_index as f64 * 3.0 + 20.0) * 0.8);
+            ty.push(cy + noise(i, blob_index as f64 * 3.0 + 23.0) * 0.8);
+            tclass.push(name);
+        }
+    }
+    let resolution = 72usize;
+    let regions: Vec<&str> = (0..resolution * resolution)
+        .map(|i| {
+            let px = -3.0 + 6.0 * ((i % resolution) as f64 + 0.5) / resolution as f64;
+            let py = -3.0 + 6.0 * ((i / resolution) as f64 + 0.5) / resolution as f64;
+            tx.iter()
+                .zip(&ty)
+                .zip(&tclass)
+                .map(|((&sx, &sy), &name)| ((sx - px).powi(2) + (sy - py).powi(2), name))
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+                .map(|(_, name)| name)
+                .unwrap_or("a")
+        })
+        .collect();
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(Cells::classes(resolution, regions).extents((-3.0, 3.0), (-3.0, 3.0)))
+            .layer(Points::xy(&tx[..], &ty[..]).style(PointStyle::Cross))
+            .title("1-NN decision regions (synthetic)")
+            .show(&frame)
+    );
+
+    // A loss landscape with a momentum trajectory. The 220×220 grid is denser
+    // than the raster, so every screen bucket is an honest mean, not a sample.
+    let himmelblau = |x: f64, y: f64| (x * x + y - 11.0).powi(2) + (x + y * y - 7.0).powi(2);
+    let resolution = 220usize;
+    let surface: Vec<f64> = (0..resolution * resolution)
+        .map(|i| {
+            let x = -5.0 + 10.0 * ((i % resolution) as f64 + 0.5) / resolution as f64;
+            let y = -5.0 + 10.0 * ((i / resolution) as f64 + 0.5) / resolution as f64;
+            himmelblau(x, y)
+        })
+        .collect();
+    let (mut px, mut py, mut vx, mut vy) = (-0.27f64, -4.6f64, 0.0f64, 0.0f64);
+    let (mut path_x, mut path_y) = (vec![px], vec![py]);
+    for _ in 0..48 {
+        let gx = 4.0 * px * (px * px + py - 11.0) + 2.0 * (px + py * py - 7.0);
+        let gy = 2.0 * (px * px + py - 11.0) + 4.0 * py * (px + py * py - 7.0);
+        vx = 0.82 * vx - 8.0e-4 * gx;
+        vy = 0.82 * vy - 8.0e-4 * gy;
+        px += vx;
+        py += vy;
+        path_x.push(px);
+        path_y.push(py);
+    }
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(
+                Cells::matrix(resolution, &surface[..])
+                    .extents((-5.0, 5.0), (-5.0, 5.0))
+                    .colormap(Colormap::VIRIDIS.log()),
+            )
+            .layer(Line::xy(&path_x[..], &path_y[..]))
+            .layer(Points::xy(&path_x[..], &path_y[..]).style(PointStyle::Circle))
+            .title("momentum on a loss landscape")
+            .show(&frame)
+    );
+
+    // Training curves across seeds: pooled per-step quantiles as a band, the
+    // median inside it, and its EWMA smoothing on top, on a log axis.
+    let (mut run_steps, mut run_losses) = (Vec::new(), Vec::new());
+    for seed in 0..5 {
+        for step in 0..400 {
+            let decay = 2.4 * (-(step as f64) / 90.0).exp();
+            let floor = 0.30 + 0.05 * seed as f64;
+            let wobble = 1.0 + 0.5 * noise(step, seed as f64 + 40.0);
+            run_steps.push(step as f64);
+            run_losses.push((floor + decay) * wobble);
+        }
+    }
+    let bins = Bins::new(0.0, 8.0, 50);
+    let p10 = binned(&run_steps, &run_losses, &bins, Reducer::Percentile(0.1));
+    let p50 = binned(&run_steps, &run_losses, &bins, Reducer::Median);
+    let p90 = binned(&run_steps, &run_losses, &bins, Reducer::Percentile(0.9));
+    let smoothed = ewma(&p50, 0.8);
+    let centers: Vec<f64> = (0..50).map(|bin| 4.0 + 8.0 * bin as f64).collect();
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(Area::between(&centers[..], &p10[..], &p90[..]).label("p10-p90"))
+            .layer(Line::xy(&centers[..], &p50[..]).label("median"))
+            .layer(
+                Line::xy(&centers[..], &smoothed[..])
+                    .style(LineStyle::Corners)
+                    .label("ewma"),
+            )
+            .log_y()
+            .x_label("step")
+            .title("loss across 5 seeds")
+            .show(&frame)
+    );
+
+    // A spectrogram to close: seconds × hertz through extents, a log frequency
+    // axis, and a log colormap — the chirp reads as a straight ridge.
+    let (columns, rows) = (240usize, 160usize);
+    let power: Vec<f64> = (0..columns * rows)
+        .map(|i| {
+            let t = 4.0 * ((i % columns) as f64 + 0.5) / columns as f64;
+            let f = 60.0 + 7940.0 * ((i / columns) as f64 + 0.5) / rows as f64;
+            let chirp_f = 100.0 * (4000.0f64 / 100.0).powf(t / 4.0);
+            let chirp = (-((f.ln() - chirp_f.ln()) / 0.09).powi(2)).exp();
+            let tone = 0.5 * (-((f.ln() - 440.0f64.ln()) / 0.05).powi(2)).exp();
+            let click = 0.8 * (-((t - 2.6) / 0.015).powi(2)).exp();
+            1e-4 + chirp + tone + click
+        })
+        .collect();
+    println!(
+        "{}",
+        Plot::new()
+            .layer(
+                Cells::matrix(columns, &power[..])
+                    .extents((0.0, 4.0), (60.0, 8000.0))
+                    .colormap(Colormap::MAGMA.log()),
+            )
+            .log_y()
+            .x_label("s")
+            .y_label("Hz")
+            .colorbar()
+            .title("spectrogram (synthetic)")
             .show(&frame)
     );
 }

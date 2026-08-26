@@ -5,6 +5,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- The showcase tour grows an ML corner: a confusion matrix on band axes, a
+  log-colormap attention head with a colorbar, a learned filter as rgb cells,
+  1-NN decision regions with the training scatter, a momentum trajectory over
+  a bucket-reduced loss landscape, seed-variance bands with EWMA smoothing,
+  and a spectrogram — every panel upgrading to real pixels beside its cells
+  under `--features pixel`, like the rest of the tour.
 - The loss example's training log now credits topos by its current name —
   the library was renamed from poorgrad — and the data file moved to
   `examples/data/topos_loss.csv` accordingly.
