@@ -110,6 +110,21 @@ fn heatmap_render(c: &mut Criterion) {
     });
 }
 
+fn matrix_reduce(c: &mut Criterion) {
+    // Four million cells onto ~4k screen buckets: the bucket-exact reduction
+    // must stay linear in the cells, the matrix analog of the 10M-point line.
+    let n = 2048usize;
+    let grid: Vec<f64> = (0..n * n)
+        .map(|i| ((i % n) as f64 * 0.011).sin() * ((i / n) as f64 * 0.007).cos())
+        .collect();
+    let frame = Frame::plain(80, 24);
+    let plot = Plot::new()
+        .layer(malevich::Cells::matrix(n, &grid[..]).reduce(malevich::stat::Reducer::Max));
+    c.bench_function("render/cells_2048x2048_80x24", |b| {
+        b.iter(|| black_box(plot.render(&frame)));
+    });
+}
+
 fn pathological_layout(c: &mut Criterion) {
     // The chrome-shedding fence: every frame size from degenerate to normal.
     let values: Vec<f64> = (0..500).map(|i| (i as f64 * 0.1).sin()).collect();
@@ -175,6 +190,7 @@ fn kde_density(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    matrix_reduce,
     plot_clone,
     streaming_frame,
     kde_density,

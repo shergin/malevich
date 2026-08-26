@@ -32,7 +32,9 @@ subpixels or as box-drawing corners via `LineStyle`),
 (annotations at data coordinates), `mark::Cells` (value grids as shade ramp plus
 colormap; direct-color images via `Cells::rgb` with a luma shade fallback; and
 categorical regions via `Cells::classes`, palette-colored with a legend whose
-swatches mirror each class's stable shade),
+swatches mirror each class's stable shade — grids denser than the raster reduce
+bucket-exactly through the shared `Reducer` vocabulary, `Cells::reduce` choosing
+the summary, never sampled),
 and `mark::Range` (intervals with optional body and marker channels —
 error bars, boxes, event ticks), joined under the closed `mark::Mark` enum. The
 family is complete.

@@ -11,6 +11,7 @@
 /// else.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Reducer {
     /// The number of finite values.
     Count,

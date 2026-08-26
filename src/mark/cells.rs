@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use crate::data::{IntoSeries, Series};
 use crate::mark::Categories;
 use crate::scale::Colormap;
+use crate::stat::Reducer;
 
 /// A grid of values — a heatmap, a matrix, a 2D histogram — or, through
 /// [`Cells::rgb`], a grid of direct colors: an image.
@@ -32,6 +33,22 @@ pub struct Cells<'a> {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub(crate) classes: Option<Categories>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default = "default_reduce", skip_serializing_if = "is_default_reduce")
+    )]
+    pub(crate) reduce: Reducer,
+}
+
+#[cfg(feature = "serde")]
+fn default_reduce() -> Reducer {
+    Reducer::Mean
+}
+
+#[cfg(feature = "serde")]
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_default_reduce(reduce: &Reducer) -> bool {
+    *reduce == Reducer::Mean
 }
 
 impl<'a> Cells<'a> {
@@ -63,6 +80,7 @@ impl<'a> Cells<'a> {
             colormap: Colormap::DEFAULT,
             rgb: None,
             classes: None,
+            reduce: Reducer::Mean,
         };
         cells.validate()?;
         Ok(cells)
@@ -102,6 +120,7 @@ impl<'a> Cells<'a> {
             colormap: Colormap::DEFAULT,
             rgb: Some(pixels.into()),
             classes: None,
+            reduce: Reducer::Mean,
         };
         cells.validate()?;
         Ok(cells)
@@ -143,6 +162,7 @@ impl<'a> Cells<'a> {
             colormap: Colormap::DEFAULT,
             rgb: None,
             classes: Some(Categories::new(labels)),
+            reduce: Reducer::Mean,
         };
         cells.validate()?;
         Ok(cells)
@@ -177,6 +197,22 @@ impl<'a> Cells<'a> {
     #[must_use]
     pub fn colormap(mut self, colormap: Colormap) -> Cells<'a> {
         self.colormap = colormap;
+        self
+    }
+
+    /// How a screen bucket summarizes the value cells it covers when the grid
+    /// is denser than the raster. Each bucket owns the cells whose centers
+    /// fall inside it, and shows `reducer` over them — bucket-exact, never a
+    /// sample. The default is [`Reducer::Mean`], the honest box filter;
+    /// [`Reducer::Max`] is the diagnostics choice that keeps spikes visible.
+    ///
+    /// The color ramp still normalizes to the raw grid's extent, so reducers
+    /// that can leave it ([`Reducer::Sum`], [`Reducer::Count`]) clamp at the
+    /// ramp's ends. Rgb grids always reduce by per-channel mean and class
+    /// grids by modal class, regardless of this setting.
+    #[must_use]
+    pub fn reduce(mut self, reducer: Reducer) -> Cells<'a> {
+        self.reduce = reducer;
         self
     }
 
@@ -232,6 +268,13 @@ impl<'a> Cells<'a> {
             });
         }
         self.colormap.validate()?;
+        if let Reducer::Percentile(position) = self.reduce
+            && !(0.0..=1.0).contains(&position)
+        {
+            return Err(crate::Error::InvalidParameter {
+                detail: "a Cells percentile reducer needs a position in [0, 1]",
+            });
+        }
         if let Some((x, y)) = self.extents {
             if !(x.0.is_finite() && x.1.is_finite() && y.0.is_finite() && y.1.is_finite()) {
                 return Err(crate::Error::InvalidParameter {
@@ -256,6 +299,7 @@ impl<'a> Cells<'a> {
             colormap: self.colormap,
             rgb: self.rgb.map(|pixels| Cow::Owned(pixels.into_owned())),
             classes: self.classes,
+            reduce: self.reduce,
         }
     }
 }

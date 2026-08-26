@@ -174,6 +174,8 @@ fn bands_cells_and_log_scales_round_trip_as_valid_specs() {
             .y_scale(Scale::Log),
         Plot::new().layer(Cells::rgb(2, vec![(0u8, 0, 0), (255, 255, 255)])),
         Plot::new().layer(Cells::classes(2, ["a", "b", "b", "a"])),
+        Plot::new()
+            .layer(Cells::matrix(2, &[1.0, 2.0, 3.0, 4.0][..]).reduce(crate::stat::Reducer::Max)),
     ];
     for plot in plots {
         assert!(plot.validate().is_ok());
@@ -188,6 +190,23 @@ fn bands_cells_and_log_scales_round_trip_as_valid_specs() {
     let encoded = serde_json::to_string(&matrix).expect("serializes");
     assert!(!encoded.contains("rgb"), "spurious field: {encoded}");
     assert!(!encoded.contains("classes"), "spurious field: {encoded}");
+    assert!(!encoded.contains("reduce"), "spurious field: {encoded}");
+
+    // A non-default reducer is carried; an out-of-range deserialized
+    // percentile fails validation instead of panicking at render.
+    let max = Plot::new().layer(Cells::matrix(1, &[1.0][..]).reduce(crate::stat::Reducer::Max));
+    let encoded = serde_json::to_string(&max).expect("serializes");
+    assert!(encoded.contains("\"reduce\":\"Max\""), "{encoded}");
+    let decoded: Plot = serde_json::from_str(&encoded).expect("deserializes");
+    assert!(decoded.validate().is_ok());
+    let hostile: Plot = serde_json::from_str(
+        r#"{"layers":[{"Cells":{"columns":1,"values":[1.0],"extents":null,"colormap":{"stops":[[0,0,0],[255,255,255]]},"reduce":{"Percentile":7.0}}}],"title":null,"x":"Linear","y":"Linear","x_label":null,"y_label":null,"x_domain":null,"y_domain":null}"#,
+    )
+    .expect("deserializes");
+    assert!(matches!(
+        hostile.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
 }
 
 #[test]

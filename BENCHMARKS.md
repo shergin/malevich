@@ -5,6 +5,23 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
+## 2026-08-25 addition (unreleased)
+
+- Machine, OS, compiler, profile: as in the 2026-08-07 baseline below
+
+| Measurement | Estimate | 95% interval |
+| --- | ---: | ---: |
+| `render/cells_2048x2048_80x24` | 43.720 ms | 43.535–43.944 ms |
+
+```sh
+cargo bench --bench render -- render/cells_2048x2048_80x24
+```
+
+The matrix analog of the ten-million-point line: 4.19 million cells max-reduce
+onto ~4k screen buckets in tens of milliseconds, about 10 ns per cell. The
+bucket-exact reduction walks every covered cell once, so the cost is linear in
+the grid, not in the raster.
+
 ## 2026-08-24 baseline (1.17.0)
 
 - Revision: `7bbc202`

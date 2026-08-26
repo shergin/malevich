@@ -1115,6 +1115,48 @@ fn class_cells_shade_regions_and_legend_them() {
     );
 }
 
+#[test]
+fn dense_grids_reduce_bucket_exactly_instead_of_sampling() {
+    // One row of 10,000 zeros with a single spike. Mean-reduced, the spike
+    // dilutes into its bucket; max-reduced it must survive at full intensity.
+    // Under the old per-patch sampling it would almost surely vanish.
+    let mut values = vec![0.0f64; 10_000];
+    values[6_173] = 1000.0;
+    let frame = Frame::plain(44, 8);
+
+    let max = Plot::new()
+        .layer(crate::mark::Cells::matrix(10_000, &values[..]).reduce(crate::stat::Reducer::Max));
+    assert!(
+        max.render(&frame).contains('\u{2588}'),
+        "a max-reduced spike must keep the ramp's top shade"
+    );
+
+    let mean = Plot::new().layer(crate::mark::Cells::matrix(10_000, &values[..]));
+    assert!(
+        !mean.render(&frame).contains('\u{2588}'),
+        "the box filter dilutes an isolated spike into its bucket"
+    );
+
+    // Reducing a constant grid is exact for every reducer, so the choice must
+    // not change a single glyph — a partition-independent invariant.
+    let flat = vec![7.0f64; 10_000];
+    let frame = Frame::plain(46, 8);
+    let renders: Vec<String> = [
+        crate::stat::Reducer::Mean,
+        crate::stat::Reducer::Max,
+        crate::stat::Reducer::Median,
+    ]
+    .into_iter()
+    .map(|reducer| {
+        Plot::new()
+            .layer(crate::mark::Cells::matrix(10_000, &flat[..]).reduce(reducer))
+            .render(&frame)
+    })
+    .collect();
+    assert_eq!(renders[0], renders[1]);
+    assert_eq!(renders[0], renders[2]);
+}
+
 /// Every escape in ANSI output must be a complete SGR sequence the encoder
 /// wrote itself; any other control character is an injection leak.
 fn assert_only_sgr_escapes(output: &str) {

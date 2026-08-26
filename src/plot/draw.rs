@@ -13,6 +13,7 @@ use crate::plot::resolve::{
 };
 use crate::render::{Canvas, Charset, Color, PlotRect, PointShape};
 use crate::scale::{Band, Colormap};
+use crate::stat::{Reducer, ReducerState};
 
 /// Draws every resolved layer, in order, through the shared scales.
 pub(crate) fn layers<C: Canvas>(
@@ -105,6 +106,7 @@ pub(crate) fn layers<C: Canvas>(
                 colormap,
                 rgb,
                 classes,
+                reduce,
             } => {
                 draw_cells(
                     surface,
@@ -112,6 +114,7 @@ pub(crate) fn layers<C: Canvas>(
                     (values, *rgb, classes.as_ref()),
                     *extents,
                     colormap.clone(),
+                    *reduce,
                     x_scale,
                     y_scale,
                     (band.as_ref(), layout.y_band.as_ref()),
@@ -498,14 +501,17 @@ fn draw_ranges<C: Canvas>(
     }
 }
 
-/// Draws one cells layer: for every patch of the canvas's sampling grid inside the
-/// plot area, the nearest grid sample fills colored by the colormap — one cell per
-/// patch on glyph targets, one pixel per patch on pixel targets. Gaps stay blank.
+/// Draws one cells layer: every patch of the canvas's sampling grid owns the
+/// grid cells whose centers fall inside it (adjacent patches partition the
+/// centers), and shows the layer's reduction over them — the mean box filter
+/// by default, [`Cells::reduce`](crate::Cells::reduce) to choose — so a grid
+/// denser than the raster is summarized bucket-exactly, never sampled. A patch
+/// owning no center shows the single cell containing its center. Gaps stay
+/// blank.
 ///
-/// An rgb grid carries its colors directly: no colormap, and the patch intensity
-/// is the pixel's luma, so plain output shows the image on the shade ramp. A
-/// classes grid paints each category's palette color and keeps a stable shade
-/// per class, mirrored by its legend swatches.
+/// An rgb grid reduces by per-channel mean and shows its luma as the plain
+/// shade. A classes grid reduces to the modal class (ties to the lowest id)
+/// and keeps a stable shade per class, mirrored by its legend swatches.
 ///
 /// `CellChannels` is the mark's one populated grid: values, pixels, or classes.
 ///
@@ -519,6 +525,7 @@ fn draw_cells<C: Canvas>(
     channels: CellChannels<'_, '_>,
     extents: Option<((f64, f64), (f64, f64))>,
     colormap: Colormap,
+    reduce: Reducer,
     x_scale: &Map,
     y_scale: &Map,
     bands: (Option<&Band>, Option<&Band>),
@@ -562,49 +569,150 @@ fn draw_cells<C: Canvas>(
     let units_x = rect.columns * samples_x;
     let units_y = rect.rows * samples_y;
 
+    // The center-partition ranges, one per patch column and per patch row.
+    // Band axes map patches to bands directly and never reduce.
+    let column_ranges: Option<Vec<(usize, usize)>> = x_band.is_none().then(|| {
+        (0..units_x)
+            .map(|unit| {
+                let left = unit as f64 * px as f64 / samples_x as f64;
+                let right = (unit + 1) as f64 * px as f64 / samples_x as f64;
+                cell_range(x_scale, (left, right), (x0, x1), columns)
+            })
+            .collect()
+    });
+    let row_ranges: Option<Vec<(usize, usize)>> = y_band.is_none().then(|| {
+        (0..units_y)
+            .map(|unit| {
+                let top = unit as f64 * py as f64 / samples_y as f64;
+                let bottom = (unit + 1) as f64 * py as f64 / samples_y as f64;
+                cell_range(y_scale, (top, bottom), (y0, y1), rows)
+            })
+            .collect()
+    });
+    // Modal-class scratch, reused across patches.
+    let class_count = match classes {
+        Some(ColorChannel::Categories { labels, .. }) => labels.len(),
+        _ => 0,
+    };
+    let mut votes = vec![0u32; class_count];
+    let mut touched: Vec<usize> = Vec::new();
+
     for unit_row in 0..units_y {
         for unit_col in 0..units_x {
             // The data position at this patch's center, via the shared scales'
-            // subpixel geometry.
+            // subpixel geometry — the fallback when the patch owns no center.
             let sub_x = (unit_col as f64 + 0.5) * px as f64 / samples_x as f64;
             let sub_y = (unit_row as f64 + 0.5) * py as f64 / samples_y as f64;
             let sample = (|| {
-                let column = match x_band {
-                    Some(band) => band.index_at(sub_x).filter(|&index| index < columns)?,
-                    None => {
-                        let fx = position_on(x_scale, sub_x, x0, x1)?;
-                        let column =
-                            (crate::numeric::inverse_lerp(x0, x1, fx) * columns as f64).floor();
-                        if !(0.0..columns as f64).contains(&column) {
-                            return None;
-                        }
-                        column as usize
+                let (c0, c1) = match (x_band, &column_ranges) {
+                    (Some(band), _) => {
+                        let column = band.index_at(sub_x).filter(|&index| index < columns)?;
+                        (column, column + 1)
                     }
+                    (None, Some(ranges)) => {
+                        let (start, end) = ranges[unit_col];
+                        if start < end {
+                            (start, end)
+                        } else {
+                            let fx = position_on(x_scale, sub_x, x0, x1)?;
+                            let column =
+                                (crate::numeric::inverse_lerp(x0, x1, fx) * columns as f64).floor();
+                            if !(0.0..columns as f64).contains(&column) {
+                                return None;
+                            }
+                            let column = column as usize;
+                            (column, column + 1)
+                        }
+                    }
+                    (None, None) => unreachable!("a bandless axis precomputes its ranges"),
                 };
-                let row = match y_band {
-                    Some(band) => band.index_at(sub_y).filter(|&index| index < rows)?,
-                    None => {
-                        let fy = position_on(y_scale, sub_y, y0, y1)?;
-                        let row = (crate::numeric::inverse_lerp(y0, y1, fy) * rows as f64).floor();
-                        if !(0.0..rows as f64).contains(&row) {
-                            return None;
-                        }
-                        row as usize
+                let (r0, r1) = match (y_band, &row_ranges) {
+                    (Some(band), _) => {
+                        let row = band.index_at(sub_y).filter(|&index| index < rows)?;
+                        (row, row + 1)
                     }
+                    (None, Some(ranges)) => {
+                        let (start, end) = ranges[unit_row];
+                        if start < end {
+                            (start, end)
+                        } else {
+                            let fy = position_on(y_scale, sub_y, y0, y1)?;
+                            let row =
+                                (crate::numeric::inverse_lerp(y0, y1, fy) * rows as f64).floor();
+                            if !(0.0..rows as f64).contains(&row) {
+                                return None;
+                            }
+                            let row = row as usize;
+                            (row, row + 1)
+                        }
+                    }
+                    (None, None) => unreachable!("a bandless axis precomputes its ranges"),
                 };
                 if let Some(channel) = classes {
-                    let index = row * columns + column;
-                    let id = channel.category(index)?;
-                    // The stable per-class shade the legend swatches mirror.
+                    // The modal class of the covered cells, ties to the lowest
+                    // id, painted with its stable shade and palette color.
+                    touched.clear();
+                    for row in r0..r1 {
+                        for column in c0..c1 {
+                            if let Some(id) = channel.category(row * columns + column)
+                                && id < votes.len()
+                            {
+                                if votes[id] == 0 {
+                                    touched.push(id);
+                                }
+                                votes[id] += 1;
+                            }
+                        }
+                    }
+                    let mut winner: Option<(u32, usize)> = None;
+                    for &id in &touched {
+                        let better = winner.is_none_or(|(count, best)| {
+                            votes[id] > count || (votes[id] == count && id < best)
+                        });
+                        if better {
+                            winner = Some((votes[id], id));
+                        }
+                    }
+                    for &id in &touched {
+                        votes[id] = 0;
+                    }
+                    let (_, id) = winner?;
                     let intensity = ((id % 4) as f64 + 0.5) / 4.0;
-                    return Some((intensity, channel.color(index)));
+                    return Some((intensity, channel.category_color(id)));
                 }
                 if let Some(pixels) = rgb {
-                    let (r, g, b) = pixels[row * columns + column];
+                    // The box filter: per-channel mean of the covered pixels.
+                    let (mut r, mut g, mut b, mut n) = (0u64, 0u64, 0u64, 0u64);
+                    for row in r0..r1 {
+                        for column in c0..c1 {
+                            if let Some(&(pr, pg, pb)) = pixels.get(row * columns + column) {
+                                r += u64::from(pr);
+                                g += u64::from(pg);
+                                b += u64::from(pb);
+                                n += 1;
+                            }
+                        }
+                    }
+                    if n == 0 {
+                        return None;
+                    }
+                    let (r, g, b) = (
+                        ((r + n / 2) / n) as u8,
+                        ((g + n / 2) / n) as u8,
+                        ((b + n / 2) / n) as u8,
+                    );
                     return Some((luma(r, g, b), Color::Rgb(r, g, b)));
                 }
                 let (low, high) = range?;
-                let value = values[row * columns + column];
+                let mut state = ReducerState::new(reduce);
+                for row in r0..r1 {
+                    for column in c0..c1 {
+                        if let Some(&value) = values.get(row * columns + column) {
+                            state.add(value);
+                        }
+                    }
+                }
+                let value = state.finish();
                 if !value.is_finite() {
                     return None;
                 }
@@ -617,6 +725,25 @@ fn draw_cells<C: Canvas>(
             surface.patch(unit_col, unit_row, rect, sample);
         }
     }
+}
+
+/// The half-open range of grid cells whose centers a patch owns on one axis:
+/// the patch's subpixel edges inverted through the scale into fractional cell
+/// indices, then the centers strictly between them. Monotone maps make
+/// adjacent patches partition the centers; `(0, 0)` means the patch owns none
+/// and falls back to sampling the cell at its center.
+fn cell_range(scale: &Map, edges: (f64, f64), extent: (f64, f64), count: usize) -> (usize, usize) {
+    let index_at = |sub: f64| -> f64 {
+        crate::numeric::inverse_lerp(extent.0, extent.1, scale.unmap(sub)) * count as f64
+    };
+    let (a, b) = (index_at(edges.0), index_at(edges.1));
+    let (first, last) = if a <= b { (a, b) } else { (b, a) };
+    let start = (first - 0.5).ceil().max(0.0);
+    let end = (last - 0.5).ceil().clamp(0.0, count as f64);
+    if !(start.is_finite() && end.is_finite()) || start >= end {
+        return (0, 0);
+    }
+    (start as usize, end as usize)
 }
 
 /// The one populated grid channel of a cells layer, as borrowed slices.
@@ -735,7 +862,53 @@ fn draw_area<C: Canvas>(
 
 #[cfg(test)]
 mod tests {
-    use super::{Map, position_on};
+    use super::{Map, cell_range, position_on};
+
+    #[test]
+    fn cell_ranges_partition_the_centers() {
+        // Every cell center must be owned by exactly one patch, on linear and
+        // log scales alike — the bucket-exactness invariant.
+        for (scale, extent) in [
+            (Map::build((0.0, 100.0), (0.0, 239.0), false), (0.0, 100.0)),
+            (Map::build((1.0, 1000.0), (0.0, 239.0), true), (1.0, 1000.0)),
+            // The raster flip: y scales run backwards.
+            (Map::build((0.0, 100.0), (239.0, 0.0), false), (0.0, 100.0)),
+        ] {
+            let mut owned = vec![0usize; 1000];
+            for unit in 0..240 {
+                let (start, end) =
+                    cell_range(&scale, (unit as f64, (unit + 1) as f64), extent, 1000);
+                for slot in &mut owned[start..end] {
+                    *slot += 1;
+                }
+            }
+            // The last patch edge (240) sits past the range end (239), so the
+            // sweep covers every center; none may be double-counted.
+            assert!(
+                owned.iter().all(|&count| count == 1),
+                "centers owned {:?}",
+                owned
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| **c != 1)
+                    .take(5)
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn upscaled_patches_own_no_centers() {
+        // 4 cells across 240 subpixels: almost every patch owns none and
+        // falls back to sampling; exactly 4 own one center each.
+        let scale = Map::build((0.0, 4.0), (0.0, 239.0), false);
+        let mut owners = 0;
+        for unit in 0..240 {
+            let (start, end) = cell_range(&scale, (unit as f64, (unit + 1) as f64), (0.0, 4.0), 4);
+            owners += end - start;
+        }
+        assert_eq!(owners, 4);
+    }
 
     #[test]
     fn cells_invert_log_scales_in_logarithmic_data_space() {

@@ -111,6 +111,13 @@ const GALLERY: &[(&str, &str)] = &[
          training points sit on top.",
     ),
     (
+        "attention_full",
+        "A million attention weights reduced bucket-exactly onto a terminal: \
+         the same matrix mean-reduced and max-reduced side by side — the box \
+         filter dissolves the sparse long-range spikes that max keeps, the \
+         honesty gap per-bucket sampling would hide.",
+    ),
+    (
         "density2d",
         "A 2D histogram: point density on a grid, empty bins honestly blank.",
     ),

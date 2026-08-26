@@ -35,6 +35,7 @@ pub use lttb::lttb;
 pub use m4::{M4, m4};
 pub(crate) use m4::{m4_mapped, m4_mapped_categories};
 pub use moments::Moments;
+pub(crate) use reducer::ReducerState;
 pub use reducer::{Reducer, quantiles};
 pub use stack::stack;
 pub use window::Window;

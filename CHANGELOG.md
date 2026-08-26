@@ -5,6 +5,17 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Cells grids denser than the raster now reduce honestly instead of sampling:
+  every screen bucket owns the cells whose centers fall inside it (adjacent
+  buckets partition the centers, proven by a property test) and shows a
+  reduction over all of them — `Reducer::Mean` by default, `Cells::reduce`
+  to choose; `Max` keeps sparse spikes visible that sampling silently
+  dropped. Rgb grids box-filter per channel and class grids reduce to the
+  modal class with deterministic ties. 4.19 million cells reduce in ~44 ms
+  on the recorded baseline (BENCHMARKS.md). Buckets owning no cell center
+  keep the old center-sampling, so ordinary small grids render as before.
+  Gallery gains `attention-full`: one million attention weights rendered
+  twice, the mean pane dissolving the long-range spikes the max pane keeps.
 - `Cells::classes` draws categorical regions: a grid of class labels colored
   through the plot's categorical `Palette` with a categorical legend — the
   decision-boundary chart. Labels intern in first-appearance order exactly

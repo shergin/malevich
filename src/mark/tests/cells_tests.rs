@@ -127,3 +127,16 @@ fn a_grid_with_several_channels_fails_validation() {
         Err(crate::Error::InvalidParameter { .. })
     ));
 }
+
+#[test]
+fn percentile_reducers_validate_their_position() {
+    use crate::stat::Reducer;
+
+    let valid = Cells::matrix(2, &[1.0, 2.0][..]).reduce(Reducer::Percentile(0.95));
+    assert!(valid.validate().is_ok());
+    let invalid = Cells::matrix(2, &[1.0, 2.0][..]).reduce(Reducer::Percentile(1.5));
+    assert!(matches!(
+        invalid.validate(),
+        Err(crate::Error::InvalidParameter { .. })
+    ));
+}

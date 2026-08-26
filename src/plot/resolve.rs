@@ -134,6 +134,14 @@ impl<'p> ColorChannel<'p> {
         }
     }
 
+    /// The palette color of one category, independent of any datum index.
+    pub(crate) fn category_color(&self, category: usize) -> Color {
+        match self {
+            ColorChannel::Fixed { color, .. } => *color,
+            ColorChannel::Categories { palette, .. } => palette.color(category),
+        }
+    }
+
     /// Category identity is line topology as well as paint: unequal adjacent
     /// identities must never be connected, even when palette colors wrap.
     pub(crate) fn category(&self, index: usize) -> Option<usize> {
@@ -220,6 +228,7 @@ pub(crate) enum ResolvedLayer<'p> {
         colormap: Colormap,
         rgb: Option<&'p [(u8, u8, u8)]>,
         classes: Option<ColorChannel<'p>>,
+        reduce: crate::stat::Reducer,
     },
     Range {
         x: Coordinates<'p>,
@@ -637,6 +646,7 @@ pub(crate) fn resolve<'p>(
                 classes: cells.classes.as_ref().map(|categories| {
                     colors.categories(categories, Cow::Borrowed(categories.ids()))
                 }),
+                reduce: cells.reduce,
             },
             Mark::Range(range) => {
                 let (x, bands) = match &range.placement {
