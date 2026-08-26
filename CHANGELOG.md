@@ -11,6 +11,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   whole scale collapsed. Log domains now refuse to grow to a non-positive
   bound, and a tick without a position on its scale is dropped instead of
   drawn at a fabricated column.
+- `stat::ewma`: debiased exponentially weighted smoothing — TensorBoard's
+  scalar smoothing, early outputs unbiased instead of dragged toward zero,
+  gaps passing through without disturbing the state. A scan over the ordered
+  series, documented as a batch transform rather than pretending a merge law.
+  Gallery gains `seeds`: five runs pooled into per-step quantile bands via
+  the existing reducers, with the smoothed median on top.
 - `stat::roc` and `stat::auc`: the classifier threshold sweep (standard step
   construction, ties grouped, one-class data returns empty rather than
   invented rates) and the trapezoid area under a polyline, gaps contributing

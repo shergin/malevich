@@ -73,6 +73,12 @@ const GALLERY: &[(&str, &str)] = &[
          samples against the identity line — the heavy tail peels off it.",
     ),
     (
+        "seeds",
+        "Training curves across random seeds: five runs pooled into per-step \
+         quantiles, the p10-p90 band as an Area, the median inside it, and its \
+         stat::ewma smoothing on top - on a log y axis.",
+    ),
+    (
         "waveform",
         "Ten million points through the auto-inserted M4 aggregation — pixel-identical \
          to drawing every point, in tens of milliseconds.",

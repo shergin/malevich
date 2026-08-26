@@ -313,6 +313,36 @@ d -4 ┤⠒⠉     ⡀⠊
                          normal-ish quantiles
 ```
 
+## seeds
+
+Training curves across random seeds: five runs pooled into per-step quantiles, the p10-p90 band as an Area, the median inside it, and its stat::ewma smoothing on top - on a log y axis.
+Source: [examples/seeds.rs](examples/seeds.rs)
+
+```text
+                      loss across 5 seeds
+                 ▄▄ p10-p90  ── median  ── ewma
+3.5 ┤⢠⣀
+3.0 ┤⢸⣿⣷⡄ ─╮
+2.5 ┤⢸⣿⣿⣿⣶⣶╰───╮
+2.0 ┤⠸⢿⣿⣿⣿⣿⣿⣶⣄⡀╰──╮
+    │  ⠈⠻⣿⣿⣿⣿⣿⣿⣶⣄ ╰──╮
+1.5 ┤    ⠈⠛⠿⣿⣿⣿⣿⣿⣿⣄⣀ ╰──╮
+    │       ⠹⢿⣿⣿⣿⣿⣿⣿⣷⣄⡀ ╰───╮
+    │         ⠈⠻⣿⣿⣿⣿⣿⣿⣿⣷⣦⣀⡀ ╰──╮
+1.0 ┤           ⠈⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆  ╰───╮
+    │               ⠙⢿⣿⢿⣿⣿⣿⣿⣿⣿⣷⣄⣀⣠⣤╰──╮
+    │                 ⠁ ⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦╰───╮
+    │                    ⠘⠁⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿╰─────╮⣦⣠⣤⣀ ⢀⣀⡀
+    │                        ⠉⠛⠿⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿╰──────╮⣿⣤⣴
+0.5 ┤                             ⠘⠛⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿╰────────
+    │                                ⠛⠛⠿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠉⠒⠤⠒⠁
+    │                                   ⠈⠁ ⠉⠉⠉⠻⢿⣿⣿⣿⣿⠛⢿⣿⣿⣿⣿⣿
+    │                                            ⠈⠋⠁ ⠈⠉⠉ ⠈⠛
+    └┬──────┬──────┬───────┬──────┬──────┬───────┬──────┬──────┬
+     0     50     100     150    200    250     300    350   400
+                                step
+```
+
 ## waveform
 
 Ten million points through the auto-inserted M4 aggregation — pixel-identical to drawing every point, in tens of milliseconds.
