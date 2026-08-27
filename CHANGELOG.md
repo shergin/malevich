@@ -5,6 +5,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.6 — 2026-08-27
+
+- `Graphics::stroke` overrides the cell-derived line width in device
+  pixels. Hosts that transmit reduced-density rasters into a scaled
+  placement rectangle (`c=`/`r=`, since 1.18.4) can keep the ink weight
+  they had at native density instead of inheriting a hairline from the
+  smaller cell.
+
 ## 1.18.5 — 2026-08-27
 
 - Pixel blocks anchor every text row, including at column 0. Flush-left
