@@ -5,6 +5,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.2 — 2026-08-27
+
+- The deflate stream now splits into bounded blocks (16 KiB of input each)
+  instead of one stream-length fixed-Huffman block. The old shape was
+  valid DEFLATE but crashed terminals built on Zig ≤ 0.15's inflater —
+  Ghostty 1.3 aborts the moment a compressed kitty image arrives, because
+  a fixed-Huffman block that decodes past the 32 KiB drain window hits
+  unreachable code (fixed on Zig master). Blocks share one LZ77 window, so
+  the split costs ~10 bits per block: a 700 KB panel grew by 54 bytes.
+
 ## 1.18.1 — 2026-08-27
 
 - Pixel transport is now compressed: a dependency-free zlib/DEFLATE
