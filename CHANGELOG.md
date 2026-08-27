@@ -5,6 +5,11 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Pixel blocks anchor every text row, including at column 0. Flush-left
+  blocks used to stay escape-free, which is only safe in cooked mode:
+  raw-mode LF does not return the carriage, so a TUI printing a
+  column-0 block watched its chrome staircase across the screen.
+
 ## 1.18.4 — 2026-08-27
 
 - Kitty images now carry their placement rectangle (`c=`/`r=`): the

@@ -158,14 +158,10 @@ fn validate_geometry(frame: &Frame, protocol: Protocol, cell: (usize, usize)) ->
 
 /// Anchors every row of a rendered block at `column`: each row starts with an
 /// absolute-column jump (CHA), so printing the block leaves anything to its
-/// left untouched. Column 0 stays escape-free — flush-left output is plain.
+/// left untouched. Column 0 anchors too — pixel blocks live in interactive
+/// hosts, and raw-mode LF does not return the carriage, so an unanchored
+/// flush-left block would staircase across the screen.
 fn at_column(text: &str, column: usize) -> crate::Result<String> {
-    if column == 0 {
-        let mut out = String::new();
-        crate::render::reserve_string(&mut out, text.len(), "pixel text block")?;
-        out.push_str(text);
-        return Ok(out);
-    }
     let anchor = column
         .checked_add(1)
         .ok_or(crate::Error::DimensionTooLarge {

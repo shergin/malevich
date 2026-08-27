@@ -166,8 +166,10 @@ fn text_rows_cover_the_full_frame_width() {
         .split('\n')
         .enumerate()
     {
-        // Plain mode carries no escapes except the panel walk after DECSC,
-        // which the split above already removed from the last row.
+        // Each row leads with its column anchor; past that, plain mode
+        // carries no escapes except the panel walk after DECSC, which the
+        // split above already removed from the last row.
+        let row = row.strip_prefix("\x1b[1G").unwrap_or(row);
         let row = row.split('\x1b').next().unwrap_or(row);
         assert_eq!(
             row.chars().count(),
@@ -193,5 +195,18 @@ fn full_width_rows_reset_trailing_color_state() {
             row.ends_with("\x1b[0m") || !row.contains("38;"),
             "colored row does not end reset: {row:?}"
         );
+    }
+}
+
+#[test]
+fn a_flush_left_block_still_anchors_every_row() {
+    // Raw-mode hosts: LF alone does not return the carriage, so even a
+    // column-0 block must re-anchor each row or its chrome staircases.
+    let out = sample().render_pixels(
+        &Frame::plain(24, 8),
+        &Graphics::new(Protocol::Kitty).cell_size(4, 8),
+    );
+    for row in out.split('\n').take_while(|row| !row.contains("\x1b_G")) {
+        assert!(row.starts_with("\x1b[1G"), "unanchored row: {row:?}");
     }
 }
