@@ -5,6 +5,8 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.5 — 2026-08-27
+
 - Pixel blocks anchor every text row, including at column 0. Flush-left
   blocks used to stay escape-free, which is only safe in cooked mode:
   raw-mode LF does not return the carriage, so a TUI printing a
