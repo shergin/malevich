@@ -15,12 +15,11 @@ use std::fmt::Write as _;
 
 use super::base64;
 use super::deflate;
+#[cfg(test)]
 use super::render::Image;
 
+#[cfg(test)]
 pub(crate) fn encode(image: &Image) -> String {
-    if image.width == 0 || image.height == 0 {
-        return String::new();
-    }
     let mut rgba = Vec::with_capacity(image.pixels.len() * 4);
     for pixel in &image.pixels {
         match pixel {
@@ -28,7 +27,14 @@ pub(crate) fn encode(image: &Image) -> String {
             None => rgba.extend_from_slice(&[0, 0, 0, 0]),
         }
     }
-    let payload = base64::encode(&deflate::zlib_compress(&rgba));
+    encode_rgba(image.width, image.height, &rgba)
+}
+
+pub(crate) fn encode_rgba(width: usize, height: usize, rgba: &[u8]) -> String {
+    if width == 0 || height == 0 {
+        return String::new();
+    }
+    let payload = base64::encode(&deflate::zlib_compress(rgba));
     let mut out = String::new();
     // The protocol caps escape payloads at 4096 bytes; the first chunk carries
     // the control keys, the rest only their continuation flag.
@@ -38,11 +44,7 @@ pub(crate) fn encode(image: &Image) -> String {
         let more = u8::from(chunks.peek().is_some());
         out.push_str("\x1b_G");
         if first {
-            let _ = write!(
-                out,
-                "a=T,f=32,o=z,s={},v={},C=1,q=2,",
-                image.width, image.height
-            );
+            let _ = write!(out, "a=T,f=32,o=z,s={width},v={height},C=1,q=2,");
             first = false;
         }
         let _ = write!(out, "m={more};");

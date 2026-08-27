@@ -66,6 +66,8 @@ const WINDOW: usize = 32 * 1024;
 /// span by up to `MAX_MATCH`, so the cap sits well under 32 KiB.
 const BLOCK_SPAN: usize = 16 * 1024;
 const MIN_MATCH: usize = 4;
+/// Matches longer than this index only their fringes (see `compress_span`).
+const MAX_INSERT: usize = 64;
 const MAX_MATCH: usize = 258;
 /// Hash-chain candidates examined per position: the speed/ratio knob. Flat
 /// rasters find their long match on the first try; this only bounds the
@@ -116,11 +118,26 @@ fn compress_span(
         }
         if best_len >= MIN_MATCH {
             put_match(writer, best_len, best_dist);
-            // Index every covered position so later matches can reach into
-            // this run.
+            // Index covered positions so later matches can reach into this
+            // run — but only the fringes of a long match (zlib's
+            // `max_insert_length` trick): hashing every byte of a flat run
+            // dominates the whole compressor, and interior anchors add
+            // nothing that the head and tail fringes don't. A run that
+            // outlives the window self-heals: the chain walk breaks, one
+            // literal re-anchors it.
             let end = (position + best_len).min(raw.len().saturating_sub(MIN_MATCH - 1));
-            for at in position..end {
-                insert(raw, at, head, prev);
+            if best_len <= MAX_INSERT {
+                for at in position..end {
+                    insert(raw, at, head, prev);
+                }
+            } else {
+                let fringe = 8;
+                for at in position..(position + fringe).min(end) {
+                    insert(raw, at, head, prev);
+                }
+                for at in end.saturating_sub(fringe).max(position + fringe)..end {
+                    insert(raw, at, head, prev);
+                }
             }
             position += best_len;
         } else {
@@ -154,6 +171,18 @@ fn insert(raw: &[u8], position: usize, head: &mut [i64], prev: &mut [i64]) {
 fn match_length(raw: &[u8], start: usize, position: usize) -> usize {
     let limit = (raw.len() - position).min(MAX_MATCH);
     let mut len = 0;
+    // Compare a word at a time; the xor's first set byte is the mismatch.
+    // (`from_le_bytes` puts byte 0 in the low bits on every platform, so
+    // `trailing_zeros` counts matching leading bytes.)
+    while len + 8 <= limit {
+        let a = u64::from_le_bytes(raw[start + len..start + len + 8].try_into().unwrap());
+        let b = u64::from_le_bytes(raw[position + len..position + len + 8].try_into().unwrap());
+        let diff = a ^ b;
+        if diff != 0 {
+            return len + (diff.trailing_zeros() / 8) as usize;
+        }
+        len += 8;
+    }
     while len < limit && raw[start + len] == raw[position + len] {
         len += 1;
     }

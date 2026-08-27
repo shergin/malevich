@@ -42,14 +42,25 @@ pub(crate) fn try_render(
     if rect.columns == 0 || rect.rows == 0 {
         return Ok(out);
     }
-    let image = crop(&canvas, rect)?;
-    if image.width == 0 || image.height == 0 {
-        return Ok(out);
-    }
-    let payload = match graphics.protocol {
-        Protocol::Sixel => sixel::encode(&image),
-        Protocol::Kitty => kitty::encode(&image),
-        Protocol::ITerm2 => iterm::encode(&image, rect.columns, rect.rows),
+    let payload = if graphics.protocol == Protocol::Kitty {
+        // Kitty wants raw RGBA anyway: crop straight into it, skipping the
+        // intermediate `Image` buffer (a second full-panel pass and
+        // allocation the other encoders still need).
+        let (width, height, rgba) = crop_rgba(&canvas, rect)?;
+        if width == 0 || height == 0 {
+            return Ok(out);
+        }
+        kitty::encode_rgba(width, height, &rgba)
+    } else {
+        let image = crop(&canvas, rect)?;
+        if image.width == 0 || image.height == 0 {
+            return Ok(out);
+        }
+        match graphics.protocol {
+            Protocol::Sixel => sixel::encode(&image),
+            Protocol::ITerm2 => iterm::encode(&image, rect.columns, rect.rows),
+            Protocol::Kitty => unreachable!("kitty took the RGBA path above"),
+        }
     };
     let extra = payload
         .len()
@@ -196,8 +207,55 @@ pub(crate) struct Image {
     pub pixels: Vec<Option<Rgb>>,
 }
 
+/// The panel rectangle of the canvas as raw RGBA bytes, alpha 0 where
+/// nothing drew — the kitty fast path (one pass, no [`Image`] detour).
+fn crop_rgba(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<(usize, usize, Vec<u8>)> {
+    let (x0, y0, width, height, count) = crop_geometry(canvas, rect)?;
+    let bytes = count
+        .checked_mul(4)
+        .ok_or(crate::Error::DimensionTooLarge {
+            what: "pixel crop bytes",
+            requested: usize::MAX,
+            limit: crate::render::MAX_DEVICE_PIXELS,
+        })?;
+    let mut rgba = Vec::new();
+    crate::render::reserve_vec(&mut rgba, bytes, "pixel crop")?;
+    for y in 0..height {
+        for x in 0..width {
+            match canvas.get(x0 + x, y0 + y) {
+                Some(color) => {
+                    let (r, g, b) = color.to_rgb();
+                    rgba.extend_from_slice(&[r, g, b, 255]);
+                }
+                None => rgba.extend_from_slice(&[0, 0, 0, 0]),
+            }
+        }
+    }
+    Ok((width, height, rgba))
+}
+
 /// The panel rectangle of the canvas as an [`Image`] of resolved RGB pixels.
 fn crop(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<Image> {
+    let (x0, y0, width, height, count) = crop_geometry(canvas, rect)?;
+    let mut pixels = Vec::new();
+    crate::render::reserve_vec(&mut pixels, count, "pixel crop")?;
+    for y in 0..height {
+        for x in 0..width {
+            pixels.push(canvas.get(x0 + x, y0 + y).map(|color| color.to_rgb()));
+        }
+    }
+    Ok(Image {
+        width,
+        height,
+        pixels,
+    })
+}
+
+/// The checked pixel geometry of a crop: origin, size, and pixel count.
+fn crop_geometry(
+    canvas: &PixelCanvas,
+    rect: PlotRect,
+) -> crate::Result<(usize, usize, usize, usize, usize)> {
     let (cw, ch) = canvas.cell();
     let x0 = rect
         .gutter
@@ -237,18 +295,7 @@ fn crop(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<Image> {
         height,
         crate::render::MAX_DEVICE_PIXELS,
     )?;
-    let mut pixels = Vec::new();
-    crate::render::reserve_vec(&mut pixels, count, "pixel crop")?;
-    for y in 0..height {
-        for x in 0..width {
-            pixels.push(canvas.get(x0 + x, y0 + y).map(|color| color.to_rgb()));
-        }
-    }
-    Ok(Image {
-        width,
-        height,
-        pixels,
-    })
+    Ok((x0, y0, width, height, count))
 }
 
 #[cfg(test)]
