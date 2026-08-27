@@ -1,4 +1,5 @@
-use super::{adler32, crc32, encode};
+use super::{crc32, encode};
+use crate::pixel::deflate::inflate;
 use crate::pixel::render::Image;
 
 fn image(width: usize, height: usize, pixels: Vec<Option<(u8, u8, u8)>>) -> Image {
@@ -13,12 +14,6 @@ fn image(width: usize, height: usize, pixels: Vec<Option<(u8, u8, u8)>>) -> Imag
 fn crc32_matches_the_classic_check_value() {
     assert_eq!(crc32(b"123456789".iter().copied()), 0xCBF4_3926);
     assert_eq!(crc32(b"".iter().copied()), 0);
-}
-
-#[test]
-fn adler32_matches_known_values() {
-    assert_eq!(adler32(b""), 1);
-    assert_eq!(adler32(b"Wikipedia"), 0x11E6_0398);
 }
 
 #[test]
@@ -46,41 +41,36 @@ fn the_png_container_is_structurally_sound() {
 #[test]
 fn the_idat_stream_inflates_to_the_scanlines() {
     let png = encode(&image(2, 1, vec![Some((10, 20, 30)), None]));
-    // Find IDAT and hand-inflate its stored block.
+    // Find IDAT and inflate it with the deflate module's test oracle
+    // (which also verifies the adler-32 trailer).
     let idat = png
         .windows(4)
         .position(|w| w == b"IDAT")
         .expect("an IDAT chunk exists");
     let length = u32::from_be_bytes(png[idat - 4..idat].try_into().unwrap()) as usize;
     let data = &png[idat + 4..idat + 4 + length];
-    // zlib header, one final stored block: 1, LEN, NLEN, then the raw bytes.
-    assert_eq!(&data[..2], &[0x78, 0x01]);
-    assert_eq!(data[2], 1);
-    let raw_len = u16::from_le_bytes([data[3], data[4]]) as usize;
-    assert_eq!(u16::from_le_bytes([data[5], data[6]]), !(raw_len as u16));
-    let raw = &data[7..7 + raw_len];
     // One scanline: filter 0, RGBA(10, 20, 30, 255), transparent RGBA(0,0,0,0).
-    assert_eq!(raw, &[0, 10, 20, 30, 255, 0, 0, 0, 0]);
-    // The trailer is the adler of exactly those bytes.
-    let trailer = u32::from_be_bytes(data[7 + raw_len..7 + raw_len + 4].try_into().unwrap());
-    assert_eq!(trailer, adler32(raw));
+    assert_eq!(inflate(data), &[0, 10, 20, 30, 255, 0, 0, 0, 0]);
 }
 
 #[test]
-fn large_images_split_into_multiple_stored_blocks() {
-    // 200×90 RGBA = 72,180 raw bytes with filters — two stored blocks.
+fn large_flat_images_compress_and_roundtrip() {
+    // 200×90 solid RGBA = 72,090 scanline bytes; a flat panel must both
+    // survive the roundtrip and actually shrink in transport.
     let png = encode(&image(200, 90, vec![Some((1, 2, 3)); 18000]));
     let idat = png
         .windows(4)
         .position(|w| w == b"IDAT")
         .expect("an IDAT chunk exists");
-    let data = &png[idat + 4..];
-    // First block is not final (0), second is (1): byte 2 of the stream is the
-    // first block header.
-    assert_eq!(data[2], 0);
-    let first_len = u16::from_le_bytes([data[3], data[4]]) as usize;
-    assert_eq!(first_len, 65535);
-    assert_eq!(data[7 + first_len], 1);
+    let length = u32::from_be_bytes(png[idat - 4..idat].try_into().unwrap()) as usize;
+    let data = &png[idat + 4..idat + 4 + length];
+    let raw = inflate(data);
+    assert_eq!(raw.len(), 90 * (1 + 200 * 4));
+    assert!(
+        length < raw.len() / 50,
+        "flat raster must compress: {length} bytes for {} raw",
+        raw.len()
+    );
 }
 
 #[test]

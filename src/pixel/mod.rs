@@ -12,6 +12,7 @@
 //! snapshot-testable like every other output path.
 
 mod base64;
+mod deflate;
 mod canvas;
 mod capabilities;
 mod detect;

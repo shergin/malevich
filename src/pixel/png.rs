@@ -1,10 +1,11 @@
-//! A minimal PNG encoder: RGBA8, stored (uncompressed) deflate blocks.
+//! A minimal PNG encoder: RGBA8, one real deflate stream.
 //!
-//! The iTerm2 protocol needs a real image format with alpha, and a zlib stream
-//! of stored blocks plus two hand-rolled checksums is a fraction of the weight
-//! of an encoder dependency. Stored blocks trade bytes for simplicity — a plot
-//! panel is small, and the string is transient.
+//! The iTerm2 protocol needs a real image format with alpha; the IDAT rides
+//! the crate's own LZ77/fixed-Huffman compressor, which flattens the mostly
+//! constant panel raster by orders of magnitude — transport weight is what
+//! makes large panels repaint fast.
 
+use super::deflate;
 use super::render::Image;
 
 pub(crate) fn encode(image: &Image) -> Vec<u8> {
@@ -29,7 +30,7 @@ pub(crate) fn encode(image: &Image) -> Vec<u8> {
     // no interlace.
     ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);
     chunk(&mut png, b"IHDR", &ihdr);
-    chunk(&mut png, b"IDAT", &zlib_stored(&raw));
+    chunk(&mut png, b"IDAT", &deflate::zlib_compress(&raw));
     chunk(&mut png, b"IEND", &[]);
     png
 }
@@ -41,27 +42,6 @@ fn chunk(png: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
     png.extend_from_slice(data);
     let crc = crc32(kind.iter().chain(data).copied());
     png.extend_from_slice(&crc.to_be_bytes());
-}
-
-/// A zlib stream of stored (BTYPE 00) deflate blocks: two-byte header,
-/// ≤ 65535-byte blocks each carrying LEN and its complement, adler-32 trailer.
-fn zlib_stored(raw: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(raw.len() + raw.len() / 65535 * 5 + 16);
-    out.extend_from_slice(&[0x78, 0x01]);
-    if raw.is_empty() {
-        // A valid stream still needs one final (empty) block.
-        out.extend_from_slice(&[1, 0, 0, 0xFF, 0xFF]);
-    }
-    let mut blocks = raw.chunks(65535).peekable();
-    while let Some(block) = blocks.next() {
-        out.push(u8::from(blocks.peek().is_none()));
-        let length = block.len() as u16;
-        out.extend_from_slice(&length.to_le_bytes());
-        out.extend_from_slice(&(!length).to_le_bytes());
-        out.extend_from_slice(block);
-    }
-    out.extend_from_slice(&adler32(raw).to_be_bytes());
-    out
 }
 
 const CRC_TABLE: [u32; 256] = crc_table();
@@ -92,21 +72,6 @@ fn crc32(bytes: impl Iterator<Item = u8>) -> u32 {
         crc = CRC_TABLE[((crc ^ u32::from(byte)) & 0xFF) as usize] ^ (crc >> 8);
     }
     crc ^ 0xFFFF_FFFF
-}
-
-fn adler32(bytes: &[u8]) -> u32 {
-    const MOD: u32 = 65521;
-    let (mut a, mut b) = (1u32, 0u32);
-    for chunk in bytes.chunks(5552) {
-        // 5552 is the classic largest run before the sums can overflow u32.
-        for &byte in chunk {
-            a += u32::from(byte);
-            b += a;
-        }
-        a %= MOD;
-        b %= MOD;
-    }
-    (b << 16) | a
 }
 
 #[cfg(test)]

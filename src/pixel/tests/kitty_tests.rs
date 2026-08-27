@@ -1,5 +1,37 @@
 use super::encode;
+use crate::pixel::deflate::inflate;
 use crate::pixel::render::Image;
+
+/// Test-side base64 decode (the crate only needs the encode direction).
+fn base64_decode(text: &str) -> Vec<u8> {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut bits = 0u32;
+    let mut have = 0u32;
+    let mut out = Vec::new();
+    for byte in text.bytes().filter(|&b| b != b'=') {
+        let value = ALPHABET.iter().position(|&a| a == byte).expect("base64") as u32;
+        bits = bits << 6 | value;
+        have += 6;
+        if have >= 8 {
+            have -= 8;
+            out.push((bits >> have) as u8);
+        }
+    }
+    out
+}
+
+/// The concatenated payload of every chunk, decoded and inflated.
+fn pixels_of(out: &str) -> Vec<u8> {
+    let payload: String = out
+        .split("\x1b_G")
+        .filter(|chunk| !chunk.is_empty())
+        .map(|chunk| {
+            let body = chunk.split_once(';').expect("options;payload").1;
+            body.trim_end_matches("\x1b\\")
+        })
+        .collect();
+    inflate(&base64_decode(&payload))
+}
 
 fn image(width: usize, height: usize, pixels: Vec<Option<(u8, u8, u8)>>) -> Image {
     Image {
@@ -12,29 +44,46 @@ fn image(width: usize, height: usize, pixels: Vec<Option<(u8, u8, u8)>>) -> Imag
 #[test]
 fn a_single_pixel_encodes_to_one_complete_apc_escape() {
     let out = encode(&image(1, 1, vec![Some((255, 0, 0))]));
-    // RGBA (255, 0, 0, 255) → base64 "/wAA/w==".
-    assert_eq!(out, "\x1b_Ga=T,f=32,s=1,v=1,C=1,q=2,m=0;/wAA/w==\x1b\\");
+    assert!(
+        out.starts_with("\x1b_Ga=T,f=32,o=z,s=1,v=1,C=1,q=2,m=0;"),
+        "{out:?}"
+    );
+    assert!(out.ends_with("\x1b\\"));
+    assert_eq!(pixels_of(&out), [255, 0, 0, 255]);
 }
 
 #[test]
 fn transparent_pixels_carry_zero_alpha() {
     let out = encode(&image(1, 1, vec![None]));
-    assert_eq!(out, "\x1b_Ga=T,f=32,s=1,v=1,C=1,q=2,m=0;AAAAAA==\x1b\\");
+    assert_eq!(pixels_of(&out), [0, 0, 0, 0]);
 }
 
 #[test]
 fn large_images_chunk_at_4096_bytes_of_payload() {
-    // 2048 pixels → 8192 RGBA bytes → 10924 base64 chars → 3 chunks.
-    let out = encode(&image(64, 32, vec![Some((1, 2, 3)); 2048]));
+    // Deterministic noise resists compression, forcing several chunks.
+    let mut state = 1u64;
+    let pixels: Vec<Option<(u8, u8, u8)>> = (0..8192)
+        .map(|_| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            let bytes = state.to_le_bytes();
+            Some((bytes[5], bytes[6], bytes[7]))
+        })
+        .collect();
+    let out = encode(&image(128, 64, pixels.clone()));
     let escapes = out.matches("\x1b_G").count();
-    assert_eq!(escapes, 3);
-    // Control keys only on the first chunk; continuation flags on all: two
-    // more-to-come chunks, one final.
+    assert!(escapes >= 3, "expected several chunks, got {escapes}");
+    // Control keys only on the first chunk; continuation flags on all.
     assert_eq!(out.matches("a=T").count(), 1);
-    assert_eq!(out.matches("m=1;").count(), 2);
+    assert_eq!(out.matches("m=1;").count(), escapes - 1);
     assert_eq!(out.matches("m=0;").count(), 1);
-    // Every chunk terminates properly.
-    assert_eq!(out.matches("\x1b\\").count(), 3);
+    assert_eq!(out.matches("\x1b\\").count(), escapes);
+    // And the reassembled payload is the exact raster.
+    let rgba = pixels_of(&out);
+    assert_eq!(rgba.len(), 8192 * 4);
+    let (r, g, b) = pixels[100].unwrap();
+    assert_eq!(&rgba[400..404], &[r, g, b, 255]);
 }
 
 #[test]

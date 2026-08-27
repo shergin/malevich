@@ -5,6 +5,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Pixel transport is now compressed: a dependency-free zlib/DEFLATE
+  compressor (LZ77 over a 32 KiB window into fixed-Huffman blocks) rides
+  under both image encoders — kitty transmits `o=z` deflated RGBA and the
+  iTerm2 PNG carries a real IDAT instead of stored blocks. A Retina-sized
+  panel drops from ~22 MB to ~175 KB per repaint, which turns multi-second
+  redraws (the terminal's escape parser pays for every byte) into
+  imperceptible ones. Sixel was already compact and is unchanged.
+
 - Hybrid pixel blocks (`render_pixels`, `render_pixels_at`) now own their
   full rectangle: every text row spans the frame's width instead of
   trimming trailing spaces, so a block reprinted in place fully replaces
