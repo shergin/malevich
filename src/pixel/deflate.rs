@@ -9,8 +9,8 @@
 //! percent more at real complexity; stored blocks (the previous approach)
 //! shave nothing.
 
-/// Compresses `raw` into a zlib stream (header, one final fixed-Huffman
-/// deflate block, adler-32 trailer).
+/// Compresses `raw` into a zlib stream (header, fixed-Huffman deflate
+/// blocks over bounded spans, adler-32 trailer).
 pub(crate) fn zlib_compress(raw: &[u8]) -> Vec<u8> {
     let mut writer = BitWriter {
         // Flat input compresses ~100×; start smaller and let growth handle
@@ -21,11 +21,20 @@ pub(crate) fn zlib_compress(raw: &[u8]) -> Vec<u8> {
     };
     // zlib: CM=8 CINFO=7, check bits for FLEVEL=0.
     writer.out.extend_from_slice(&[0x78, 0x01]);
-    // Fixed-Huffman block, final.
-    writer.put_bits(1, 1);
-    writer.put_bits(1, 2);
-    compress_block(raw, &mut writer);
-    put_literal(&mut writer, 256); // end of block
+    let mut head = vec![-1i64; 1 << HASH_BITS];
+    let mut prev = vec![-1i64; WINDOW];
+    let mut position = 0usize;
+    loop {
+        let target = (position + BLOCK_SPAN).min(raw.len());
+        let final_block = target == raw.len();
+        writer.put_bits(u32::from(final_block), 1);
+        writer.put_bits(1, 2); // fixed-Huffman
+        position = compress_span(raw, position, target, &mut writer, &mut head, &mut prev);
+        put_literal(&mut writer, 256); // end of block
+        if final_block {
+            break;
+        }
+    }
     writer.flush();
     let mut out = writer.out;
     out.extend_from_slice(&adler32(raw).to_be_bytes());
@@ -49,6 +58,13 @@ pub(crate) fn adler32(bytes: &[u8]) -> u32 {
 }
 
 const WINDOW: usize = 32 * 1024;
+/// Input bytes per deflate block. A streaming decoder is only guaranteed
+/// 32 KiB of free output between drains, and Zig ≤0.15's inflater
+/// (Ghostty) aborts when a fixed-Huffman block crosses that boundary
+/// mid-match — so no block may decode past it. Conventional zlib flushes
+/// blocks around this cadence anyway; a boundary match can overrun the
+/// span by up to `MAX_MATCH`, so the cap sits well under 32 KiB.
+const BLOCK_SPAN: usize = 16 * 1024;
 const MIN_MATCH: usize = 4;
 const MAX_MATCH: usize = 258;
 /// Hash-chain candidates examined per position: the speed/ratio knob. Flat
@@ -57,15 +73,26 @@ const MAX_MATCH: usize = 258;
 const MAX_CHAIN: usize = 48;
 const HASH_BITS: u32 = 15;
 
-fn compress_block(raw: &[u8], writer: &mut BitWriter) {
-    let mut head = vec![-1i64; 1 << HASH_BITS];
-    // Chains live in a window-sized ring (zlib's layout): memory stays
-    // constant however large the raster. An aliased slot can only hold an
-    // older, smaller position, so the distance guard below stays sound and
-    // `MAX_CHAIN` bounds any wasted walk.
-    let mut prev = vec![-1i64; WINDOW];
-    let mut position = 0usize;
-    while position < raw.len() {
+/// Emits LZ77 symbols for `raw[start..target]`; a match at the boundary
+/// may overrun `target` by up to `MAX_MATCH`, so the caller gets the
+/// position actually reached. `head`/`prev` persist across spans: block
+/// boundaries reset only the entropy coder, never the 32 KiB dictionary,
+/// so matches keep reaching into earlier blocks.
+///
+/// Chains live in a window-sized ring (zlib's layout): memory stays
+/// constant however large the raster. An aliased slot can only hold an
+/// older, smaller position, so the distance guard below stays sound and
+/// `MAX_CHAIN` bounds any wasted walk.
+fn compress_span(
+    raw: &[u8],
+    start: usize,
+    target: usize,
+    writer: &mut BitWriter,
+    head: &mut [i64],
+    prev: &mut [i64],
+) -> usize {
+    let mut position = start;
+    while position < target {
         let (mut best_len, mut best_dist) = (0usize, 0usize);
         if position + MIN_MATCH <= raw.len() {
             let mut candidate = head[hash(raw, position)];
@@ -93,17 +120,18 @@ fn compress_block(raw: &[u8], writer: &mut BitWriter) {
             // this run.
             let end = (position + best_len).min(raw.len().saturating_sub(MIN_MATCH - 1));
             for at in position..end {
-                insert(raw, at, &mut head, &mut prev);
+                insert(raw, at, head, prev);
             }
             position += best_len;
         } else {
             put_literal(writer, u16::from(raw[position]));
             if position + MIN_MATCH <= raw.len() {
-                insert(raw, position, &mut head, &mut prev);
+                insert(raw, position, head, prev);
             }
             position += 1;
         }
     }
+    position
 }
 
 #[inline]
@@ -237,29 +265,42 @@ mod oracle {
             data: body,
             position: 0,
         };
-        let final_block = reader.take(1);
-        assert_eq!(final_block, 1, "single final block expected");
-        let kind = reader.take(2);
-        assert_eq!(kind, 1, "fixed-Huffman block expected");
         let mut out = Vec::new();
         loop {
-            let symbol = read_fixed_literal(&mut reader);
-            match symbol {
-                0..=255 => out.push(symbol as u8),
-                256 => break,
-                257..=285 => {
-                    let index = (symbol - 257) as usize;
-                    let length = usize::from(LENGTH_BASE[index])
-                        + reader.take(u32::from(LENGTH_EXTRA[index])) as usize;
-                    let dcode = reader.take_huffman(5) as usize;
-                    let distance = usize::from(DIST_BASE[dcode])
-                        + reader.take(u32::from(DIST_EXTRA[dcode])) as usize;
-                    assert!(distance <= out.len(), "distance into the void");
-                    for _ in 0..length {
-                        out.push(out[out.len() - distance]);
+            let final_block = reader.take(1);
+            let kind = reader.take(2);
+            assert_eq!(kind, 1, "fixed-Huffman block expected");
+            let block_start = out.len();
+            loop {
+                let symbol = read_fixed_literal(&mut reader);
+                match symbol {
+                    0..=255 => out.push(symbol as u8),
+                    256 => break,
+                    257..=285 => {
+                        let index = (symbol - 257) as usize;
+                        let length = usize::from(LENGTH_BASE[index])
+                            + reader.take(u32::from(LENGTH_EXTRA[index])) as usize;
+                        let dcode = reader.take_huffman(5) as usize;
+                        let distance = usize::from(DIST_BASE[dcode])
+                            + reader.take(u32::from(DIST_EXTRA[dcode])) as usize;
+                        assert!(distance <= out.len(), "distance into the void");
+                        for _ in 0..length {
+                            out.push(out[out.len() - distance]);
+                        }
                     }
+                    _ => panic!("impossible symbol {symbol}"),
                 }
-                _ => panic!("impossible symbol {symbol}"),
+            }
+            // The compatibility contract behind `BLOCK_SPAN`: streaming
+            // decoders are only guaranteed 32 KiB of output room per block
+            // (Zig ≤0.15 aborts beyond it), so no block may decode past it.
+            assert!(
+                out.len() - block_start <= 32 * 1024,
+                "block decoded {} bytes, past the 32 KiB drain guarantee",
+                out.len() - block_start
+            );
+            if final_block == 1 {
+                break;
             }
         }
         let trailer = &stream[stream.len() - 4..];

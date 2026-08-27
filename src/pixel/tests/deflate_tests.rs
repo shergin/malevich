@@ -1,5 +1,5 @@
 //! Roundtrip tests: a minimal test-only inflater for the exact subset the
-//! compressor emits (one final fixed-Huffman block in a zlib wrapper),
+//! compressor emits (bounded fixed-Huffman blocks in a zlib wrapper),
 //! plus checksum and ratio checks. If the compressor drifts outside that
 //! subset, these tests fail loudly rather than silently trusting it.
 
@@ -92,6 +92,28 @@ fn all_match_lengths_and_far_distances() {
     let block: Vec<u8> = (0..200).map(|i| (i * 7 % 251) as u8).collect();
     raw.splice(0..0, block.iter().copied());
     raw.extend_from_slice(&block);
+    roundtrip(&raw);
+}
+
+#[test]
+fn block_boundary_edges() {
+    // One exact span, a span plus one byte, and a flat run whose boundary
+    // match overshoots into the end of input (forcing an empty final
+    // block). The oracle asserts every block stays under the 32 KiB
+    // drain guarantee.
+    roundtrip(&vec![7u8; 16 * 1024]);
+    roundtrip(&vec![7u8; 16 * 1024 + 1]);
+    roundtrip(&vec![7u8; 16 * 1024 + 100]);
+    // Incompressible spans keep literals bounded per block too.
+    let mut state = 3u64;
+    let raw: Vec<u8> = (0..40_000)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state >> 33) as u8
+        })
+        .collect();
     roundtrip(&raw);
 }
 
