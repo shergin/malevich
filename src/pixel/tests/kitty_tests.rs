@@ -118,3 +118,15 @@ fn every_tiny_raster_encodes_deterministically() {
         }
     }
 }
+
+#[test]
+fn a_placement_rectangle_pins_the_image_to_its_cells() {
+    let out = super::encode_rgba(2, 1, (5, 3), &[1, 2, 3, 255, 4, 5, 6, 255]);
+    assert!(
+        out.starts_with("\x1b_Ga=T,f=32,o=z,s=2,v=1,c=5,r=3,C=1,q=2,m=0;"),
+        "{out:?}"
+    );
+    // Without a placement the keys stay absent (the test-wrapper path).
+    let bare = encode(&image(2, 1, vec![Some((1, 2, 3)), Some((4, 5, 6))]));
+    assert!(!bare.contains("c="), "{bare:?}");
+}

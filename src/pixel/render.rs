@@ -50,7 +50,7 @@ pub(crate) fn try_render(
         if width == 0 || height == 0 {
             return Ok(out);
         }
-        kitty::encode_rgba(width, height, &rgba)
+        kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba)
     } else {
         let image = crop(&canvas, rect)?;
         if image.width == 0 || image.height == 0 {
