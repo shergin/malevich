@@ -5,6 +5,8 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.1 — 2026-08-27
+
 - Pixel transport is now compressed: a dependency-free zlib/DEFLATE
   compressor (LZ77 over a 32 KiB window into fixed-Huffman blocks) rides
   under both image encoders — kitty transmits `o=z` deflated RGBA and the

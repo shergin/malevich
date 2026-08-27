@@ -134,8 +134,8 @@ fn match_length(raw: &[u8], start: usize, position: usize) -> usize {
 
 // RFC 1951 §3.2.5 — length codes 257..=285 and distance codes 0..=29.
 const LENGTH_BASE: [u16; 29] = [
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115,
-    131, 163, 195, 227, 258,
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131,
+    163, 195, 227, 258,
 ];
 const LENGTH_EXTRA: [u8; 29] = [
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
@@ -145,8 +145,8 @@ const DIST_BASE: [u16; 30] = [
     2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577,
 ];
 const DIST_EXTRA: [u8; 30] = [
-    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
-    13, 13,
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13,
+    13,
 ];
 
 fn put_match(writer: &mut BitWriter, len: usize, dist: usize) {
@@ -227,9 +227,16 @@ mod oracle {
     /// malformed — this is a test oracle, not a library.
     pub(crate) fn inflate(stream: &[u8]) -> Vec<u8> {
         assert_eq!(stream[0], 0x78, "zlib CMF");
-        assert_eq!((u16::from(stream[0]) << 8 | u16::from(stream[1])) % 31, 0, "zlib FCHECK");
+        assert_eq!(
+            (u16::from(stream[0]) << 8 | u16::from(stream[1])) % 31,
+            0,
+            "zlib FCHECK"
+        );
         let body = &stream[2..stream.len() - 4];
-        let mut reader = Bits { data: body, position: 0 };
+        let mut reader = Bits {
+            data: body,
+            position: 0,
+        };
         let final_block = reader.take(1);
         assert_eq!(final_block, 1, "single final block expected");
         let kind = reader.take(2);
@@ -274,7 +281,10 @@ mod oracle {
             return (280 + code - 0b1100_0000) as u16;
         }
         code = code << 1 | reader.take(1);
-        assert!((0b1_1001_0000..=0b1_1111_1111).contains(&code), "bad code {code:b}");
+        assert!(
+            (0b1_1001_0000..=0b1_1111_1111).contains(&code),
+            "bad code {code:b}"
+        );
         (144 + code - 0b1_1001_0000) as u16
     }
 
@@ -319,7 +329,6 @@ mod oracle {
             value
         }
     }
-
 }
 
 #[cfg(test)]

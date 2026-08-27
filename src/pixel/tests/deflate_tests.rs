@@ -71,7 +71,9 @@ fn incompressible_noise_survives() {
 #[test]
 fn all_match_lengths_and_far_distances() {
     // Exercise every length code: runs of 3..=300 against a 1-distance.
-    for length in [3usize, 4, 10, 11, 18, 19, 34, 66, 130, 131, 257, 258, 259, 300] {
+    for length in [
+        3usize, 4, 10, 11, 18, 19, 34, 66, 130, 131, 257, 258, 259, 300,
+    ] {
         let mut raw = vec![7u8];
         raw.extend(std::iter::repeat_n(7u8, length));
         raw.push(9);
@@ -81,7 +83,9 @@ fn all_match_lengths_and_far_distances() {
     let mut state = 1u64;
     let mut raw: Vec<u8> = (0..30_000)
         .map(|_| {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             (state >> 33) as u8
         })
         .collect();

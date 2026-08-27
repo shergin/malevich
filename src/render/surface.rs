@@ -300,6 +300,7 @@ impl Surface {
     /// in place fully replaces its predecessor — a shorter title must erase
     /// the longer one under it. Ordinary renders keep trimming: scrollback
     /// and piped files want no trailing-space freight.
+    #[cfg(feature = "pixel")]
     pub(crate) fn try_encode_full_width(&self, mode: ColorMode) -> crate::Result<String> {
         self.encode_rows(mode, false)
     }
