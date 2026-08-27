@@ -34,7 +34,7 @@ pub(crate) fn try_render(
         // No pixel geometry to draw into: degrade to ordinary cell output.
         return at_column(&plot.try_render_unvalidated(frame)?, column);
     }
-    let (surface, canvas, rect) = plot.try_rasterize_hybrid(frame, cell)?;
+    let (surface, canvas, rect) = plot.try_rasterize_hybrid(frame, cell, graphics.stroke)?;
     // Full-width rows: the block owns its whole rectangle, so reprinting
     // it in place replaces the previous block entirely (a shorter title
     // erases the longer one it lands on).

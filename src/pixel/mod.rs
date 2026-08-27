@@ -57,6 +57,11 @@ pub struct Graphics {
     /// The terminal's cell size in device pixels `(width, height)` — the scale
     /// between the cell grid the chrome lives on and the panel raster.
     pub cell_size: (u16, u16),
+    /// Line width in device pixels, overriding the cell-derived default.
+    /// Hosts that transmit a reduced-density raster into a scaled placement
+    /// set this to keep the ink weight they had at native density. Zero
+    /// behaves like unset.
+    pub stroke: Option<u8>,
 }
 
 impl Graphics {
@@ -67,6 +72,7 @@ impl Graphics {
         Graphics {
             protocol,
             cell_size: (8, 16),
+            stroke: None,
         }
     }
 
@@ -82,6 +88,14 @@ impl Graphics {
     #[must_use]
     pub fn cell_size(mut self, width: u16, height: u16) -> Graphics {
         self.cell_size = (width, height);
+        self
+    }
+
+    /// Sets the line width in device pixels, overriding the cell-derived
+    /// default. Zero behaves like unset.
+    #[must_use]
+    pub fn stroke(mut self, width: u8) -> Graphics {
+        self.stroke = Some(width);
         self
     }
 }

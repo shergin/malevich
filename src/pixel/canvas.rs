@@ -33,7 +33,7 @@ impl PixelCanvas {
     /// `cell.0 × cell.1` device pixels.
     #[cfg(test)]
     pub(crate) fn new(columns: usize, rows: usize, cell: (usize, usize)) -> PixelCanvas {
-        PixelCanvas::try_new(columns, rows, cell).unwrap_or_else(|_| PixelCanvas::empty(cell))
+        PixelCanvas::try_new(columns, rows, cell, None).unwrap_or_else(|_| PixelCanvas::empty(cell))
     }
 
     /// Fallible construction for caller-controlled frame and cell geometry.
@@ -41,6 +41,7 @@ impl PixelCanvas {
         columns: usize,
         rows: usize,
         cell: (usize, usize),
+        stroke: Option<u8>,
     ) -> crate::Result<PixelCanvas> {
         let width = columns
             .checked_mul(cell.0)
@@ -62,7 +63,13 @@ impl PixelCanvas {
             height,
             crate::render::MAX_DEVICE_PIXELS,
         )?;
-        let stroke = (cell.1.saturating_add(8) / 16).max(1) as i64;
+        // The host's override wins (a reduced-density raster scaled up on
+        // screen wants its native ink weight back); otherwise derive from
+        // the cell, 1 at the classic 8x16.
+        let stroke = match stroke {
+            Some(width) if width > 0 => i64::from(width),
+            _ => (cell.1.saturating_add(8) / 16).max(1) as i64,
+        };
         let mut pixels = Vec::new();
         crate::render::reserve_vec(&mut pixels, count, "device-pixel canvas")?;
         pixels.resize(count, None);

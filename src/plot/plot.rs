@@ -716,11 +716,12 @@ impl<'a> Plot<'a> {
         &self,
         frame: &Frame,
         cell: (usize, usize),
+        stroke: Option<u8>,
     ) -> crate::Result<(Surface, crate::pixel::PixelCanvas, crate::render::PlotRect)> {
         use crate::render::PlotRect;
 
         let mut surface = Surface::try_new(frame.width, frame.height, frame.charset)?;
-        let canvas = crate::pixel::PixelCanvas::try_new(frame.width, frame.height, cell)?;
+        let canvas = crate::pixel::PixelCanvas::try_new(frame.width, frame.height, cell, stroke)?;
         let empty = PlotRect {
             gutter: 0,
             top: 0,

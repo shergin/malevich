@@ -26,7 +26,7 @@ fn a_new_canvas_is_fully_transparent() {
 
 #[test]
 fn oversized_canvas_geometry_is_rejected_before_allocation() {
-    let error = PixelCanvas::try_new(usize::MAX, 2, (2, 2))
+    let error = PixelCanvas::try_new(usize::MAX, 2, (2, 2), None)
         .err()
         .expect("oversized canvas must fail");
     assert!(matches!(error, crate::Error::DimensionTooLarge { .. }));
@@ -226,4 +226,21 @@ fn text_scales_up_in_large_cells() {
         .filter(|&(x, y)| reference.get(x, y).is_some())
         .count();
     assert_eq!(drawn, base * 4);
+}
+
+#[test]
+fn a_stroke_override_outweighs_the_cell_default() {
+    // The classic cell derives a hairline; the host asks for 3.
+    let mut canvas = PixelCanvas::try_new(4, 2, (8, 16), Some(3)).unwrap();
+    canvas.line((2.0, 8.0), (20.0, 8.0), RED);
+    for y in 7..=9 {
+        assert_eq!(canvas.get(10, y), Some(RED), "row {y} should carry ink");
+    }
+    assert_eq!(canvas.get(10, 5), None);
+    assert_eq!(canvas.get(10, 11), None);
+    // Zero behaves like unset: back to the derived hairline.
+    let mut zero = PixelCanvas::try_new(4, 2, (8, 16), Some(0)).unwrap();
+    zero.line((2.0, 8.0), (20.0, 8.0), RED);
+    assert_eq!(zero.get(10, 8), Some(RED));
+    assert_eq!(zero.get(10, 7), None);
 }
