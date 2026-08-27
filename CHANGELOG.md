@@ -5,6 +5,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.4 — 2026-08-27
+
+- Kitty images now carry their placement rectangle (`c=`/`r=`): the
+  image is pinned to the panel's cells and the terminal scales it as
+  needed. This makes transmitted resolution a host-side knob — send a
+  standard-density raster into a Retina-sized panel for a fraction of
+  the decode and upload cost — and keeps placement correct even when
+  cell-size detection was off. iTerm2 already behaved this way; sixel
+  has no placement scaling and is unchanged.
+
 ## 1.18.3 — 2026-08-27
 
 - The pixel encode path is ~4.5× faster (a 2744×1230 kitty panel drops
