@@ -5,6 +5,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.18.3 — 2026-08-27
+
+- The pixel encode path is ~4.5× faster (a 2744×1230 kitty panel drops
+  from ~81 ms to ~18 ms on an M-series laptop). Deflate compares matches
+  a word at a time and indexes only the fringes of long matches (zlib's
+  `max_insert_length` trick — hashing every byte of a flat run dominated
+  the whole compressor), and the kitty encoder crops the canvas straight
+  into RGBA, skipping the intermediate `Image` buffer. Compressed size
+  is unchanged within a fraction of a percent.
+
 ## 1.18.2 — 2026-08-27
 
 - The deflate stream now splits into bounded blocks (16 KiB of input each)
