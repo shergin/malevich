@@ -35,7 +35,10 @@ pub(crate) fn try_render(
         return at_column(&plot.try_render_unvalidated(frame)?, column);
     }
     let (surface, canvas, rect) = plot.try_rasterize_hybrid(frame, cell)?;
-    let mut out = at_column(&surface.try_encode(frame.color)?, column)?;
+    // Full-width rows: the block owns its whole rectangle, so reprinting
+    // it in place replaces the previous block entirely (a shorter title
+    // erases the longer one it lands on).
+    let mut out = at_column(&surface.try_encode_full_width(frame.color)?, column)?;
     if rect.columns == 0 || rect.rows == 0 {
         return Ok(out);
     }

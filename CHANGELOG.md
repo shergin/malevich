@@ -5,6 +5,13 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- Hybrid pixel blocks (`render_pixels`, `render_pixels_at`) now own their
+  full rectangle: every text row spans the frame's width instead of
+  trimming trailing spaces, so a block reprinted in place fully replaces
+  the previous one — a shorter title no longer leaves the old title's tail
+  visible, and in-place hosts (TUIs repainting a panel) need no manual
+  blanking. Ordinary cell renders keep trimming trailing spaces.
+
 ## 1.18.0 (The Knife Grinder) — 2026-08-26
 
 The machine-learning release. Band scales on both axes, a logarithmic

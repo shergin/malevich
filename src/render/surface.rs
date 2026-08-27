@@ -291,6 +291,20 @@ impl Surface {
     /// Encodes the surface, rejecting a worst-case string beyond the defensive
     /// output budget or a failed reservation.
     pub fn try_encode(&self, mode: ColorMode) -> crate::Result<String> {
+        self.encode_rows(mode, true)
+    }
+
+    /// The full-width sibling of [`Surface::try_encode`]: rows keep their
+    /// trailing default-background spaces, so the encoded block covers every
+    /// cell of the grid. The hybrid pixel path uses it so a block reprinted
+    /// in place fully replaces its predecessor — a shorter title must erase
+    /// the longer one under it. Ordinary renders keep trimming: scrollback
+    /// and piped files want no trailing-space freight.
+    pub(crate) fn try_encode_full_width(&self, mode: ColorMode) -> crate::Result<String> {
+        self.encode_rows(mode, false)
+    }
+
+    fn encode_rows(&self, mode: ColorMode, trim: bool) -> crate::Result<String> {
         let cells = super::frame_cells(self.width, self.height)?;
         // One UTF-8 scalar plus the longest possible color transition per cell.
         // The extra row bytes cover newlines and SGR resets.
@@ -326,7 +340,9 @@ impl Surface {
                         kept = out.len();
                     }
                 }
-                out.truncate(kept);
+                if trim {
+                    out.truncate(kept);
+                }
             }
             return Ok(out);
         }
@@ -361,8 +377,14 @@ impl Surface {
                     kept_background = current_background;
                 }
             }
-            out.truncate(kept);
-            if kept_foreground != Resolved::Default || kept_background != Resolved::Default {
+            if trim {
+                out.truncate(kept);
+                if kept_foreground != Resolved::Default || kept_background != Resolved::Default {
+                    out.push_str("\x1b[0m");
+                }
+            } else if current_foreground != Resolved::Default
+                || current_background != Resolved::Default
+            {
                 out.push_str("\x1b[0m");
             }
         }

@@ -149,3 +149,49 @@ fn an_anchored_block_jumps_every_row_and_the_walk_to_its_column() {
     // Rows stay relative: never a full cursor-position (CUP) escape.
     assert!(!out.contains("\x1b[H") && !out.contains(";1H"));
 }
+
+#[test]
+fn text_rows_cover_the_full_frame_width() {
+    // The block owns its rectangle: every text row spans the frame's width,
+    // so reprinting a block in place fully replaces the previous one — a
+    // shorter title erases the longer title it lands on.
+    let frame = Frame::plain(40, 12);
+    let out = sample().render_pixels(&frame, &graphics());
+    let grid = out.split('\x1b').next().unwrap_or_default();
+    let mut rows = 0;
+    for (index, row) in out
+        .split("\x1b7")
+        .next()
+        .unwrap_or_default()
+        .split('\n')
+        .enumerate()
+    {
+        // Plain mode carries no escapes except the panel walk after DECSC,
+        // which the split above already removed from the last row.
+        let row = row.split('\x1b').next().unwrap_or(row);
+        assert_eq!(
+            row.chars().count(),
+            40,
+            "row {index} is not full width: {row:?}"
+        );
+        rows += 1;
+    }
+    assert_eq!(rows, 12, "every frame row present");
+    let _ = grid;
+}
+
+#[test]
+fn full_width_rows_reset_trailing_color_state() {
+    // In a colored mode the padded rows still end reset: trailing spaces
+    // must not leak a foreground or background into whatever follows.
+    let mut frame = Frame::plain(40, 12);
+    frame.color = crate::render::ColorMode::TrueColor;
+    let out = sample().render_pixels(&frame, &graphics());
+    let text_grid = out.split("\x1b7").next().unwrap_or_default();
+    for row in text_grid.split('\n').filter(|row| row.contains("\x1b[")) {
+        assert!(
+            row.ends_with("\x1b[0m") || !row.contains("38;"),
+            "colored row does not end reset: {row:?}"
+        );
+    }
+}
