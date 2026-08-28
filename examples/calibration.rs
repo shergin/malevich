@@ -5,7 +5,7 @@
 //! under the diagonal at the high-confidence end.
 
 use malevich::stat::{Bins, Reducer, binned};
-use malevich::{Frame, Line, Plot, PointStyle, Points};
+use malevich::{Dash, Frame, Line, Plot, PointStyle, Points};
 
 fn main() {
     // A deterministic overconfident classifier: predictions cluster near the
@@ -31,7 +31,11 @@ fn main() {
     let centers: Vec<f64> = (0..10).map(|bin| 0.05 + 0.1 * bin as f64).collect();
 
     let plot = Plot::new()
-        .layer(Line::xy(&[0.0, 1.0][..], &[0.0, 1.0][..]).label("perfect"))
+        .layer(
+            Line::xy(&[0.0, 1.0][..], &[0.0, 1.0][..])
+                .label("perfect")
+                .dash(Dash::Dotted),
+        )
         .layer(Line::xy(&centers[..], &accuracy[..]).label("model"))
         .layer(Points::xy(&centers[..], &accuracy[..]).style(PointStyle::Circle))
         .x_label("claimed confidence")

@@ -2,8 +2,10 @@
 //! chart, composed from marks that all existed already: a dense Cells grid of
 //! the surface on a logarithmic colormap (loss spans decades; a linear ramp
 //! would flatten the basins), and the momentum path as a Line with its steps
-//! as Points. The four basins of Himmelblau's function read as dark wells,
-//! and the trajectory overshoots and curls into one of them.
+//! as Points. The surface samples bilinearly on dense targets, the path is
+//! graded dim-to-bright by step — time reads along the line. The four basins
+//! of Himmelblau's function read as dark wells, and the trajectory
+//! overshoots and curls into one of them.
 
 use malevich::scale::Colormap;
 use malevich::{Cells, Frame, Line, Plot, PointStyle, Points};
@@ -44,13 +46,15 @@ fn main() {
         path_y.push(y);
     }
 
+    let progress: Vec<f64> = (0..path_x.len()).map(|step| step as f64).collect();
     let plot = Plot::new()
         .layer(
             Cells::matrix(n, &surface[..])
                 .extents((lo, hi), (lo, hi))
-                .colormap(Colormap::VIRIDIS.log()),
+                .colormap(Colormap::VIRIDIS.log())
+                .smooth(),
         )
-        .layer(Line::xy(&path_x[..], &path_y[..]))
+        .layer(Line::xy(&path_x[..], &path_y[..]).grade(&progress[..], Colormap::GREYS))
         // Circles, not subpixel dots: glyph-drawn markers stay visible on top
         // of the filled surface in cell output (the line takes over in pixel
         // output, where it draws at device resolution).

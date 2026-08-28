@@ -3,7 +3,7 @@
 //! effect size and significance; the palette pins grey to "not significant".
 
 use malevich::scale::Palette;
-use malevich::{Color, Frame, Plot, Points, Rule};
+use malevich::{Color, Dash, Frame, Plot, Points, Rule};
 
 fn main() {
     // Deterministic synthetic differential expression: most genes near zero
@@ -52,9 +52,9 @@ fn main() {
             Color::Rgb(0, 114, 178), // down — blue
             Color::Rgb(213, 94, 0),  // up — vermillion
         ]))
-        .layer(Rule::v(-1.0))
-        .layer(Rule::v(1.0))
-        .layer(Rule::h(2.0))
+        .layer(Rule::v(-1.0).dash(Dash::Dashed))
+        .layer(Rule::v(1.0).dash(Dash::Dashed))
+        .layer(Rule::h(2.0).dash(Dash::Dashed))
         .title("differential expression (synthetic)")
         .x_label("log2 fold change")
         .y_label("-log10 p");

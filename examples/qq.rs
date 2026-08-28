@@ -4,7 +4,7 @@
 //! shows the second sample's heavier right side.
 
 use malevich::stat::quantiles;
-use malevich::{Frame, Line, Plot, Points};
+use malevich::{Dash, Frame, Line, Plot, Points};
 
 fn main() {
     let noise = |i: usize, seed: f64| {
@@ -33,7 +33,11 @@ fn main() {
 
     let span = (-4.0, 6.0);
     let plot = Plot::new()
-        .layer(Line::xy(vec![span.0, span.1], vec![span.0, span.1]).label("identity"))
+        .layer(
+            Line::xy(vec![span.0, span.1], vec![span.0, span.1])
+                .label("identity")
+                .dash(Dash::Dotted),
+        )
         .layer(Points::xy(qx, qy).label("quantiles"))
         .title("Q\u{2013}Q: heavy-tailed vs normal-ish")
         .x_label("normal-ish quantiles")

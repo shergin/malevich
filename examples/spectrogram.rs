@@ -33,7 +33,8 @@ fn main() {
         .layer(
             Cells::matrix(columns, &power[..])
                 .extents((t0, t1), (f0, f1))
-                .colormap(Colormap::MAGMA.log()),
+                .colormap(Colormap::MAGMA.log())
+                .smooth(),
         )
         .log_y()
         .x_label("s")

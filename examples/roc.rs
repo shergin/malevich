@@ -3,7 +3,7 @@
 //! diagonal is just another labeled line. The curve's distance from the
 //! diagonal is the classifier; everything else is furniture.
 
-use malevich::{Frame, Line, Plot, stat};
+use malevich::{Dash, Frame, Line, Plot, stat};
 
 fn main() {
     // A deterministic classifier in miniature: positive scores center higher
@@ -27,7 +27,11 @@ fn main() {
     let (fpr, tpr) = stat::roc(&scores, &labels);
     let area = stat::auc(&fpr, &tpr);
     let plot = Plot::new()
-        .layer(Line::xy(&[0.0, 1.0][..], &[0.0, 1.0][..]).label("chance"))
+        .layer(
+            Line::xy(&[0.0, 1.0][..], &[0.0, 1.0][..])
+                .label("chance")
+                .dash(Dash::Dotted),
+        )
         .layer(Line::xy(&fpr[..], &tpr[..]).label("model"))
         .x_label("false positive rate")
         .y_label("true positive rate")

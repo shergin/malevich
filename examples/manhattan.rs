@@ -3,7 +3,7 @@
 //! legend away — the position is the identity), and the genome-wide
 //! significance threshold as a `Rule` with a label.
 
-use malevich::{Color, Frame, Plot, Points, Rule};
+use malevich::{Color, Dash, Frame, Plot, Points, Rule};
 
 fn main() {
     let noise = |i: usize, seed: f64| {
@@ -39,7 +39,7 @@ fn main() {
     let plot = Plot::new()
         .layer(Points::xy(&even_x[..], &even_y[..]).color(Color::Rgb(0, 114, 178)))
         .layer(Points::xy(&odd_x[..], &odd_y[..]).color(Color::Rgb(86, 180, 233)))
-        .layer(Rule::h(5.0).label("genome-wide"))
+        .layer(Rule::h(5.0).label("genome-wide").dash(Dash::Dashed))
         .title("association scan (synthetic)")
         .x_label("genomic position")
         .y_label("-log10 p");

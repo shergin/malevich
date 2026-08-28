@@ -2,7 +2,7 @@
 //! model (see examples/data/README.md), its rolling mean, and the corpus's known
 //! bigram limit as a target rule. No synthetic data — this training actually ran.
 
-use malevich::{Frame, Line, Plot, Rule};
+use malevich::{Dash, Frame, Line, Plot, Rule};
 
 fn main() {
     let (steps, losses): (Vec<f64>, Vec<f64>) = include_str!("data/topos_loss.csv")
@@ -18,8 +18,12 @@ fn main() {
 
     let plot = Plot::new()
         .layer(Line::xy(&steps[..], &losses[..]).label("minibatch"))
-        .layer(Line::xy(&steps[..], &smoothed[..]).label("rolling mean"))
-        .layer(Rule::h(2.45).label("bigram limit"))
+        .layer(
+            Line::xy(&steps[..], &smoothed[..])
+                .label("rolling mean")
+                .glow(),
+        )
+        .layer(Rule::h(2.45).label("bigram limit").dash(Dash::Dashed))
         .title("topos: bigram training on 32k names")
         .x_label("step")
         .y_label("loss");

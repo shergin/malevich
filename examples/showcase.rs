@@ -113,9 +113,7 @@ fn main() {
 
     // A trajectory graded by progress: each point wears its position in
     // training through a colormap — cold start, hot finish.
-    let turns: Vec<f64> = (0..500)
-        .map(|i| i as f64 / 499.0 * 18.0)
-        .collect();
+    let turns: Vec<f64> = (0..500).map(|i| i as f64 / 499.0 * 18.0).collect();
     let spiral_x: Vec<f64> = turns
         .iter()
         .map(|&a| a.cos() * (0.15 + a * 0.05) + (a * 2.3).sin() * 0.04)
@@ -149,7 +147,11 @@ fn main() {
     let mut cloud_y = Vec::new();
     for index in 0..15_000 {
         // Two gaussian-ish blobs (sum of uniforms), one twice as heavy.
-        let center = if index % 3 == 0 { (2.4, 1.2) } else { (1.0, 0.8) };
+        let center = if index % 3 == 0 {
+            (2.4, 1.2)
+        } else {
+            (1.0, 0.8)
+        };
         let sample = |unit: &mut dyn FnMut() -> f64, spread: f64| {
             (0..6).map(|_| unit()).sum::<f64>() / 6.0 * spread - spread / 2.0
         };
@@ -174,10 +176,7 @@ fn main() {
     let field_size = 24usize;
     let field: Vec<f64> = (0..field_size * field_size)
         .map(|i| {
-            let (fx, fy) = (
-                (i % field_size) as f64 / 4.0,
-                (i / field_size) as f64 / 4.0,
-            );
+            let (fx, fy) = ((i % field_size) as f64 / 4.0, (i / field_size) as f64 / 4.0);
             (fx - 3.0).powi(2) * 0.4
                 + (fy - 2.6).powi(2) * 0.7
                 + ((fx * 1.7).sin() * (fy * 1.3).cos()) * 0.8
@@ -190,9 +189,8 @@ fn main() {
     );
     let levels: Vec<f64> = (1..7).map(|i| f64::from(i) * 1.6).collect();
     for line in malevich::stat::contours(&field, field_size, &levels) {
-        landscape = landscape.layer(
-            Line::xy(line.x.clone(), line.y.clone()).color(Color::Rgb(235, 235, 230)),
-        );
+        landscape = landscape
+            .layer(Line::xy(line.x.clone(), line.y.clone()).color(Color::Rgb(235, 235, 230)));
     }
     println!(
         "{}\n",

@@ -37,7 +37,11 @@ fn main() {
     let centers: Vec<f64> = (0..50).map(|bin| 4.0 + 8.0 * bin as f64).collect();
 
     let plot = Plot::new()
-        .layer(Area::between(&centers[..], &p10[..], &p90[..]).label("p10-p90"))
+        .layer(
+            Area::between(&centers[..], &p10[..], &p90[..])
+                .label("p10-p90")
+                .opacity(0.35),
+        )
         .layer(Line::xy(&centers[..], &p50[..]).label("median"))
         // Corners glyphs keep the smoothed curve visible over the band fill
         // in cell output; subpixel lines would drown in it.
