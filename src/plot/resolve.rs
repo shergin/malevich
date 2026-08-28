@@ -259,6 +259,7 @@ pub(crate) enum ResolvedLayer<'p> {
         rgb: Option<&'p [(u8, u8, u8)]>,
         classes: Option<ColorChannel<'p>>,
         reduce: crate::stat::Reducer,
+        smooth: bool,
     },
     Range {
         x: Coordinates<'p>,
@@ -737,6 +738,7 @@ pub(crate) fn resolve<'p>(
                     colors.categories(categories, Cow::Borrowed(categories.ids()))
                 }),
                 reduce: cells.reduce,
+                smooth: cells.smooth,
             },
             Mark::Range(range) => {
                 let (x, bands) = match &range.placement {

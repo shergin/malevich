@@ -38,6 +38,12 @@ pub struct Cells<'a> {
         serde(default = "default_reduce", skip_serializing_if = "is_default_reduce")
     )]
     pub(crate) reduce: Reducer,
+    /// Off by default; wire documents omit it then.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "core::ops::Not::not")
+    )]
+    pub(crate) smooth: bool,
 }
 
 #[cfg(feature = "serde")]
@@ -81,6 +87,7 @@ impl<'a> Cells<'a> {
             rgb: None,
             classes: None,
             reduce: Reducer::Mean,
+            smooth: false,
         };
         cells.validate()?;
         Ok(cells)
@@ -121,6 +128,7 @@ impl<'a> Cells<'a> {
             rgb: Some(pixels.into()),
             classes: None,
             reduce: Reducer::Mean,
+            smooth: false,
         };
         cells.validate()?;
         Ok(cells)
@@ -163,6 +171,7 @@ impl<'a> Cells<'a> {
             rgb: None,
             classes: Some(Categories::new(labels)),
             reduce: Reducer::Mean,
+            smooth: false,
         };
         cells.validate()?;
         Ok(cells)
@@ -213,6 +222,17 @@ impl<'a> Cells<'a> {
     #[must_use]
     pub fn reduce(mut self, reducer: Reducer) -> Cells<'a> {
         self.reduce = reducer;
+        self
+    }
+
+    /// Bilinear sampling on value grids: patches inside one bucket
+    /// interpolate the four surrounding bucket centers, so an upsampled
+    /// heatmap reads as a continuous field instead of blocks. Patches
+    /// covering several buckets keep their reduction; rgb, class, and
+    /// band-axis grids are untouched.
+    #[must_use]
+    pub fn smooth(mut self) -> Cells<'a> {
+        self.smooth = true;
         self
     }
 
@@ -300,6 +320,7 @@ impl<'a> Cells<'a> {
             rgb: self.rgb.map(|pixels| Cow::Owned(pixels.into_owned())),
             classes: self.classes,
             reduce: self.reduce,
+            smooth: self.smooth,
         }
     }
 }

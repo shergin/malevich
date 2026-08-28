@@ -114,6 +114,7 @@ pub(crate) fn layers<C: Canvas>(
                 rgb,
                 classes,
                 reduce,
+                smooth,
             } => {
                 draw_cells(
                     surface,
@@ -122,6 +123,7 @@ pub(crate) fn layers<C: Canvas>(
                     *extents,
                     colormap.clone(),
                     *reduce,
+                    *smooth,
                     x_scale,
                     y_scale,
                     (band.as_ref(), layout.y_band.as_ref()),
@@ -615,6 +617,7 @@ fn draw_cells<C: Canvas>(
     extents: Option<((f64, f64), (f64, f64))>,
     colormap: Colormap,
     reduce: Reducer,
+    smooth: bool,
     x_scale: &Map,
     y_scale: &Map,
     bands: (Option<&Band>, Option<&Band>),
@@ -793,6 +796,47 @@ fn draw_cells<C: Canvas>(
                     return Some((luma(r, g, b), Color::Rgb(r, g, b)));
                 }
                 let (low, high) = range?;
+                if smooth && x_band.is_none() && y_band.is_none() && c1 - c0 <= 1 && r1 - r0 <= 1 {
+                    // Inside one bucket: bilinear over the four surrounding
+                    // bucket centers turns the upsampled grid into a
+                    // continuous field. A non-finite neighbor falls back to
+                    // the nearest bucket, keeping gaps honest.
+                    let fx =
+                        crate::numeric::inverse_lerp(x0, x1, position_on(x_scale, sub_x, x0, x1)?)
+                            * columns as f64
+                            - 0.5;
+                    let fy =
+                        crate::numeric::inverse_lerp(y0, y1, position_on(y_scale, sub_y, y0, y1)?)
+                            * rows as f64
+                            - 0.5;
+                    let cx = fx.floor().clamp(0.0, (columns - 1) as f64);
+                    let cy = fy.floor().clamp(0.0, (rows - 1) as f64);
+                    let (tx, ty) = ((fx - cx).clamp(0.0, 1.0), (fy - cy).clamp(0.0, 1.0));
+                    let (cx, cy) = (cx as usize, cy as usize);
+                    let at = |column: usize, row: usize| -> Option<f64> {
+                        values
+                            .get(row.min(rows - 1) * columns + column.min(columns - 1))
+                            .copied()
+                            .filter(|value| value.is_finite())
+                    };
+                    let corners = (
+                        at(cx, cy),
+                        at(cx + 1, cy),
+                        at(cx, cy + 1),
+                        at(cx + 1, cy + 1),
+                    );
+                    if let (Some(v00), Some(v10), Some(v01), Some(v11)) = corners {
+                        let value = v00 * (1.0 - tx) * (1.0 - ty)
+                            + v10 * tx * (1.0 - ty)
+                            + v01 * (1.0 - tx) * ty
+                            + v11 * tx * ty;
+                        let position = colormap.position_in(value, low, high);
+                        if position.is_finite() {
+                            return Some((position, colormap.color(position)));
+                        }
+                        return None;
+                    }
+                }
                 let mut state = ReducerState::new(reduce);
                 for row in r0..r1 {
                     for column in c0..c1 {

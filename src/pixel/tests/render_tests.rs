@@ -210,3 +210,30 @@ fn a_flush_left_block_still_anchors_every_row() {
         assert!(row.starts_with("\x1b[1G"), "unanchored row: {row:?}");
     }
 }
+
+#[test]
+fn smooth_cells_read_as_a_continuous_field() {
+    use crate::Cells;
+    let values: &[f64] = &[0.0, 1.0, 1.0, 0.0];
+    let distinct = |smooth: bool| {
+        let cells = Cells::matrix(2, values);
+        let cells = if smooth { cells.smooth() } else { cells };
+        let plot = Plot::new().layer(cells);
+        let (_, canvas, rect) = plot
+            .try_rasterize_hybrid(&Frame::plain(24, 12), (8, 16), None)
+            .unwrap();
+        let (cw, ch) = canvas.cell();
+        let y = (rect.top + rect.rows / 2) * ch;
+        let mut colors = std::collections::BTreeSet::new();
+        for x in rect.gutter * cw..(rect.gutter + rect.columns) * cw {
+            if let Some(crate::Color::Rgb(r, g, b)) = canvas.get(x, y) {
+                colors.insert((r, g, b));
+            }
+        }
+        colors.len()
+    };
+    let blocky = distinct(false);
+    let smooth = distinct(true);
+    assert!(blocky <= 4, "nearest sampling is blocky: {blocky}");
+    assert!(smooth > blocky * 3, "interpolation grades: {smooth}");
+}
