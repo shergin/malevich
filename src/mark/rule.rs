@@ -1,5 +1,6 @@
 //! The rule mark: a reference line across the whole plot.
 
+use super::line::Dash;
 use crate::render::Color;
 
 /// A reference line spanning the plot: horizontal at a y value, or vertical at an
@@ -20,6 +21,12 @@ pub struct Rule {
     pub(crate) orientation: Orientation,
     pub(crate) color: Option<Color>,
     pub(crate) label: Option<String>,
+    /// Solid by default; wire documents omit it then.
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Dash::is_solid", default)
+    )]
+    pub(crate) dash: Dash,
 }
 
 impl Rule {
@@ -33,6 +40,7 @@ impl Rule {
             orientation: Orientation::Horizontal(y),
             color: None,
             label: None,
+            dash: Dash::Solid,
         };
         rule.validate().expect("Rule::h requires a finite position");
         rule
@@ -48,9 +56,18 @@ impl Rule {
             orientation: Orientation::Vertical(x),
             color: None,
             label: None,
+            dash: Dash::Solid,
         };
         rule.validate().expect("Rule::v requires a finite position");
         rule
+    }
+
+    /// Sets the stroke pattern; [`Dash::Solid`] by default. A dashed or
+    /// dotted rule reads as annotation at a glance — a target, not data.
+    #[must_use]
+    pub fn dash(mut self, dash: Dash) -> Rule {
+        self.dash = dash;
+        self
     }
 
     /// Sets an explicit color; without one, rules draw in the default foreground —

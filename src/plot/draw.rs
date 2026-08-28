@@ -5,7 +5,7 @@
 //! precision-dependent — bar fills, marker crossbars, Cells patches — goes through
 //! the canvas's mid-level ops, so each target renders it at its own fidelity.
 
-use crate::mark::{LineStyle, PointStyle};
+use crate::mark::{Dash, LineStyle, PointStyle};
 use crate::mark::{Orientation, Placement};
 use crate::plot::layout::{Layout, Map};
 use crate::plot::resolve::{
@@ -157,22 +157,31 @@ pub(crate) fn layers<C: Canvas>(
                 );
             }
             ResolvedLayer::Rule {
-                orientation, color, ..
+                orientation,
+                color,
+                dash,
+                ..
             } => match orientation {
                 Orientation::Horizontal(y) => {
                     let sy = y_offset + y_scale.map(*y);
-                    surface.line(
+                    dash_segment(
+                        surface,
                         (x_offset, sy),
                         (x_offset + (plot_sub_w - 1) as f64, sy),
                         *color,
+                        *dash,
+                        &mut 0.0,
                     );
                 }
                 Orientation::Vertical(x) => {
                     let sx = x_offset + x_scale.map(*x);
-                    surface.line(
+                    dash_segment(
+                        surface,
                         (sx, y_offset),
                         (sx, y_offset + (plot_sub_h - 1) as f64),
                         *color,
+                        *dash,
+                        &mut 0.0,
                     );
                 }
             },
@@ -231,6 +240,65 @@ pub(crate) fn layers<C: Canvas>(
     surface.clear_clip();
 }
 
+/// Draws one segment in the layer's stroke pattern, advancing `phase` by
+/// the segment's length so the pattern flows through polyline joints. The
+/// unit scales with the target's vertical sampling density, keeping the
+/// rhythm proportional across braille cells and retina pixels.
+pub(crate) fn dash_segment<C: Canvas>(
+    surface: &mut C,
+    from: (f64, f64),
+    to: (f64, f64),
+    color: Color,
+    dash: Dash,
+    phase: &mut f64,
+) {
+    if dash == Dash::Solid {
+        surface.line(from, to, color);
+        return;
+    }
+    let unit = (surface.patch_density().1 as f64 / 8.0).max(1.0);
+    let (dx, dy) = (to.0 - from.0, to.1 - from.1);
+    let length = (dx * dx + dy * dy).sqrt();
+    if !length.is_finite() {
+        return;
+    }
+    let at = |distance: f64| {
+        if length > 0.0 {
+            let t = distance / length;
+            (from.0 + dx * t, from.1 + dy * t)
+        } else {
+            from
+        }
+    };
+    match dash {
+        Dash::Solid => unreachable!("solid returned above"),
+        Dash::Dashed => {
+            let (on, period) = (3.0 * unit, 5.5 * unit);
+            let mut position = 0.0;
+            while position < length {
+                let offset = (*phase + position).rem_euclid(period);
+                if offset < on {
+                    let run = (length - position).min(on - offset);
+                    surface.line(at(position), at(position + run), color);
+                    position += run;
+                } else {
+                    position += period - offset;
+                }
+            }
+        }
+        Dash::Dotted => {
+            let period = 3.0 * unit;
+            let mut position = (period - phase.rem_euclid(period)).rem_euclid(period);
+            while position <= length {
+                let dot = at(position);
+                surface.line(dot, dot, color);
+                position += period;
+            }
+        }
+    }
+    *phase += length;
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_series<C: Canvas>(
     surface: &mut C,
@@ -252,8 +320,10 @@ fn draw_series<C: Canvas>(
         Kind::Line {
             style: LineStyle::Pixels,
             glow,
+            dash,
         } => {
             let mut previous: Option<((f64, f64), Option<usize>)> = None;
+            let mut phase = 0.0;
             for (index, (xv, &yv)) in x.iter().zip(y.iter()).enumerate() {
                 if !xv.is_finite() || !yv.is_finite() {
                     previous = None;
@@ -273,7 +343,7 @@ fn draw_series<C: Canvas>(
                         if *glow {
                             surface.glow(from, position, ink);
                         }
-                        surface.line(from, position, ink);
+                        dash_segment(surface, from, position, ink, *dash, &mut phase);
                     }
                     _ => surface.dot(position.0, position.1, ink),
                 }

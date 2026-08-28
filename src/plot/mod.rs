@@ -12,3 +12,6 @@ mod resolve;
 pub use frame::Frame;
 pub use grid::Grid;
 pub use plot::Plot;
+
+#[cfg(all(test, feature = "pixel"))]
+pub(crate) use draw::dash_segment as test_dash_segment;

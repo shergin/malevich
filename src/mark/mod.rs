@@ -21,7 +21,7 @@ pub(crate) use bars::Placement;
 pub(crate) use categories::Categories;
 pub use cells::Cells;
 pub(crate) use line::Source;
-pub use line::{Line, LineStyle};
+pub use line::{Dash, Line, LineStyle};
 pub use points::{PointStyle, Points};
 pub use range::Range;
 pub(crate) use range::RangePlacement;
@@ -167,6 +167,7 @@ mod validation_tests {
             orientation: Orientation::Horizontal(f64::NAN),
             color: None,
             label: None,
+            dash: Dash::Solid,
         };
         assert!(matches!(
             rule.validate(),

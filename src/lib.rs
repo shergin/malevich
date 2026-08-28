@@ -98,7 +98,9 @@ pub use adapter::PlotWidget;
 #[cfg(feature = "serde")]
 pub use document::{Document, DocumentKind};
 pub use error::{Error, Result};
-pub use mark::{Area, Bars, Cells, Line, LineStyle, Mark, PointStyle, Points, Range, Rule, Text};
+pub use mark::{
+    Area, Bars, Cells, Dash, Line, LineStyle, Mark, PointStyle, Points, Range, Rule, Text,
+};
 pub use plot::{Frame, Grid, Plot};
 pub use presets::{
     ContourLevels, ContourOptions, DensityOptions, EcdfOptions, HeatmapOptions, Histogram2dOptions,

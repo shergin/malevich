@@ -20,6 +20,29 @@ pub enum LineStyle {
     Corners,
 }
 
+/// The stroke pattern along a path: solid ink, dashes, or dots. The
+/// pattern's phase runs continuously along a polyline, so it flows through
+/// joints instead of restarting at every segment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum Dash {
+    /// Unbroken ink. The default.
+    #[default]
+    Solid,
+    /// Even dashes with gaps — reference lines, targets, baselines.
+    Dashed,
+    /// Point-length dashes; a round pen draws literal dots.
+    Dotted,
+}
+
+impl Dash {
+    /// The serde skip guard: solid is the default and stays off the wire.
+    #[cfg(feature = "serde")]
+    pub(crate) fn is_solid(&self) -> bool {
+        *self == Dash::Solid
+    }
+}
+
 /// A polyline through ordered points; gaps (`NaN`) break it visibly.
 ///
 /// Data enters three ways: y values against their indices ([`Line::y`]), paired
@@ -33,6 +56,7 @@ pub struct Line<'a> {
     pub(crate) style: LineStyle,
     pub(crate) color_by: Option<Categories>,
     pub(crate) glow: bool,
+    pub(crate) dash: Dash,
 }
 
 #[derive(Clone)]
@@ -60,6 +84,7 @@ impl<'a> Line<'a> {
             style: LineStyle::Pixels,
             color_by: None,
             glow: false,
+            dash: Dash::Solid,
         }
     }
 
@@ -78,6 +103,7 @@ impl<'a> Line<'a> {
             style: LineStyle::Pixels,
             color_by: None,
             glow: false,
+            dash: Dash::Solid,
         };
         line.validate()
             .expect("Line::xy requires series of equal length");
@@ -106,6 +132,7 @@ impl<'a> Line<'a> {
             style: LineStyle::Pixels,
             color_by: None,
             glow: false,
+            dash: Dash::Solid,
         };
         line.validate()
             .expect("Line::function requires a finite, non-empty domain");
@@ -132,6 +159,13 @@ impl<'a> Line<'a> {
     #[must_use]
     pub fn glow(mut self) -> Line<'a> {
         self.glow = true;
+        self
+    }
+
+    /// Sets the stroke pattern; [`Dash::Solid`] by default.
+    #[must_use]
+    pub fn dash(mut self, dash: Dash) -> Line<'a> {
+        self.dash = dash;
         self
     }
 
@@ -204,6 +238,7 @@ impl<'a> Line<'a> {
             style: self.style,
             color_by: self.color_by,
             glow: self.glow,
+            dash: self.dash,
         }
     }
 }
@@ -245,6 +280,8 @@ mod serde_impls {
         /// Absent when off, keeping v1 wire documents byte-stable.
         #[serde(skip_serializing_if = "is_false")]
         glow: bool,
+        #[serde(skip_serializing_if = "Dash::is_solid")]
+        dash: Dash,
     }
 
     fn is_false(value: &bool) -> bool {
@@ -262,6 +299,8 @@ mod serde_impls {
         color_by: Option<Categories>,
         #[serde(default)]
         glow: bool,
+        #[serde(default)]
+        dash: Dash,
     }
 
     impl serde::Serialize for Line<'_> {
@@ -275,6 +314,7 @@ mod serde_impls {
                     style: self.style,
                     color_by: &self.color_by,
                     glow: self.glow,
+                    dash: self.dash,
                 }
                 .serialize(serializer),
                 Source::Function { .. } => Err(S::Error::custom(
@@ -297,6 +337,7 @@ mod serde_impls {
                 style: repr.style,
                 color_by: repr.color_by,
                 glow: repr.glow,
+                dash: repr.dash,
             })
         }
     }

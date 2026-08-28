@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use crate::mark::{
-    Categories, LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement, Source,
+    Categories, Dash, LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement, Source,
 };
 use crate::plot::layout::Map;
 use crate::render::Color;
@@ -84,7 +84,11 @@ pub(crate) enum Reduce {
 
 /// How a resolved series layer draws its columns.
 pub(crate) enum Kind {
-    Line { style: LineStyle, glow: bool },
+    Line {
+        style: LineStyle,
+        glow: bool,
+        dash: Dash,
+    },
     Points(PointStyle),
 }
 
@@ -244,6 +248,7 @@ pub(crate) enum ResolvedLayer<'p> {
         orientation: Orientation,
         color: Color,
         label: Option<&'p str>,
+        dash: Dash,
     },
     Text {
         x: f64,
@@ -566,6 +571,7 @@ pub(crate) fn resolve<'p>(
                                 kind: Kind::Line {
                                     style: line.style,
                                     glow: line.glow,
+                                    dash: line.dash,
                                 },
                             },
                             None => ResolvedLayer::Series {
@@ -576,6 +582,7 @@ pub(crate) fn resolve<'p>(
                                 kind: Kind::Line {
                                     style: line.style,
                                     glow: line.glow,
+                                    dash: line.dash,
                                 },
                             },
                         }
@@ -593,6 +600,7 @@ pub(crate) fn resolve<'p>(
                                 kind: Kind::Line {
                                     style: line.style,
                                     glow: line.glow,
+                                    dash: line.dash,
                                 },
                             },
                             None => ResolvedLayer::Series {
@@ -602,6 +610,7 @@ pub(crate) fn resolve<'p>(
                                 kind: Kind::Line {
                                     style: line.style,
                                     glow: line.glow,
+                                    dash: line.dash,
                                 },
                             },
                         }
@@ -626,6 +635,7 @@ pub(crate) fn resolve<'p>(
                         kind: Kind::Line {
                             style: line.style,
                             glow: line.glow,
+                            dash: line.dash,
                         },
                     }
                 }
@@ -696,6 +706,7 @@ pub(crate) fn resolve<'p>(
                 orientation: rule.orientation,
                 color: rule.color.unwrap_or(Color::Default),
                 label: rule.label.as_deref(),
+                dash: rule.dash,
             },
             Mark::Text(text) => ResolvedLayer::Text {
                 x: text.x,

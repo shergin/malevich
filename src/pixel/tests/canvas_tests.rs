@@ -354,3 +354,44 @@ fn opacity_washes_fills_and_resets() {
     canvas.line((2.0, 1.0), (20.0, 1.0), RED);
     assert_eq!(canvas.rgba(10, 1), [255, 0, 0, 255]);
 }
+
+#[test]
+fn dashes_gap_and_flow_through_joints() {
+    use crate::mark::Dash;
+    use crate::plot::test_dash_segment;
+    let mut canvas = PixelCanvas::new(8, 1, (8, 8));
+    // Two joined segments; the pattern's phase carries across the joint.
+    let mut phase = 0.0;
+    test_dash_segment(
+        &mut canvas,
+        (0.0, 3.0),
+        (24.0, 3.0),
+        RED,
+        Dash::Dashed,
+        &mut phase,
+    );
+    test_dash_segment(
+        &mut canvas,
+        (24.0, 3.0),
+        (60.0, 3.0),
+        RED,
+        Dash::Dashed,
+        &mut phase,
+    );
+    let on: Vec<bool> = (0..61).map(|x| canvas.get(x, 3).is_some()).collect();
+    let runs = on.windows(2).filter(|w| w[0] != w[1]).count();
+    assert!(runs >= 8, "several dashes and gaps: {runs} transitions");
+    assert!(on.iter().any(|&i| i) && on.iter().any(|&i| !i));
+    // Dotted: isolated round dots.
+    let mut dotted = PixelCanvas::new(8, 1, (8, 8));
+    test_dash_segment(
+        &mut dotted,
+        (0.0, 3.0),
+        (60.0, 3.0),
+        RED,
+        Dash::Dotted,
+        &mut 0.0,
+    );
+    let lit = (0..61).filter(|&x| dotted.get(x, 3).is_some()).count();
+    assert!((5..=25).contains(&lit), "sparse dots: {lit} lit");
+}
