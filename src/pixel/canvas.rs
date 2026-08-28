@@ -26,6 +26,8 @@ pub(crate) struct PixelCanvas {
     point: i64,
     /// Straight RGBA per pixel; alpha 0 is bare canvas.
     pixels: Vec<[u8; 4]>,
+    /// Coverage multiplier for subsequent draws — a layer-scoped wash.
+    opacity: f64,
     /// An optional drawing clip in pixel coordinates `(x0, y0, x1, y1)`, upper
     /// bounds exclusive — the same contract as the cell surface's clip.
     clip: Option<(i64, i64, i64, i64)>,
@@ -83,6 +85,7 @@ impl PixelCanvas {
             stroke,
             point: stroke + 1,
             pixels,
+            opacity: 1.0,
             clip: None,
         })
     }
@@ -96,6 +99,7 @@ impl PixelCanvas {
             stroke: 1,
             point: 2,
             pixels: Vec::new(),
+            opacity: 1.0,
             clip: None,
         }
     }
@@ -248,7 +252,9 @@ impl PixelCanvas {
     }
 
     fn set(&mut self, x: i64, y: i64, color: Color) {
-        if self.inside(x, y) {
+        if self.opacity < 1.0 {
+            self.blend(x, y, color.to_rgb(), 1.0);
+        } else if self.inside(x, y) {
             let (r, g, b) = color.to_rgb();
             self.pixels[y as usize * self.width + x as usize] = [r, g, b, 255];
         }
@@ -262,7 +268,7 @@ impl PixelCanvas {
         if !self.inside(x, y) {
             return;
         }
-        let a_new = (coverage.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let a_new = ((coverage * self.opacity).clamp(0.0, 1.0) * 255.0).round() as u8;
         if a_new == 0 {
             return;
         }
@@ -317,6 +323,14 @@ impl Canvas for PixelCanvas {
 
     fn clear_clip(&mut self) {
         self.clip = None;
+    }
+
+    fn set_opacity(&mut self, opacity: f64) {
+        self.opacity = if opacity.is_finite() {
+            opacity.clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
     }
 
     fn dot(&mut self, x: f64, y: f64, color: Color) {

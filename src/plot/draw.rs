@@ -88,8 +88,10 @@ pub(crate) fn layers<C: Canvas>(
                 high,
                 horizontal,
                 color,
+                opacity,
                 ..
             } => {
+                surface.set_opacity(*opacity);
                 draw_area(
                     surface,
                     x,
@@ -102,6 +104,7 @@ pub(crate) fn layers<C: Canvas>(
                     (x_offset, y_offset),
                     (plot_sub_w, plot_sub_h),
                 );
+                surface.set_opacity(1.0);
             }
             ResolvedLayer::Cells {
                 columns,

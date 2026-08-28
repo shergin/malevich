@@ -220,6 +220,7 @@ pub(crate) enum ResolvedLayer<'p> {
         horizontal: bool,
         color: Color,
         label: Option<&'p str>,
+        opacity: f64,
     },
     Cells {
         columns: usize,
@@ -651,6 +652,7 @@ pub(crate) fn resolve<'p>(
                 horizontal: area.horizontal,
                 color: colors.assigned(area.color),
                 label: area.label.as_deref(),
+                opacity: area.opacity.unwrap_or(1.0),
             },
             Mark::Cells(cells) => ResolvedLayer::Cells {
                 columns: cells.columns,

@@ -16,6 +16,12 @@ pub struct Area<'a> {
     pub(crate) horizontal: bool,
     pub(crate) color: Option<Color>,
     pub(crate) label: Option<String>,
+    /// Absent means opaque; wire documents omit it then.
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none", default)
+    )]
+    pub(crate) opacity: Option<f64>,
 }
 
 impl<'a> Area<'a> {
@@ -28,6 +34,7 @@ impl<'a> Area<'a> {
             horizontal: false,
             color: None,
             label: None,
+            opacity: None,
         }
     }
 
@@ -46,6 +53,7 @@ impl<'a> Area<'a> {
             horizontal: false,
             color: None,
             label: None,
+            opacity: None,
         };
         area.validate()
             .expect("Area::xy requires series of equal length");
@@ -73,6 +81,7 @@ impl<'a> Area<'a> {
             horizontal: false,
             color: None,
             label: None,
+            opacity: None,
         };
         area.validate()
             .expect("Area::between requires series of equal length");
@@ -100,6 +109,7 @@ impl<'a> Area<'a> {
             horizontal: true,
             color: None,
             label: None,
+            opacity: None,
         };
         area.validate()
             .expect("Area::horizontal requires series of equal length");
@@ -110,6 +120,21 @@ impl<'a> Area<'a> {
     #[must_use]
     pub fn color(mut self, color: Color) -> Area<'a> {
         self.color = Some(color);
+        self
+    }
+
+    /// A translucent wash on pixel targets: `opacity` in `(0, 1]` scales
+    /// the fill's coverage, so the terminal background — and layers
+    /// beneath — read through it. Cell targets stay solid.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `opacity` is not finite or outside `(0, 1]`.
+    #[must_use]
+    pub fn opacity(mut self, opacity: f64) -> Area<'a> {
+        self.opacity = Some(opacity);
+        self.validate()
+            .expect("Area::opacity requires a value in (0, 1]");
         self
     }
 
@@ -128,6 +153,13 @@ impl<'a> Area<'a> {
         if let Some(low) = &self.low {
             super::pair("Area: low and high", low.len(), self.high.len())?;
         }
+        if let Some(opacity) = self.opacity
+            && !(opacity.is_finite() && 0.0 < opacity && opacity <= 1.0)
+        {
+            return Err(crate::Error::InvalidParameter {
+                detail: "Area opacity must be finite and in (0, 1]",
+            });
+        }
         Ok(())
     }
 
@@ -140,6 +172,7 @@ impl<'a> Area<'a> {
             horizontal: self.horizontal,
             color: self.color,
             label: self.label,
+            opacity: self.opacity,
         }
     }
 }

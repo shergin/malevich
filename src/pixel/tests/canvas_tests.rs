@@ -339,3 +339,18 @@ fn glow_lays_a_soft_halo_the_stroke_rides_over() {
     // Well outside the reach: nothing.
     assert_eq!(canvas.rgba(14, 13), [0; 4]);
 }
+
+#[test]
+fn opacity_washes_fills_and_resets() {
+    let mut canvas = PixelCanvas::new(4, 1, (8, 8));
+    canvas.set_opacity(0.2);
+    canvas.line((2.0, 3.0), (20.0, 3.0), RED);
+    let washed = canvas.rgba(10, 3)[3];
+    assert!((45..=58).contains(&washed), "a fifth of full ink: {washed}");
+    // Solid ops route through the wash too.
+    canvas.bar((2.0, 6.0), 5.0, 6.0, true, rect(), RED);
+    assert!(canvas.rgba(3, 5)[3] < 128, "washed bar");
+    canvas.set_opacity(1.0);
+    canvas.line((2.0, 1.0), (20.0, 1.0), RED);
+    assert_eq!(canvas.rgba(10, 1), [255, 0, 0, 255]);
+}

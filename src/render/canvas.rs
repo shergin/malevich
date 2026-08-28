@@ -40,6 +40,11 @@ pub(crate) trait Canvas {
     /// Removes any drawing clip.
     fn clear_clip(&mut self);
 
+    /// Scales the coverage of subsequent draws (a translucent wash for
+    /// fills and bands), `0.0..=1.0`. Blending targets honor it; glyph
+    /// targets have no notion of partial ink and ignore it.
+    fn set_opacity(&mut self, _opacity: f64) {}
+
     /// Sets the subpixel nearest to `(x, y)`; non-finite coordinates draw nothing.
     fn dot(&mut self, x: f64, y: f64, color: Color);
 
