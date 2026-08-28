@@ -94,7 +94,7 @@ pub mod stream;
 mod theme;
 
 #[cfg(feature = "ratatui")]
-pub use adapter::PlotWidget;
+pub use adapter::{Mouse, MouseButton, PlotState, PlotWidget};
 #[cfg(feature = "serde")]
 pub use document::{Document, DocumentKind};
 pub use error::{Error, Result};
