@@ -816,8 +816,12 @@ fn draw_area<C: Canvas>(
         }
     };
     // The main axis runs along x for vertical areas, y for horizontal ones; its
-    // subpixel extent bounds the fill loop so distant points cannot spin it.
-    let main_limit = if horizontal { bounds.1 } else { bounds.0 } as i64;
+    // frame-absolute subpixel extent bounds the fill loop so distant points
+    // cannot spin it. `main` carries the plot offset, so the bounds must too —
+    // clamping to the plot-relative width alone cut every fill short of the
+    // plot's far edge by exactly the gutter.
+    let main_offset = (if horizontal { offset.1 } else { offset.0 }).round() as i64;
+    let main_limit = main_offset + if horizontal { bounds.1 } else { bounds.0 } as i64;
     let mut previous: Option<(f64, f64, f64)> = None;
     // Constructors keep channel and edges equal length; a deserialized area may not,
     // so bound to the shortest and read the optional low edge by index.
@@ -853,7 +857,7 @@ fn draw_area<C: Canvas>(
             Some((pm, pl, ph)) => {
                 let (from, to) = if pm <= main { (pm, main) } else { (main, pm) };
                 let span = main - pm;
-                let lo = (from.round() as i64).max(0);
+                let lo = (from.round() as i64).max(main_offset);
                 let hi = (to.round() as i64).min(main_limit - 1);
                 for step in lo..=hi {
                     let t = if span.abs() < f64::EPSILON {
