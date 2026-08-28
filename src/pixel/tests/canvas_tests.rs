@@ -89,8 +89,12 @@ fn points_read_above_lines_at_any_density() {
         .flat_map(|y| (0..40).map(move |x| (x, y)))
         .filter(|&(x, y)| canvas.get(x, y).is_some())
         .count();
-    // Stroke 3 at this density, so the point pen is 4×4.
-    assert_eq!(drawn, 16);
+    // Stroke 3 at this density: the pen is an anti-aliased disc of
+    // radius 2 — 9 solid pixels (strictly inside the radius), fringe at
+    // and past the rim.
+    assert_eq!(drawn, 9);
+    assert!(canvas.rgba(22, 23)[3] > 0, "the fringe carries partial ink");
+    assert!(canvas.rgba(22, 23)[3] < 128, "but never reads as solid");
 }
 
 #[test]
@@ -257,4 +261,65 @@ fn coverage_semantics_solid_ink_and_raw_rgba() {
     assert_eq!(canvas.rgba(5, 1), [0, 0, 0, 0]);
     // Out of bounds is transparent, never a panic.
     assert_eq!(canvas.rgba(999, 999), [0, 0, 0, 0]);
+}
+
+#[test]
+fn diagonal_strokes_carry_an_anti_aliased_fringe() {
+    let mut canvas = PixelCanvas::new(4, 2, (8, 8));
+    canvas.line((4.0, 4.0), (24.0, 11.0), RED);
+    // The spine is solid; off-spine neighbors carry partial coverage —
+    // some ink, less than solid — instead of the old hard staircase.
+    let mut solid = 0;
+    let mut fringe = 0;
+    for y in 0..16 {
+        for x in 0..32 {
+            match canvas.rgba(x, y)[3] {
+                0 => {}
+                a if a >= 128 => solid += 1,
+                _ => fringe += 1,
+            }
+        }
+    }
+    assert!(solid >= 20, "the stroke itself is solid: {solid}");
+    assert!(fringe >= 8, "a soft edge exists: {fringe}");
+}
+
+#[test]
+fn round_caps_extend_past_the_endpoints() {
+    let mut canvas = PixelCanvas::try_new(4, 2, (8, 8), Some(4)).unwrap();
+    canvas.line((10.0, 8.0), (20.0, 8.0), RED);
+    // Ink extends past the endpoints into the cap; the cap's rim itself
+    // is a soft fringe.
+    assert!(canvas.get(9, 8).is_some(), "left cap");
+    assert!(canvas.get(21, 8).is_some(), "right cap");
+    assert!(canvas.rgba(8, 8)[3] > 0, "the rim carries fringe ink");
+    // The cap is round: the corner past the endpoint at full radius in
+    // both axes is outside.
+    assert_eq!(canvas.get(8, 10), None);
+}
+
+#[test]
+fn subpixel_endpoints_split_coverage_between_rows() {
+    let mut canvas = PixelCanvas::new(4, 1, (8, 8));
+    // A hairline exactly between two pixel rows: neither row is solid,
+    // both carry the same partial ink.
+    canvas.line((4.0, 3.5), (20.0, 3.5), RED);
+    let above = canvas.rgba(10, 3)[3];
+    let below = canvas.rgba(10, 4)[3];
+    assert_eq!(above, below);
+    assert!(above > 0 && above <= 128, "split coverage: {above}");
+    // Neither row reads as solid ink.
+    assert_eq!(canvas.get(10, 3), None);
+    assert_eq!(canvas.get(10, 4), None);
+}
+
+#[test]
+fn crossing_strokes_blend_where_they_overlap() {
+    let mut canvas = PixelCanvas::new(4, 1, (8, 8));
+    canvas.line((4.0, 3.5), (20.0, 3.5), Color::Rgb(200, 0, 0));
+    canvas.line((4.0, 3.5), (20.0, 3.5), Color::Rgb(0, 0, 200));
+    // Equal partial coverages: source-over leaves a mix, not a replace.
+    let [r, _, b, a] = canvas.rgba(10, 3);
+    assert!(r > 0 && b > 0, "both inks present: r={r} b={b}");
+    assert!(a > 0);
 }

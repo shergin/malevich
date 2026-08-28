@@ -100,13 +100,83 @@ impl PixelCanvas {
         }
     }
 
-    /// Stamps a `side × side` square centered on `(x, y)` — the pen the stroke
-    /// ops draw with; clipping applies per pixel.
-    fn stamp(&mut self, x: i64, y: i64, side: i64, color: Color) {
-        let (x0, y0) = (x - side / 2, y - side / 2);
-        for dy in 0..side {
-            for dx in 0..side {
-                self.set(x0 + dx, y0 + dy, color);
+    /// An anti-aliased stroked segment with round caps: coverage falls off
+    /// over one pixel at the stroke's edge, and endpoints are sub-pixel —
+    /// no rounding before rasterization. Long segments render in bounded
+    /// chunks so a diagonal never scans its full bounding square; interior
+    /// chunk caps land inside the stroke, where same-color blending
+    /// absorbs them exactly.
+    fn aa_segment(&mut self, from: (f64, f64), to: (f64, f64), half_width: f64, rgb: (u8, u8, u8)) {
+        let (dx, dy) = (to.0 - from.0, to.1 - from.1);
+        let length = (dx * dx + dy * dy).sqrt();
+        if !length.is_finite() {
+            return;
+        }
+        let chunks = (length / 32.0).ceil().max(1.0) as usize;
+        for chunk in 0..chunks {
+            let t0 = chunk as f64 / chunks as f64;
+            let t1 = (chunk + 1) as f64 / chunks as f64;
+            self.aa_span(
+                (from.0 + dx * t0, from.1 + dy * t0),
+                (from.0 + dx * t1, from.1 + dy * t1),
+                half_width,
+                rgb,
+            );
+        }
+    }
+
+    /// One bounded span of [`aa_segment`](Self::aa_segment): every pixel
+    /// within reach blends by its distance to the segment. Pixel centers
+    /// sit at integer coordinates, matching where cell-snapped drawing
+    /// always put its ink.
+    fn aa_span(&mut self, a: (f64, f64), b: (f64, f64), half_width: f64, rgb: (u8, u8, u8)) {
+        let (wx0, wy0, wx1, wy1) = self.window();
+        let pad = half_width + 1.0;
+        let x0 = (a.0.min(b.0) - pad).floor().max(wx0) as i64;
+        let x1 = (a.0.max(b.0) + pad).ceil().min(wx1) as i64;
+        let y0 = (a.1.min(b.1) - pad).floor().max(wy0) as i64;
+        let y1 = (a.1.max(b.1) + pad).ceil().min(wy1) as i64;
+        let (ex, ey) = (b.0 - a.0, b.1 - a.1);
+        let len2 = ex * ex + ey * ey;
+        for py in y0..=y1 {
+            for px in x0..=x1 {
+                let (vx, vy) = (px as f64 - a.0, py as f64 - a.1);
+                let t = if len2 > 0.0 {
+                    ((vx * ex + vy * ey) / len2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                let (cx, cy) = (vx - t * ex, vy - t * ey);
+                let distance = (cx * cx + cy * cy).sqrt();
+                let coverage = (half_width + 0.5 - distance).clamp(0.0, 1.0);
+                if coverage > 0.0 {
+                    self.blend(px, py, rgb, coverage);
+                }
+            }
+        }
+    }
+
+    /// An anti-aliased filled disc at a sub-pixel center.
+    fn aa_disc(&mut self, x: f64, y: f64, radius: f64, rgb: (u8, u8, u8)) {
+        self.aa_span((x, y), (x, y), radius, rgb);
+    }
+
+    /// An anti-aliased one-pixel ring at a sub-pixel center.
+    fn aa_ring(&mut self, x: f64, y: f64, radius: f64, rgb: (u8, u8, u8)) {
+        let (wx0, wy0, wx1, wy1) = self.window();
+        let pad = radius + 1.0;
+        let x0 = (x - pad).floor().max(wx0) as i64;
+        let x1 = (x + pad).ceil().min(wx1) as i64;
+        let y0 = (y - pad).floor().max(wy0) as i64;
+        let y1 = (y + pad).ceil().min(wy1) as i64;
+        for py in y0..=y1 {
+            for px in x0..=x1 {
+                let (vx, vy) = (px as f64 - x, py as f64 - y);
+                let distance = (vx * vx + vy * vy).sqrt();
+                let coverage = (1.0 - (distance - radius).abs()).clamp(0.0, 1.0);
+                if coverage > 0.0 {
+                    self.blend(px, py, rgb, coverage);
+                }
             }
         }
     }
@@ -122,13 +192,14 @@ impl PixelCanvas {
         self.cell
     }
 
-    /// Solid ink at `(x, y)`: the color where coverage reaches at least
-    /// half, `None` outside the canvas, where nothing drew, or where only
-    /// an anti-aliased fringe landed. Encoders needing exact coverage read
+    /// Solid ink at `(x, y)`: the color where coverage exceeds half,
+    /// `None` outside the canvas, where nothing drew, or where only an
+    /// anti-aliased fringe landed (an exactly half-covered pixel is a
+    /// fringe, not ink). Encoders needing exact coverage read
     /// [`PixelCanvas::rgba`].
     pub(crate) fn get(&self, x: usize, y: usize) -> Option<Color> {
         let [r, g, b, a] = self.rgba(x, y);
-        (a >= 128).then_some(Color::Rgb(r, g, b))
+        (a > 128).then_some(Color::Rgb(r, g, b))
     }
 
     /// The raw straight-RGBA pixel; `[0; 4]` outside the canvas.
@@ -155,6 +226,41 @@ impl PixelCanvas {
             let (r, g, b) = color.to_rgb();
             self.pixels[y as usize * self.width + x as usize] = [r, g, b, 255];
         }
+    }
+
+    /// Composites `coverage` of `rgb` over the pixel: full coverage
+    /// replaces, same-color partials keep the strongest coverage (so a
+    /// polyline's overlapping joints never darken), different colors
+    /// blend source-over in straight alpha.
+    fn blend(&mut self, x: i64, y: i64, rgb: (u8, u8, u8), coverage: f64) {
+        if !self.inside(x, y) {
+            return;
+        }
+        let a_new = (coverage.clamp(0.0, 1.0) * 255.0).round() as u8;
+        if a_new == 0 {
+            return;
+        }
+        let index = y as usize * self.width + x as usize;
+        let [r, g, b, a_old] = self.pixels[index];
+        let new = [rgb.0, rgb.1, rgb.2, a_new];
+        self.pixels[index] = if a_old == 0 || a_new == 255 {
+            new
+        } else if (r, g, b) == rgb {
+            [r, g, b, a_old.max(a_new)]
+        } else {
+            let (sa, da) = (f64::from(a_new) / 255.0, f64::from(a_old) / 255.0);
+            let out_a = sa + da * (1.0 - sa);
+            let channel = |source: u8, dest: u8| {
+                let blended = (f64::from(source) * sa + f64::from(dest) * da * (1.0 - sa)) / out_a;
+                blended.round() as u8
+            };
+            [
+                channel(rgb.0, r),
+                channel(rgb.1, g),
+                channel(rgb.2, b),
+                (out_a * 255.0).round() as u8,
+            ]
+        };
     }
 
     fn clear(&mut self, x: i64, y: i64) {
@@ -189,8 +295,7 @@ impl Canvas for PixelCanvas {
 
     fn dot(&mut self, x: f64, y: f64, color: Color) {
         if x.is_finite() && y.is_finite() {
-            let point = self.point;
-            self.stamp(x.round() as i64, y.round() as i64, point, color);
+            self.aa_disc(x, y, self.point as f64 / 2.0, color.to_rgb());
         }
     }
 
@@ -198,9 +303,10 @@ impl Canvas for PixelCanvas {
         if !x.is_finite() || !y.is_finite() {
             return;
         }
+        let (sx, sy) = (x, y);
         let (x, y) = (x.round() as i64, y.round() as i64);
         match shape {
-            PointShape::Dot => self.stamp(x, y, self.point, color),
+            PointShape::Dot => self.aa_disc(sx, sy, self.point as f64 / 2.0, color.to_rgb()),
             PointShape::Plus => {
                 for offset in -self.point..=self.point {
                     self.set(x + offset, y, color);
@@ -222,18 +328,7 @@ impl Canvas for PixelCanvas {
                 }
             }
             PointShape::Circle => {
-                // A one-pixel ring at the marker radius: pixels whose squared
-                // distance lands within half a pixel of the radius.
-                let radius = self.point.max(1);
-                let target = radius * radius;
-                for dy in -radius..=radius {
-                    for dx in -radius..=radius {
-                        let distance = dx * dx + dy * dy;
-                        if distance >= target - radius && distance <= target + radius {
-                            self.set(x + dx, y + dy, color);
-                        }
-                    }
-                }
+                self.aa_ring(sx, sy, self.point.max(1) as f64, color.to_rgb());
             }
         }
     }
@@ -245,13 +340,7 @@ impl Canvas for PixelCanvas {
         if self.width == 0 || self.height == 0 {
             return;
         }
-        let stroke = self.stroke;
-        if stroke == 1 {
-            crate::render::trace_line(from, to, self.window(), |x, y| self.set(x, y, color));
-        } else {
-            let window = self.window();
-            crate::render::trace_line(from, to, window, |x, y| self.stamp(x, y, stroke, color));
-        }
+        self.aa_segment(from, to, self.stroke as f64 / 2.0, color.to_rgb());
     }
 
     /// Text through the baked font: glyphs advance by whole cells — labels land
