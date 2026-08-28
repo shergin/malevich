@@ -419,3 +419,26 @@ fn accumulated_ink_brightens_where_markers_pile_up() {
     }
     assert_eq!(plain.rgba(10, 8)[3], single);
 }
+
+#[test]
+fn notes_ride_their_anchor_not_the_cell_grid() {
+    let mut canvas = PixelCanvas::new(6, 2, (8, 8));
+    // An anchor mid-cell: the ink starts at the anchor's pixel column,
+    // vertically centered on it — where cell-snapped text could not sit.
+    canvas.note(11.0, 8.0, (8.0, 8.0), "A", RED);
+    let ink: Vec<(usize, usize)> = (0..16)
+        .flat_map(|y| (0..48).map(move |x| (x, y)))
+        .filter(|&(x, y)| canvas.get(x, y).is_some())
+        .collect();
+    assert!(!ink.is_empty());
+    let min_x = ink.iter().map(|&(x, _)| x).min().unwrap();
+    let (min_y, max_y) = (
+        ink.iter().map(|&(_, y)| y).min().unwrap(),
+        ink.iter().map(|&(_, y)| y).max().unwrap(),
+    );
+    assert!((11..=13).contains(&min_x), "starts at the anchor: {min_x}");
+    assert!(
+        min_y >= 4 && max_y <= 12,
+        "centered on y=8: {min_y}..{max_y}"
+    );
+}

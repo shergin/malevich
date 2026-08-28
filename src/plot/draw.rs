@@ -189,12 +189,7 @@ pub(crate) fn layers<C: Canvas>(
                 let sx = x_offset + x_scale.map(*x);
                 let sy = y_offset + y_scale.map(*y);
                 if sx.is_finite() && sy.is_finite() {
-                    surface.text(
-                        (sx / px as f64).round() as i64,
-                        (sy / py as f64).round() as i64,
-                        text,
-                        *color,
-                    );
+                    surface.note(sx, sy, (px as f64, py as f64), text, *color);
                 }
             }
             ResolvedLayer::Bars {

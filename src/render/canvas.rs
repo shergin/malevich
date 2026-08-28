@@ -67,6 +67,21 @@ pub(crate) trait Canvas {
     /// Writes text starting at the cell `(column, row)`; cells outside clip away.
     fn text(&mut self, column: i64, row: i64, text: &str, color: Color);
 
+    /// An annotation anchored at a subpixel position: `cell` is the
+    /// target's subpixels per cell. Glyph targets snap to the containing
+    /// cell; pixel targets place the ink exactly, vertically centered on
+    /// the anchor.
+    fn note(&mut self, x: f64, y: f64, cell: (f64, f64), text: &str, color: Color) {
+        if cell.0 > 0.0 && cell.1 > 0.0 {
+            self.text(
+                (x / cell.0).round() as i64,
+                (y / cell.1).round() as i64,
+                text,
+                color,
+            );
+        }
+    }
+
     /// Fills one bar covering `span` in plot-local subpixel columns, from the
     /// baseline to the value end (both plot-local subpixel rows), at the target's
     /// precision. `positive` anchors the partial fill: bottom-up above the

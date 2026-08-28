@@ -465,6 +465,48 @@ impl Canvas for PixelCanvas {
         }
     }
 
+    /// Pixel-exact annotation: glyphs advance by their own 8-pixel boxes
+    /// from the anchor, vertically centered on it — labels ride data
+    /// points, not the cell grid.
+    fn note(&mut self, x: f64, y: f64, _cell: (f64, f64), text: &str, color: Color) {
+        use unicode_width::UnicodeWidthChar;
+
+        if !(x.is_finite() && y.is_finite()) {
+            return;
+        }
+        let (cw, ch) = (self.cell.0 as i64, self.cell.1 as i64);
+        if cw == 0 || ch == 0 {
+            return;
+        }
+        let scale = ((cw / 8).min(ch / 8)).max(1);
+        let mut pen = x.round() as i64;
+        let top = y.round() as i64 - 4 * scale;
+        for glyph in text.chars() {
+            let width = glyph.width().unwrap_or(0) as i64;
+            if width == 0 {
+                continue;
+            }
+            if let Some(bitmap) = font::glyph(glyph) {
+                for (glyph_row, bits) in bitmap.iter().enumerate() {
+                    for glyph_col in 0..8i64 {
+                        if bits >> glyph_col & 1 == 1 {
+                            for dy in 0..scale {
+                                for dx in 0..scale {
+                                    self.set(
+                                        pen + glyph_col * scale + dx,
+                                        top + glyph_row as i64 * scale + dy,
+                                        color,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            pen += width * 8 * scale;
+        }
+    }
+
     /// One bar as an exact device-pixel rectangle — no cell snapping, at least
     /// one pixel wide and tall so a nonzero value never vanishes.
     fn bar(
