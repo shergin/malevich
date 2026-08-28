@@ -49,3 +49,19 @@ fn glow_is_off_by_default_and_survives_into_owned() {
     let glowing = Line::y(&[1.0, 2.0][..]).glow().into_owned();
     assert!(glowing.glow);
 }
+
+#[test]
+fn grade_maps_points_through_a_colormap_and_guards_its_channels() {
+    use crate::data::IntoSeries as _;
+    use crate::scale::Colormap;
+    let line = Line::y(&[1.0, 2.0, 3.0][..]).grade(&[0.0, 5.0, 10.0][..], Colormap::VIRIDIS);
+    assert!(line.grade.is_some());
+    // Length mismatch is rejected.
+    let mut bad = Line::y(&[1.0, 2.0][..]);
+    bad.grade = Some(((&[1.0][..]).into_series(), Colormap::VIRIDIS));
+    assert!(bad.validate().is_err());
+    // Grading and categorical color are conflicting channels.
+    let mut both = Line::y(&[1.0, 2.0][..]).color_by(["a", "b"]);
+    both.grade = Some(((&[1.0, 2.0][..]).into_series(), Colormap::VIRIDIS));
+    assert!(both.validate().is_err());
+}

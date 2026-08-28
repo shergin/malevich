@@ -108,6 +108,11 @@ pub(crate) enum ColorChannel<'p> {
         palette: &'p Palette,
         cycle_markers: bool,
     },
+    /// Per-point colors graded through a colormap — a gradient stroke.
+    Graded {
+        colors: Vec<Color>,
+        label: Option<&'p str>,
+    },
 }
 
 impl<'p> ColorChannel<'p> {
@@ -135,6 +140,9 @@ impl<'p> ColorChannel<'p> {
             ColorChannel::Categories { ids, palette, .. } => ids
                 .get(index)
                 .map_or(Color::Default, |&category| palette.color(category)),
+            ColorChannel::Graded { colors, .. } => {
+                colors.get(index).copied().unwrap_or(Color::Default)
+            }
         }
     }
 
@@ -143,6 +151,9 @@ impl<'p> ColorChannel<'p> {
         match self {
             ColorChannel::Fixed { color, .. } => *color,
             ColorChannel::Categories { palette, .. } => palette.color(category),
+            ColorChannel::Graded { colors, .. } => {
+                colors.get(category).copied().unwrap_or(Color::Default)
+            }
         }
     }
 
@@ -150,7 +161,7 @@ impl<'p> ColorChannel<'p> {
     /// identities must never be connected, even when palette colors wrap.
     pub(crate) fn category(&self, index: usize) -> Option<usize> {
         match self {
-            ColorChannel::Fixed { .. } => None,
+            ColorChannel::Fixed { .. } | ColorChannel::Graded { .. } => None,
             ColorChannel::Categories { ids, .. } => ids.get(index).copied(),
         }
     }
@@ -174,7 +185,9 @@ impl<'p> ColorChannel<'p> {
 
     fn has_legend(&self) -> bool {
         match self {
-            ColorChannel::Fixed { label, .. } => label.is_some(),
+            ColorChannel::Fixed { label, .. } | ColorChannel::Graded { label, .. } => {
+                label.is_some()
+            }
             ColorChannel::Categories { labels, .. } => !labels.is_empty(),
         }
     }
@@ -196,7 +209,15 @@ impl<'p> ColorChannel<'p> {
                     visit(swatch(Some(category)), palette.color(category), label);
                 }
             }
-            ColorChannel::Fixed { label: None, .. } => {}
+            ColorChannel::Graded {
+                colors,
+                label: Some(label),
+            } => visit(
+                swatch(None),
+                colors.last().copied().unwrap_or(Color::Default),
+                label,
+            ),
+            ColorChannel::Fixed { label: None, .. } | ColorChannel::Graded { label: None, .. } => {}
         }
     }
 }
@@ -562,7 +583,41 @@ pub(crate) fn resolve<'p>(
             Mark::Line(line) => match &line.source {
                 Source::Points { x, y } => {
                     let x_slice = x.as_ref().map(|series| series.as_slice());
-                    if let Some(categories) = &line.color_by {
+                    if let Some((values, colormap)) = &line.grade {
+                        // Grading draws every point: column reduction would
+                        // drop the per-point values along with the points.
+                        let slice = values.as_slice();
+                        let (mut low, mut high) = (f64::INFINITY, f64::NEG_INFINITY);
+                        for &value in slice {
+                            if value.is_finite() {
+                                low = low.min(value);
+                                high = high.max(value);
+                            }
+                        }
+                        let colors = slice
+                            .iter()
+                            .map(|&value| {
+                                if value.is_finite() && low <= high {
+                                    colormap.color(colormap.position_in(value, low, high))
+                                } else {
+                                    Color::Default
+                                }
+                            })
+                            .collect();
+                        ResolvedLayer::Series {
+                            x: coordinates(x.as_ref(), y.len()),
+                            y: Cow::Borrowed(y.as_slice()),
+                            color: ColorChannel::Graded {
+                                colors,
+                                label: line.label.as_deref(),
+                            },
+                            kind: Kind::Line {
+                                style: line.style,
+                                glow: line.glow,
+                                dash: line.dash,
+                            },
+                        }
+                    } else if let Some(categories) = &line.color_by {
                         match reduced_categories(x_slice, y.as_slice(), categories.ids(), reduce) {
                             Some((dx, dy, ids)) => ResolvedLayer::Series {
                                 x: Coordinates::Values(Cow::Owned(dx)),

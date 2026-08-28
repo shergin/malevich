@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::data::{IntoSeries, Series};
 use crate::mark::Categories;
 use crate::render::Color;
+use crate::scale::Colormap;
 
 /// How a line renders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -57,6 +58,7 @@ pub struct Line<'a> {
     pub(crate) color_by: Option<Categories>,
     pub(crate) glow: bool,
     pub(crate) dash: Dash,
+    pub(crate) grade: Option<(Series<'a>, Colormap)>,
 }
 
 #[derive(Clone)]
@@ -85,6 +87,7 @@ impl<'a> Line<'a> {
             color_by: None,
             glow: false,
             dash: Dash::Solid,
+            grade: None,
         }
     }
 
@@ -104,6 +107,7 @@ impl<'a> Line<'a> {
             color_by: None,
             glow: false,
             dash: Dash::Solid,
+            grade: None,
         };
         line.validate()
             .expect("Line::xy requires series of equal length");
@@ -133,6 +137,7 @@ impl<'a> Line<'a> {
             color_by: None,
             glow: false,
             dash: Dash::Solid,
+            grade: None,
         };
         line.validate()
             .expect("Line::function requires a finite, non-empty domain");
@@ -159,6 +164,26 @@ impl<'a> Line<'a> {
     #[must_use]
     pub fn glow(mut self) -> Line<'a> {
         self.glow = true;
+        self
+    }
+
+    /// Grades the stroke through `colormap` by per-point `values`: each
+    /// point takes the color of its value within the values' finite range —
+    /// a trajectory that shows progression along a third variable. Grading
+    /// draws every point (column reduction would drop the values), so it
+    /// suits trajectories rather than million-point series. Replaces the
+    /// constant color; the legend swatch wears the final point's color.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of values differs from the number of points,
+    /// if the line is function-backed, or combined with
+    /// [`color_by`](Line::color_by).
+    #[must_use]
+    pub fn grade(mut self, values: impl IntoSeries<'a>, colormap: Colormap) -> Line<'a> {
+        self.grade = Some((values.into_series(), colormap));
+        self.validate()
+            .expect("Line::grade requires one value per point on a point-backed line");
         self
     }
 
@@ -206,6 +231,15 @@ impl<'a> Line<'a> {
                 if let Some(categories) = &self.color_by {
                     super::pair("Line: color_by and y", categories.len(), y.len())?;
                 }
+                if let Some((values, colormap)) = &self.grade {
+                    super::pair("Line: grade and y", values.len(), y.len())?;
+                    colormap.validate()?;
+                    if self.color_by.is_some() {
+                        return Err(crate::Error::InvalidParameter {
+                            detail: "a Line cannot be both graded and colored by category",
+                        });
+                    }
+                }
             }
             Source::Function { domain, .. } => {
                 if !(domain.0.is_finite() && domain.1.is_finite() && domain.0 < domain.1) {
@@ -216,6 +250,11 @@ impl<'a> Line<'a> {
                 if self.color_by.is_some() {
                     return Err(crate::Error::InvalidParameter {
                         detail: "a function Line cannot have a color_by channel",
+                    });
+                }
+                if self.grade.is_some() {
+                    return Err(crate::Error::InvalidParameter {
+                        detail: "a function Line cannot be graded (it has no per-point values)",
                     });
                 }
             }
@@ -239,6 +278,9 @@ impl<'a> Line<'a> {
             color_by: self.color_by,
             glow: self.glow,
             dash: self.dash,
+            grade: self
+                .grade
+                .map(|(values, colormap)| (values.into_owned(), colormap)),
         }
     }
 }
@@ -282,6 +324,8 @@ mod serde_impls {
         glow: bool,
         #[serde(skip_serializing_if = "Dash::is_solid")]
         dash: Dash,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        grade: &'s Option<(Series<'s>, Colormap)>,
     }
 
     fn is_false(value: &bool) -> bool {
@@ -301,6 +345,8 @@ mod serde_impls {
         glow: bool,
         #[serde(default)]
         dash: Dash,
+        #[serde(default)]
+        grade: Option<(Series<'static>, Colormap)>,
     }
 
     impl serde::Serialize for Line<'_> {
@@ -315,6 +361,7 @@ mod serde_impls {
                     color_by: &self.color_by,
                     glow: self.glow,
                     dash: self.dash,
+                    grade: &self.grade,
                 }
                 .serialize(serializer),
                 Source::Function { .. } => Err(S::Error::custom(
@@ -338,6 +385,7 @@ mod serde_impls {
                 color_by: repr.color_by,
                 glow: repr.glow,
                 dash: repr.dash,
+                grade: repr.grade,
             })
         }
     }
