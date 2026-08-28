@@ -20,7 +20,7 @@ pub enum DocumentKind {
 /// "grid", "spec": ... }`. Deserialization rejects unknown versions and validates
 /// the decoded payload before returning it.
 ///
-/// See the repository's `SERDE.md` for the compatibility policy and fixtures.
+/// See the repository's `docs/serde.md` for the compatibility policy and fixtures.
 #[derive(Debug, Clone)]
 pub struct Document {
     content: Content,

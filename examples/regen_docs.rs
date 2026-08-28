@@ -14,196 +14,256 @@
 
 use std::process::Command;
 
-/// The gallery: example name and the one-line story it tells.
-const GALLERY: &[(&str, &str)] = &[
+/// One gallery entry: example name plus the one-line story it tells.
+type Entry = (&'static str, &'static str);
+
+/// The gallery, as a ladder of sections: each section a title, a one-line
+/// intro, and its entries.
+const GALLERY: &[(&str, &str, &[Entry])] = &[
     (
-        "sine",
-        "Function sampling: curves drawn from `f(x)`, one sample per subpixel column.",
+        "First look",
+        "One call, a real chart: the shapes a first plot takes.",
+        &[
+            (
+                "sine",
+                "Function sampling: curves drawn from `f(x)`, one sample per subpixel column.",
+            ),
+            (
+                "languages",
+                "Categorical bars from a zero baseline, with eighth-block precision at the top.",
+            ),
+            (
+                "distribution",
+                "Penguin body mass through automatic binning: a real, lumpy distribution.",
+            ),
+            (
+                "annotated",
+                "Annotations: a Rule for the target line, a Text note at data coordinates.",
+            ),
+        ],
     ),
     (
-        "loss",
-        "A real training log: topos's bigram model on 32k names — per-step loss, \
-         rolling mean, and the known bigram limit as a rule.",
+        "Distributions",
+        "Where the statistics layer earns its keep: real estimators, honest shapes.",
+        &[
+            (
+                "boxes",
+                "Box plots: type-7 quartiles, Tukey whiskers, outliers — one Range mark \
+                 with body and marker channels per category.",
+            ),
+            (
+                "violins",
+                "The same flippers as mirrored kernel densities — separation as a shape, \
+                 not a summary.",
+            ),
+            (
+                "ridgeline",
+                "A ridgeline of gradient distributions over training - rows rendered \
+                 back to front at fixed elevation, each a lifted KDE in the corners \
+                 style so nearer rows overwrite what they cross: the TensorBoard \
+                 histogram view, and the terminal's honest 3D surface.",
+            ),
+            (
+                "qq",
+                "A Q\u{2013}Q plot from the grammar, no preset: matched type-7 quantiles of two \
+                 samples against the identity line — the heavy tail peels off it.",
+            ),
+            (
+                "steps",
+                "Step charts: stairs hold values flat between indices; an ECDF climbs a distribution from zero to one.",
+            ),
+            (
+                "powerlaw",
+                "Log-log axes: power laws render straight, with decade ticks on both axes.",
+            ),
+        ],
     ),
     (
-        "languages",
-        "Categorical bars from a zero baseline, with eighth-block precision at the top.",
+        "Relationships",
+        "Scatters, fits, and the labeled compositions science actually draws.",
+        &[
+            (
+                "clusters",
+                "Palmer penguins through one color_by channel: categories take palette \
+                 colors, name themselves in the legend, and cycle marker shapes in \
+                 colorless output.",
+            ),
+            (
+                "fit",
+                "Least squares as a stat: scatter, trend line, and a 95% confidence band \
+                 from one mergeable Fit accumulator — slope, intercept, and R² included.",
+            ),
+            (
+                "measurements",
+                "Error bars: a Range interval around each measured point.",
+            ),
+            (
+                "volcano",
+                "A volcano plot from the grammar, no preset: significance classes via \
+                 color_by, thresholds as Rules, grey pinned to the insignificant mass.",
+            ),
+            (
+                "manhattan",
+                "A Manhattan plot from the grammar, no preset: chromosomes alternate two \
+                 shades as unlabeled layers, the genome-wide threshold is a labeled Rule.",
+            ),
+            (
+                "candles",
+                "Candlesticks from the grammar, no preset: Range whiskers and bodies with \
+                 up/down days split by color_by.",
+            ),
+        ],
     ),
     (
-        "clusters",
-        "Palmer penguins through one color_by channel: categories take palette \
-         colors, name themselves in the legend, and cycle marker shapes in \
-         colorless output.",
+        "Time",
+        "Calendar axes, training logs, and series that arrive in order.",
+        &[
+            (
+                "timeseries",
+                "The Keeling curve: monthly CO2 at Mauna Loa since 1958 (NOAA), on a calendar axis.",
+            ),
+            (
+                "loss",
+                "A real training log: topos's bigram model on 32k names — per-step loss, \
+                 rolling mean, and the known bigram limit as a rule.",
+            ),
+            (
+                "seeds",
+                "Training curves across random seeds: five runs pooled into per-step \
+                 quantiles, the p10-p90 band as an Area, the median inside it, and its \
+                 stat::ewma smoothing on top - on a log y axis.",
+            ),
+            (
+                "energy",
+                "Stacked areas via the Stack stat: each layer sits on the sum of the ones below.",
+            ),
+        ],
     ),
     (
-        "volcano",
-        "A volcano plot from the grammar, no preset: significance classes via \
-         color_by, thresholds as Rules, grey pinned to the insignificant mass.",
+        "The ML set",
+        "The charts a training loop needs, every one a grammar composition.",
+        &[
+            (
+                "roc",
+                "An ROC curve from the grammar, no preset: stat::roc sweeps the \
+                 thresholds, stat::auc puts the area in the title, and the chance \
+                 diagonal is a labeled line.",
+            ),
+            (
+                "calibration",
+                "A reliability diagram from the grammar, no preset: stat::binned with \
+                 a Mean reducer turns 0/1 outcomes into accuracy per confidence bin, \
+                 plotted against the diagonal of perfect calibration.",
+            ),
+            (
+                "confusion",
+                "A confusion matrix from the grammar, no preset: a Cells matrix on Bands \
+                 axes — class names label rows and columns, counts sit on the cells as \
+                 Text, and row 0 is the top band so the chart reads in matrix order.",
+            ),
+            (
+                "attention",
+                "An attention map: token labels on both axes, a logarithmic colormap so \
+                 weights spanning decades stay distinguishable, and the causal mask's \
+                 zeros rendered as honest gaps — with decade ticks on the colorbar.",
+            ),
+            (
+                "filters",
+                "Convolution filters as images: a Gabor bank with color opponency \
+                 through Cells::rgb — direct colors, no colormap, and a luma shade \
+                 ramp when the output is a plain pipe.",
+            ),
+            (
+                "boundary",
+                "A decision boundary from the grammar, no preset: Cells::classes colors \
+                 the feature plane by predicted class through the categorical palette, \
+                 each region keeps a stable shade with matching legend swatches, and the \
+                 training points sit on top.",
+            ),
+            (
+                "landscape",
+                "A loss landscape with an optimizer trajectory, no new machinery: \
+                 Himmelblau's basins as dense Cells on a log colormap, and momentum's \
+                 overshoot-and-curl as a Line with glyph-drawn step markers on top.",
+            ),
+        ],
     ),
     (
-        "manhattan",
-        "A Manhattan plot from the grammar, no preset: chromosomes alternate two \
-         shades as unlabeled layers, the genome-wide threshold is a labeled Rule.",
+        "Grids and fields",
+        "Dense matrices, surfaces, and vector fields.",
+        &[
+            (
+                "correlation",
+                "Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.",
+            ),
+            (
+                "spectrogram",
+                "A spectrogram: time-frequency power as dense Cells, seconds by hertz \
+                 through extents, a log frequency axis, and a log colormap - the \
+                 exponential chirp renders as a straight ridge. The energy is \
+                 synthesized; FFTs stay the host's job.",
+            ),
+            (
+                "density2d",
+                "A 2D histogram: point density on a grid, empty bins honestly blank.",
+            ),
+            (
+                "contour",
+                "The MATLAB peaks function as iso-lines: marching squares, tick-chosen levels, a labeled legend.",
+            ),
+            (
+                "quiver",
+                "A vector field: spiral flow into a sink, one arrow per grid point, drawn in data coordinates.",
+            ),
+        ],
     ),
     (
-        "candles",
-        "Candlesticks from the grammar, no preset: Range whiskers and bodies with \
-         up/down days split by color_by.",
+        "Scale",
+        "Millions of points, reduced pixel-exactly to the raster.",
+        &[
+            (
+                "waveform",
+                "Ten million points through the auto-inserted M4 aggregation — pixel-identical \
+                 to drawing every point, in tens of milliseconds.",
+            ),
+            (
+                "attention_full",
+                "A million attention weights reduced bucket-exactly onto a terminal: \
+                 the same matrix mean-reduced and max-reduced side by side — the box \
+                 filter dissolves the sparse long-range spikes that max keeps, the \
+                 honesty gap per-bucket sampling would hide.",
+            ),
+        ],
     ),
     (
-        "fit",
-        "Least squares as a stat: scatter, trend line, and a 95% confidence band \
-         from one mergeable Fit accumulator — slope, intercept, and R² included.",
-    ),
-    (
-        "roc",
-        "An ROC curve from the grammar, no preset: stat::roc sweeps the \
-         thresholds, stat::auc puts the area in the title, and the chance \
-         diagonal is a labeled line.",
-    ),
-    (
-        "calibration",
-        "A reliability diagram from the grammar, no preset: stat::binned with \
-         a Mean reducer turns 0/1 outcomes into accuracy per confidence bin, \
-         plotted against the diagonal of perfect calibration.",
-    ),
-    (
-        "qq",
-        "A Q\u{2013}Q plot from the grammar, no preset: matched type-7 quantiles of two \
-         samples against the identity line — the heavy tail peels off it.",
-    ),
-    (
-        "seeds",
-        "Training curves across random seeds: five runs pooled into per-step \
-         quantiles, the p10-p90 band as an Area, the median inside it, and its \
-         stat::ewma smoothing on top - on a log y axis.",
-    ),
-    (
-        "waveform",
-        "Ten million points through the auto-inserted M4 aggregation — pixel-identical \
-         to drawing every point, in tens of milliseconds.",
-    ),
-    (
-        "ridgeline",
-        "A ridgeline of gradient distributions over training - rows rendered \
-         back to front at fixed elevation, each a lifted KDE in the corners \
-         style so nearer rows overwrite what they cross: the TensorBoard \
-         histogram view, and the terminal's honest 3D surface.",
-    ),
-    (
-        "distribution",
-        "Penguin body mass through automatic binning: a real, lumpy distribution.",
-    ),
-    (
-        "spectrogram",
-        "A spectrogram: time-frequency power as dense Cells, seconds by hertz \
-         through extents, a log frequency axis, and a log colormap - the \
-         exponential chirp renders as a straight ridge. The energy is \
-         synthesized; FFTs stay the host's job.",
-    ),
-    (
-        "powerlaw",
-        "Log-log axes: power laws render straight, with decade ticks on both axes.",
-    ),
-    (
-        "energy",
-        "Stacked areas via the Stack stat: each layer sits on the sum of the ones below.",
-    ),
-    (
-        "annotated",
-        "Annotations: a Rule for the target line, a Text note at data coordinates.",
-    ),
-    (
-        "correlation",
-        "Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.",
-    ),
-    (
-        "confusion",
-        "A confusion matrix from the grammar, no preset: a Cells matrix on Bands \
-         axes — class names label rows and columns, counts sit on the cells as \
-         Text, and row 0 is the top band so the chart reads in matrix order.",
-    ),
-    (
-        "attention",
-        "An attention map: token labels on both axes, a logarithmic colormap so \
-         weights spanning decades stay distinguishable, and the causal mask's \
-         zeros rendered as honest gaps — with decade ticks on the colorbar.",
-    ),
-    (
-        "filters",
-        "Convolution filters as images: a Gabor bank with color opponency \
-         through Cells::rgb — direct colors, no colormap, and a luma shade \
-         ramp when the output is a plain pipe.",
-    ),
-    (
-        "boundary",
-        "A decision boundary from the grammar, no preset: Cells::classes colors \
-         the feature plane by predicted class through the categorical palette, \
-         each region keeps a stable shade with matching legend swatches, and the \
-         training points sit on top.",
-    ),
-    (
-        "landscape",
-        "A loss landscape with an optimizer trajectory, no new machinery: \
-         Himmelblau's basins as dense Cells on a log colormap, and momentum's \
-         overshoot-and-curl as a Line with glyph-drawn step markers on top.",
-    ),
-    (
-        "attention_full",
-        "A million attention weights reduced bucket-exactly onto a terminal: \
-         the same matrix mean-reduced and max-reduced side by side — the box \
-         filter dissolves the sparse long-range spikes that max keeps, the \
-         honesty gap per-bucket sampling would hide.",
-    ),
-    (
-        "density2d",
-        "A 2D histogram: point density on a grid, empty bins honestly blank.",
-    ),
-    (
-        "contour",
-        "The MATLAB peaks function as iso-lines: marching squares, tick-chosen levels, a labeled legend.",
-    ),
-    (
-        "quiver",
-        "A vector field: spiral flow into a sink, one arrow per grid point, drawn in data coordinates.",
-    ),
-    (
-        "boxes",
-        "Box plots: type-7 quartiles, Tukey whiskers, outliers — one Range mark with          body and marker channels per category.",
-    ),
-    (
-        "violins",
-        "The same flippers as mirrored kernel densities — separation as a shape, \
-         not a summary.",
-    ),
-    (
-        "measurements",
-        "Error bars: a Range interval around each measured point.",
-    ),
-    (
-        "timeseries",
-        "The Keeling curve: monthly CO2 at Mauna Loa since 1958 (NOAA), on a calendar axis.",
-    ),
-    (
-        "multiples",
-        "Small multiples: a Grid of independent plots, axes shared by fixing          domains explicitly.",
-    ),
-    (
-        "corners",
-        "The asciichart homage: box-drawing corners, one glyph per column — with real axes underneath.",
-    ),
-    (
-        "steps",
-        "Step charts: stairs hold values flat between indices; an ECDF climbs a distribution from zero to one.",
-    ),
-    (
-        "charsets",
-        "The charset ladder: one curve at every subpixel density — solid blocks (octants, sextants, quadrants, half blocks), braille dots, and plain ASCII.",
+        "Composition and style",
+        "Small multiples, fixed axes, and the glyph ladder.",
+        &[
+            (
+                "multiples",
+                "Small multiples: a Grid of independent plots, axes shared by fixing \
+                 domains explicitly.",
+            ),
+            (
+                "corners",
+                "The asciichart homage: box-drawing corners, one glyph per column — with real axes underneath.",
+            ),
+            (
+                "charsets",
+                "The charset ladder: one curve at every subpixel density — solid blocks (octants, sextants, quadrants, half blocks), braille dots, and plain ASCII.",
+            ),
+        ],
     ),
 ];
 
 /// Markdown files scanned for `<!-- generated:NAME -->` blocks.
-const SPLICED: &[&str] = &["README.md"];
+const SPLICED: &[&str] = &[
+    "README.md",
+    "docs/principles/presets-are-packaging.md",
+    "docs/principles/full-draw-oracle.md",
+    "docs/principles/axes-are-the-product.md",
+    "docs/principles/degradation-is-the-contract.md",
+];
 
 /// Examples that are deliberately not in the gallery: infrastructure, the colored
 /// tour (environment-dependent), interactive demos, README splice sources, and the
@@ -215,6 +275,9 @@ const EXEMPT: &[&str] = &[
     "tui",
     "readme_sample",
     "readme_bars",
+    "witness_packaging",
+    "witness_oracle",
+    "witness_axes",
     "pixels",
     "evcxr",
     "suprematist",
@@ -233,7 +296,11 @@ fn main() {
         let Some(name) = name.to_str().and_then(|n| n.strip_suffix(".rs")) else {
             continue;
         };
-        if EXEMPT.contains(&name) || GALLERY.iter().any(|(listed, _)| *listed == name) {
+        if EXEMPT.contains(&name)
+            || GALLERY
+                .iter()
+                .any(|(_, _, entries)| entries.iter().any(|(listed, _)| *listed == name))
+        {
             continue;
         }
         missing.push(name.to_string());
@@ -289,18 +356,22 @@ fn gallery_content() -> String {
          examples/regen_docs.rs from the gallery examples; edit those instead and\n\
          run `cargo run --example regen_docs`. -->\n\n\
          # Gallery\n\n\
-         The showcase and the system test in one artifact. This whole file is\n\
+         The showcase and the system test in one artifact, read as a ladder \u{2014}\n\
+         from the first plot to composition and style. This whole file is\n\
          generated from the examples (unlike README.md, which splices marked\n\
          blocks); regenerate with `cargo run --example regen_docs` — CI fails when\n\
          it is stale. Every example renders a fixed deterministic frame, so output\n\
          is deterministic.\n",
     );
-    for (name, story) in GALLERY {
-        content.push_str(&format!(
-            "\n## {name}\n\n{story}\nSource: [examples/{name}.rs](examples/{name}.rs)\n\n\
-             ```text\n{}\n```\n",
-            output_of(name)
-        ));
+    for (title, intro, entries) in GALLERY {
+        content.push_str(&format!("\n## {title}\n\n{intro}\n"));
+        for (name, story) in *entries {
+            content.push_str(&format!(
+                "\n### {name}\n\n{story}\nSource: [examples/{name}.rs](examples/{name}.rs)\n\n\
+                 ```text\n{}\n```\n",
+                output_of(name)
+            ));
+        }
     }
     content
 }

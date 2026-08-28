@@ -5,6 +5,15 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- The design argument is public. `docs/` now carries the vision and its five
+  rules, seven principle files — each arguing one constraint and ending in a
+  "Spelled today" section that may rot while the argument must not — and
+  guides for terminals, pixels, notebooks, performance, and serde.
+  `TERMINOLOGY.md` and `SERDE.md` moved there (stubs remain at the old
+  paths). The gallery now reads as a ladder of sections, and principle files
+  demonstrate their claims with generated witness charts, spliced and
+  CI-verified like every chart in the docs.
+
 ## 1.19.0 (White on White) — 2026-08-27
 
 The ink release. The pixel canvas learns coverage, and everything drawn on

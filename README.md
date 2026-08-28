@@ -144,93 +144,49 @@ iTerm2) on the right, from the same plot values:
 
 ## Why malevich
 
+The design is argued in [docs/vision.md](docs/vision.md); the constraints it
+assumes live in [docs/principles/](docs/principles/). The short version:
+
 - **A small grammar, not a chart zoo.** Eight marks (line, points, bars, area,
-  cells — value grids, rgb images, or categorical class regions — range, rule,
-  text) × a stats layer × shared scales compose into the whole basic
-  chart catalog. Every preset — `line`, `scatter`, `bar`, `hist`, `stairs`, `ecdf`,
-  `heatmap`, `hist2d`, `density`, `box_plot`, `violin`, `error_bars`, `trend` — is
-  proven bit-identical to its grammar expansion in tests. **Color speaks data**: a
-  `color_by` channel colors points, lines, bars, and intervals by category —
-  colorblind-safe Okabe–Ito colors, a categorical legend, and portable marker
-  shapes (`•`, `+`, `x`, `*`, `o`) that cycle automatically in colorless output so
-  groups never vanish in a pipe. Grouped scatters, volcano plots, Manhattan plots,
-  and candlesticks are a few grammar lines each, never presets
-  ([EXAMPLES.md](EXAMPLES.md)).
-- **The statistical set no terminal library has.** Box plots with type-7 quartiles
-  and Tukey whiskers, violins from a real KDE (Silverman bandwidth), least-squares
-  trend lines with R² and a confidence band (`trend`; `stat::Fit` is a mergeable
-  online accumulator, so it fits streams and parallel reduction trees),
-  ECDFs with an optional DKW confidence band, symmetric and asymmetric error
-  bars, 2D densities (with a colorbar legending the value scale), ROC curves
-  with their area (`stat::roc`, `stat::auc`), and debiased exponential
-  smoothing (`stat::ewma`, TensorBoard's) — the charts science and ML
-  actually need. One `Reducer` vocabulary — count, sum, mean,
-  median, min, max, and type-7 percentiles, the same estimator the box plot
-  uses — reduces groups, rolling windows, and histogram bins alike, so a
-  rolling p95 or a binned median is one call. Defaults stay one-call; configurable
-  `_with` variants return typed errors for invalid data or options while exposing
-  histogram geometry, KDE/violin resolution, contour levels, and colormaps when the
-  data or host needs control. The named colormaps are a curated set that
-  stays distinguishable down the whole color ladder — sequential
-  (`Colormap::VIRIDIS`, `MAGMA`, `CIVIDIS`, `GREYS`) and diverging
-  (`RED_BLUE`, `PURPLE_ORANGE`): center one on a data value
-  (`Colormap::RED_BLUE.centered_at(0.0)`) and correlation or log-fold-change
-  renders honestly, opposite signs in opposite colors and a symmetric colorbar;
-  make one logarithmic (`Colormap::MAGMA.log()`) and values spanning decades —
-  attention weights, spectral power — stay distinguishable, zeros as gaps,
-  decade ticks on the colorbar.
-- **Millions of points, measured.** Large line layers are aggregated by M4 —
-  min/max/first/last per raster column, bucketed by the column each point renders
-  into, so the reduction is *pixel-identical* to drawing every point. Ten million
-  points render end to end in tens of milliseconds single-threaded on the
-  [dated baseline](BENCHMARKS.md); `cargo bench --bench render` carries the complete
-  suite. Cells grids denser than the raster reduce the same way lines do: every
-  screen bucket owns the cells whose centers fall inside it and shows a
-  `Reducer` over all of them — the mean box filter by default, `Max` to keep
-  the sparse spikes sampling silently drops — 4.19 million cells in ~44 ms on
-  the same baseline. Online accumulators (`Moments`, `Fit`, `Bins`, M4)
-  expose their merge laws;
-  reducers and batch transforms keep distinct execution contracts instead of
-  pretending every statistic has the same algebra.
-- **Axes that are actually good.** Extended-Wilkinson tick placement (Talbot, Lin,
-  Hanrahan 2010), exact-decimal labels that parse back to their values, one shared SI
-  prefix per axis (`2.5M`, `100µ`), log axes with superscript decades, calendar time
-  axes with multi-scale labels (`14:05`, `Aug 2`, `2027`), typed axis specs
-  (`Scale::{Auto, Linear, Log, Time, Bands}`), axis titles, band scales on either
-  axis with fitted category labels — on y they label matrix rows, so confusion
-  matrices and attention maps read in matrix order — and collision-aware layout
-  that sheds furniture instead of failing.
-- **Renders everywhere, honestly.** ASCII is the guaranteed fallback; UTF-8 auto
-  detection conservatively uses old block-element quadrants. Braille, sextants, and
-  Unicode 16 octants remain explicit high-density choices for fonts that cover them
-  (`--charset` or `MALEVICH_CHARSET`). Four color tiers (truecolor → 256 → 16 →
-  plain) quantize honestly downhill; heatmap half-blocks carry independent upper and
-  lower colors while plain output retains an averaged shade. Piped output is clean
-  plain text; CJK labels stay aligned, combining marks are deliberately dropped at
-  the cell grid, and `NaN` is always a visible gap, never interpolated away.
-- **Real pixels where the terminal speaks them (feature `pixel`).** The ladder's
-  top rung: `plot.render_pixels(&frame, &graphics)` keeps title, axes, and legend
-  as crisp text cells and draws the plot rectangle as an actual image — sixel,
-  kitty graphics, or iTerm2 inline PNG, all hand-rolled, no new dependencies.
-  Marks rasterize at device-pixel resolution through the same pipeline (M4 buckets
-  per pixel column; heatmaps sample per pixel), undrawn panel stays transparent to
-  your terminal background, and the result is still a deterministic `String`.
-  `Capabilities::detect_for(&destination)` uses the stream that will receive the
-  plot to decide whether its cached terminal probe is safe, while `detect()`
-  remains the stdout convenience. Pass that value to
-  `plot.render_with_capabilities(&frame, &caps)` for a pure, explicit auto-render;
-  `plot.render_best(&frame)` is the one-call stdout ladder top. Every gallery
-  example upgrades with
-  `--features pixel`, and `cargo run --example showcase --features pixel` renders
-  each chart side by side, cells against pixels.
-- **Rich Evcxr notebooks, still just cells (feature `evcxr`).** End a Jupyter cell
-  with a `Plot` and Evcxr calls `evcxr_display`, rendering the complete chart as a
-  self-contained HTML terminal card. Quadrants and box-drawing stay crisp, mark colors
-  become RGB spans, chrome follows the card foreground, and plot text is HTML-escaped.
-  The adapter adds no dependency; `plot.to_html(&frame)` is the pure, deterministic
-  path for custom sizes and mark palettes. `Theme::LIGHT` selects the light card;
-  other custom palettes currently use the dark card foreground/background because
-  card colors are not theme roles yet. In an Evcxr notebook:
+  cells, range, rule, text) × a stats layer × shared scales compose into the
+  whole basic chart catalog. Every preset — `line`, `hist`, `box_plot`,
+  `violin`, `trend`, … — is proven byte-identical to its grammar expansion in
+  tests; grouped scatters, volcano plots, Manhattan plots, and candlesticks are
+  a few grammar lines each, never presets ([EXAMPLES.md](EXAMPLES.md)).
+- **The statistical set no terminal library has.** Box plots with type-7
+  quartiles and Tukey whiskers, violins from a real KDE, streaming
+  least-squares trend lines with R² and a confidence band, ECDFs with an
+  optional DKW band, ROC curves with their area, 2D densities, debiased EWMA
+  smoothing — and one `Reducer` vocabulary across bins, groups, and rolling
+  windows, so a rolling p95 or a binned median is one call. A `color_by`
+  channel colors marks by category: colorblind-safe Okabe–Ito colors, a
+  categorical legend, and marker shapes that keep groups separable in
+  colorless output. Curated sequential, diverging, and logarithmic colormaps
+  keep heatmaps honest — signed data centered, decades distinguishable, zeros
+  as gaps.
+- **Millions of points, measured.** Large lines reduce by M4, bucketed by the
+  rendered column — pixel-identical to drawing every point. Ten million points
+  render in tens of milliseconds on the dated baseline; grids denser than the
+  raster reduce bucket-exactly through the same `Reducer` vocabulary.
+  Mechanisms and numbers: [docs/performance.md](docs/performance.md).
+- **Axes that are actually good.** Extended-Wilkinson tick placement (Talbot,
+  Lin, Hanrahan 2010), exact-decimal labels that parse back to their values,
+  one SI prefix per axis (`2.5M`, `100µ`), log axes with superscript decades,
+  calendar time axes, band axes that label matrix rows in matrix order — and
+  collision-aware layout that sheds furniture instead of failing.
+- **Renders everywhere, honestly.** Charset and color ladders from Unicode 16
+  octants down to plain ASCII and truecolor down to a clean pipe; CJK labels
+  stay aligned and `NaN` is always a visible gap. Detection rules and
+  overrides: [docs/terminal.md](docs/terminal.md).
+- **Real pixels where the terminal speaks them** (feature `pixel`). Sixel,
+  kitty graphics, or iTerm2 inline PNG, all hand-rolled: chrome stays crisp
+  text, the panel becomes an actual image, and the result is still a
+  deterministic `String`. `render_best` is the one-call ladder top.
+  [docs/pixels.md](docs/pixels.md).
+- **Rich Evcxr notebooks, still just cells** (feature `evcxr`). End a Jupyter
+  cell with a `Plot` and it renders as a self-contained HTML terminal card;
+  the terminal REPL gets a plain fallback that the `pixel` feature upgrades to
+  a real image. [docs/notebooks.md](docs/notebooks.md).
 
   ```rust
   :dep malevich = { version = "1.18", features = ["evcxr"] }
@@ -239,35 +195,23 @@ iTerm2) on the right, from the same plot values:
   let values = [1.0, 5.0, 2.0, 8.0];
   Plot::new().layer(Line::y(&values[..])).title("training")
   ```
-
-  Redirect `cargo run --example evcxr --features evcxr > plot.html` for a standalone
-  fragment you can inspect in a browser. The same cell also renders in the terminal
-  `evcxr` REPL (a plain plot via a `text/plain` fallback), and with the `pixel`
-  feature also enabled it becomes a real sixel/kitty/iTerm2 image there.
-- **Small multiples and fixed axes.** `Grid` pastes plots side by side
-  (escape-aware alignment); `x_domain`/`y_domain` fix axes matplotlib-style — so
-  shared scales across a dashboard are an explicit composition, not a mode.
-- **A ratatui widget, if you want one.** With the `ratatui` feature (depending only
-  on `ratatui-core`), `plot.widget()` drops any chart into a TUI — cells written
-  straight into the buffer, colors as styles, your app keeps the terminal
-  (`cargo run --example tui --features ratatui`). For full apps, [`demos/`](demos/)
-  has `fred` — a five-view Federal Reserve data browser (`cargo run -p fred`) —
-  `sysmon` — a live system monitor streaming CPU/memory/network through
-  `stream::Ring` into a per-core heatmap (`cargo run -p sysmon`) — and `learn` —
-  a two-moons MLP trained by [topos](https://crates.io/crates/topos), its loss
-  curve with EWMA smoothing and the learned decision regions charted as it
-  trains (`cargo run -p learn --release`).
-- **Serializable specs, no lies.** With the `serde` feature, [`Document`](SERDE.md)
-  is the validated, versioned format for files, caches, and network messages; golden
-  v1 fixtures keep compatibility testable. Raw spec types still round-trip for
-  short-lived interchange. Gaps encode as `null` and decode back to gaps; a
-  function-backed line refuses to serialize rather than silently drop its curve.
-- **Plots from ndarray.** With the `ndarray` feature, one-dimensional arrays and
-  views plot directly — contiguous storage zero-copy, a strided matrix column
-  converted once, like any other input.
-- **Plots from polars, with no dependency.** polars is too big to depend on, but it
-  needs no special support: a contiguous column borrows zero-copy, and its
-  null-yielding iterator maps straight onto the gap convention.
+- **Composition over modes.** `Grid` pastes small multiples side by side;
+  `x_domain`/`y_domain` fix axes matplotlib-style, so shared scales are an
+  explicit composition, not a mode. A ratatui widget (feature `ratatui`,
+  depending only on `ratatui-core`) drops any chart into a TUI, and
+  [`demos/`](demos/) holds full apps: `fred`, a five-view Federal Reserve
+  data browser; `sysmon`, a live system monitor; and `learn`, a two-moons MLP
+  trained by [topos](https://crates.io/crates/topos), charting as it trains.
+- **Serializable specs, no lies** (feature `serde`).
+  [`Document`](docs/serde.md) is the validated, versioned format for files,
+  caches, and network messages; gaps encode as `null` and decode back to
+  gaps, and a function-backed line refuses to serialize rather than silently
+  drop its curve.
+- **Data arrives at the rim.** Anything series-shaped converts exactly once
+  into contiguous `f64` — the `ndarray` feature ingests arrays and views
+  (contiguous storage zero-copy), and polars needs no feature at all, because
+  a contiguous column is already a borrowed slice and its null-yielding
+  iterator maps straight onto the gap convention:
 
   ```rust
   // Contiguous and null-free: borrowed, no copy.
@@ -278,19 +222,19 @@ iTerm2) on the right, from the same plot values:
   let chart = malevich::line(series.collect::<Vec<_>>());
   ```
 - **Live charts without a framework.** A thread-shared sliding window plus an
-  in-place repaint handle (cursor up, erase down, one write): flicker-free streaming
-  that survives in scrollback and never takes over your terminal
+  in-place repaint handle (cursor up, erase down, one write): flicker-free
+  streaming that survives in scrollback and never takes over your terminal
   (`cargo run --example live`).
-- **Plots are plain values.** `Clone + Send + Sync`; `Plot::render`, `to_html`, and
-  `render_with_capabilities` are pure functions of explicit values — build on one
-  thread, render on another, snapshot-test the strings. `Display`, `Frame::detect`,
-  and `render_best` are the documented conveniences that read the environment;
-  pixel capability detection may also perform one bounded, cached terminal probe.
-  Two tiny required dependencies (`terminal_size`, `unicode-width`).
+- **Plots are plain values.** `Clone + Send + Sync`; `Plot::render`,
+  `to_html`, and `render_with_capabilities` are pure functions of explicit
+  values — build on one thread, render on another, snapshot-test the strings.
+  `Display`, `Frame::detect`, and `render_best` are the documented
+  conveniences that read the environment. Two tiny required dependencies
+  (`terminal_size`, `unicode-width`).
 
 **Stability**: the crate is 1.x — the public API follows semver (breaking changes
 mean a 2.0), guarded in CI by `cargo-semver-checks` against the last published
-release. The concept vocabulary is documented in [TERMINOLOGY.md](TERMINOLOGY.md)
+release. The concept vocabulary is documented in [docs/terminology.md](docs/terminology.md)
 and changes are in the [CHANGELOG](CHANGELOG.md). Maintainers use the reproducible
 [release checklist](RELEASING.md).
 

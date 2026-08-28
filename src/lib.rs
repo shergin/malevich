@@ -41,7 +41,7 @@
 //! output instead of panicking.
 //!
 //! The modules follow the concepts (each defined in
-//! the repository's `TERMINOLOGY.md`): [`mark`] for the primitives, [`stat`] for
+//! the repository's `docs/terminology.md`): [`mark`] for the primitives, [`stat`] for
 //! online accumulators, reducers, and batch transforms,
 //! [`scale`] for ticks and colormaps, [`render`] for the subpixel surface and
 //! charsets, [`stream`] for live charts, [`data`] for the ingestion rim.
