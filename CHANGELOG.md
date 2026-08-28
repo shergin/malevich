@@ -58,9 +58,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   a one-event-per-frame host loop stops falling behind (a changed
   viewport always renders — a zoomed window never shows stale). And
   repaints never flicker, because nothing is ever cleared: each panel's
-  kitty image travels under a stable per-panel id and the terminal swaps
-  old for new atomically when the retransmission lands, while a panel
-  whose content already matches the screen is not transmitted at all;
+  kitty image travels under a stable per-panel image id *and* a fixed
+  placement id — one placement per (image, placement) pair is the
+  protocol's replacement rule; an unspecified placement id would stack a
+  new placement per repaint — so the terminal swaps old for new
+  atomically when the retransmission lands, while a panel whose content
+  already matches the screen is not transmitted at all;
   `clear_pixels` retires images by id, never touching other
   applications'. fred
   renders its series view this way wherever the terminal speaks sixel,

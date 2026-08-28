@@ -270,9 +270,12 @@ impl PlotWidget<'_> {
             } else {
                 Color::BrightWhite
             };
+            // The panel font is printable ASCII (coverage is honest: anything
+            // else advances without ink), so the pixel chrome speaks ASCII —
+            // an asterisk marker, dashes for the separators and gaps.
             for snap in &snapped {
                 if let Some(value) = snap.value {
-                    plot = plot.layer(crate::Text::at(snap.x, value, "●").color(ink));
+                    plot = plot.layer(crate::Text::at(snap.x, value, "*").color(ink));
                 }
             }
             if self.readout
@@ -280,6 +283,7 @@ impl PlotWidget<'_> {
                 && let Some(line) =
                     self.readout_line(state, &snapped, columns.saturating_sub(2) as u16)
             {
+                let line = line.replace('·', "-").replace('—', "-");
                 let x = x_low + (x_high - x_low) * 0.02;
                 let y = y_high - (y_high - y_low) * 0.06;
                 plot = plot.layer(crate::Text::at(x, y, line).color(Color::BrightBlack));

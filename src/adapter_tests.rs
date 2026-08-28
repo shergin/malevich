@@ -526,6 +526,10 @@ mod pixels {
         assert_eq!(rect, area);
         assert!(block.contains("\x1b_G"), "kitty APC in the block");
         assert!(block.contains(",i="), "a stable image id rides the block");
+        assert!(
+            block.contains(",p=1,"),
+            "a fixed placement id makes repaints replace, not stack"
+        );
         assert!(block.contains("\r\n"), "raw-mode row separators");
         assert!(
             !block.replace("\r\n", "").contains('\n'),

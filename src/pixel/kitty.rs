@@ -36,11 +36,14 @@ pub(crate) fn encode(image: &Image) -> String {
 /// speed knob — Retina-sized panels cost the terminal real decode and
 /// upload time) and stays correct even when cell-size detection was off.
 ///
-/// An `id` makes the transmission a replacement: kitty deletes the previous
-/// image carrying that id — placements included — as part of accepting this
-/// one, so a repaint swaps atomically with no visible gap and no separate
-/// delete. Interactive hosts assign one stable id per panel; scrollback
-/// strings stay id-less, since each print is a new image.
+/// An `id` makes the transmission a replacement: the image data replaces
+/// what the id held, and the fixed placement id (`p=1`) makes the placement
+/// replace too — one placement per (image, placement) pair is the protocol's
+/// rule, and terminals (Ghostty included) treat an *unspecified* placement id
+/// as "add another placement", which would stack every repaint on screen.
+/// With both keys the swap is atomic: no visible gap, no separate delete.
+/// Interactive hosts assign one stable id per panel; scrollback strings stay
+/// id-less, since each print is a new image.
 pub(crate) fn encode_rgba(
     width: usize,
     height: usize,
@@ -63,7 +66,7 @@ pub(crate) fn encode_rgba(
         if first {
             let _ = write!(out, "a=T,f=32,o=z,s={width},v={height},");
             if let Some(id) = id {
-                let _ = write!(out, "i={id},");
+                let _ = write!(out, "i={id},p=1,");
             }
             if placement.0 > 0 && placement.1 > 0 {
                 let _ = write!(out, "c={},r={},", placement.0, placement.1);
