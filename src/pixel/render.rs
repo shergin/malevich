@@ -28,16 +28,19 @@ pub(crate) fn try_render(
     graphics: &Graphics,
     column: usize,
 ) -> crate::Result<String> {
-    try_render_mapped(plot, frame, graphics, column).map(|(block, _)| block)
+    try_render_mapped(plot, frame, graphics, column, None).map(|(block, _)| block)
 }
 
 /// [`try_render`] plus the render's resolved [`Mapping`] — the one-pass seam
 /// the ratatui widget's pixel path caches its hit-testing geometry from.
+/// `kitty_id` names the stable image the block replaces (interactive
+/// repaints); scrollback strings pass `None` and stay id-less.
 pub(crate) fn try_render_mapped(
     plot: &Plot<'_>,
     frame: &Frame,
     graphics: &Graphics,
     column: usize,
+    kitty_id: Option<u32>,
 ) -> crate::Result<(String, crate::plot::Mapping)> {
     let cell = (graphics.cell_size.0 as usize, graphics.cell_size.1 as usize);
     validate_geometry(frame, graphics.protocol, cell)?;
@@ -71,7 +74,9 @@ pub(crate) fn try_render_mapped(
             return Ok((out, mapping));
         }
         match graphics.protocol {
-            Protocol::Kitty => kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba),
+            Protocol::Kitty => {
+                kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba, kitty_id)
+            }
             Protocol::ITerm2 => iterm::encode_rgba(width, height, rect.columns, rect.rows, &rgba),
             Protocol::Sixel => unreachable!("sixel took the image path above"),
         }

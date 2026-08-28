@@ -285,9 +285,20 @@ impl PlotWidget<'_> {
                 plot = plot.layer(crate::Text::at(x, y, line).color(Color::BrightBlack));
             }
         }
-        let Ok((block, mapping)) =
-            crate::pixel::try_render_mapped(&plot, &self.frame(area), graphics, area.x as usize)
-        else {
+        // One stable image id per panel, for life: kitty replaces the
+        // on-screen image atomically when a new one arrives under the same
+        // id, so repaints never blink through a deleted-but-not-yet-drawn
+        // gap. Seeded from the process id so two apps sharing a terminal
+        // are unlikely to collide.
+        let id = *state.pixel_id.get_or_insert_with(next_pixel_id);
+        let kitty_id = (graphics.protocol == crate::pixel::Protocol::Kitty).then_some(id);
+        let Ok((block, mapping)) = crate::pixel::try_render_mapped(
+            &plot,
+            &self.frame(area),
+            graphics,
+            area.x as usize,
+            kitty_id,
+        ) else {
             return false;
         };
         // Reserve the ground: spaces, skipped so ratatui's diff never writes
@@ -315,7 +326,13 @@ impl PlotWidget<'_> {
         // Raw mode: LF moves down without returning the carriage; the block's
         // rows need explicit carriage returns. Image payloads never contain a
         // raw newline, so this touches only the row separators.
-        state.pixels = Some((area, block.replace('\n', "\r\n")));
+        let block = block.replace('\n', "\r\n");
+        let hash = block_hash(&block);
+        // What is on screen already matches: nothing to queue, nothing to
+        // transmit — an unchanged panel is free at every protocol.
+        if state.pixel_sent != Some((area, hash)) {
+            state.pixels = Some((area, block, hash));
+        }
         true
     }
 }
@@ -495,14 +512,24 @@ pub struct PlotState {
     view: Viewport,
     cursor: Option<(u16, u16)>,
     drag: Option<Drag>,
-    /// The pending image block of the last pixel render, consumed by
-    /// [`present_pixels`].
+    /// The pending image block of the last pixel render — rectangle, encoded
+    /// block, content hash — consumed by [`present_pixels`].
     #[cfg(feature = "pixel")]
-    pixels: Option<(Rect, String)>,
+    pixels: Option<(Rect, String, u64)>,
     /// The rectangle whose ground was last cleared for an image; a change
     /// triggers a fresh blanking frame.
     #[cfg(feature = "pixel")]
     pixel_area: Option<Rect>,
+    /// This panel's stable kitty image id: retransmitting under it replaces
+    /// the on-screen image atomically, which is what makes repaints
+    /// flicker-free. Assigned on the first pixel render, kept for life.
+    #[cfg(feature = "pixel")]
+    pixel_id: Option<u32>,
+    /// What the last [`present_pixels`] put on screen (rectangle, content
+    /// hash): an identical re-render is not queued again — unchanged panels
+    /// cost no bandwidth and cause no repaint.
+    #[cfg(feature = "pixel")]
+    pixel_sent: Option<(Rect, u64)>,
     /// When the last full pixel render ran — the self-pacing clock that keeps
     /// redundant re-encodes (hover floods, tick redraws) nearly free.
     #[cfg(feature = "pixel")]
@@ -575,6 +602,7 @@ impl PlotState {
         self.pixel_area = None;
         self.pixel_pace = None;
         self.pixel_view = None;
+        self.pixel_sent = None;
     }
 
     /// Back to the automatic view on both axes — the host's reset binding.
@@ -833,11 +861,12 @@ const PIXEL_PACE: std::time::Duration = std::time::Duration::from_millis(33);
 
 /// Presents the pending pixel blocks of a frame — call after
 /// `terminal.draw` with every pixel-rendered [`PlotState`] of the current
-/// view. The blocks land in one synchronized write (DEC 2026), so a redraw
-/// replaces the previous images without flashing blank; on kitty, existing
-/// placements are deleted first, since they live on their own layer and cell
-/// repaints cannot cover them. Each block is consumed: a state presents once
-/// per render.
+/// view. The blocks land in one synchronized write (DEC 2026), and each
+/// kitty image travels under its panel's stable id, so the terminal swaps
+/// the old image for the new atomically — no delete, no blank gap, no
+/// flicker, however large the payload. Each block is consumed: a state
+/// presents once per render, and a panel whose content is already on
+/// screen queues nothing at all.
 ///
 /// This function writes exactly what it is told to the handle it is given —
 /// like [`stream::Live`](crate::stream::Live), it never owns the terminal.
@@ -851,11 +880,13 @@ pub fn present_pixels(
     states: &mut [&mut PlotState],
 ) -> std::io::Result<()> {
     use std::fmt::Write as _;
+    let _ = graphics;
     let mut blocks = String::new();
     for state in states.iter_mut() {
-        if let Some((rect, block)) = state.pixels.take() {
+        if let Some((rect, block, hash)) = state.pixels.take() {
             let _ = write!(blocks, "\x1b[{};{}H", rect.y + 1, rect.x + 1);
             blocks.push_str(&block);
+            state.pixel_sent = Some((rect, hash));
         }
     }
     if blocks.is_empty() {
@@ -863,29 +894,65 @@ pub fn present_pixels(
     }
     let mut swap = String::with_capacity(blocks.len() + 32);
     swap.push_str("\x1b[?2026h");
-    if graphics.protocol == crate::pixel::Protocol::Kitty {
-        swap.push_str("\x1b_Ga=d,d=A\x1b\\");
-    }
     swap.push_str(&blocks);
     swap.push_str("\x1b[?2026l");
     out.write_all(swap.as_bytes())?;
     out.flush()
 }
 
-/// Deletes all visible kitty image placements — call when leaving a view
-/// whose charts were pixel-rendered. Other protocols paint into cells, which
-/// the next view's ordinary redraw already replaces; for them this writes
-/// nothing.
+/// Retires these panels' kitty images — call when leaving a view whose
+/// charts were pixel-rendered: kitty images live on their own layer, and the
+/// next view's cell repaints cannot cover them. Deletion is by each panel's
+/// own id, so images other applications put on the terminal are never
+/// touched. Other protocols paint into cells and need nothing; every state's
+/// presentation memory is reset either way, so a return to the view starts
+/// from fresh ground and a fresh emission.
 #[cfg(feature = "pixel")]
 pub fn clear_pixels(
     out: &mut impl std::io::Write,
     graphics: &crate::pixel::Graphics,
+    states: &mut [&mut PlotState],
 ) -> std::io::Result<()> {
+    use std::fmt::Write as _;
+    let mut goodbye = String::new();
     if graphics.protocol == crate::pixel::Protocol::Kitty {
-        out.write_all(b"\x1b_Ga=d,d=A\x1b\\")?;
-        out.flush()?;
+        for state in states.iter() {
+            if let Some(id) = state.pixel_id
+                && state.pixel_sent.is_some()
+            {
+                let _ = write!(goodbye, "\x1b_Ga=d,d=I,i={id},q=2\x1b\\");
+            }
+        }
     }
-    Ok(())
+    for state in states.iter_mut() {
+        state.invalidate_pixels();
+    }
+    if goodbye.is_empty() {
+        return Ok(());
+    }
+    out.write_all(goodbye.as_bytes())?;
+    out.flush()
+}
+
+/// A content fingerprint for already-on-screen suppression.
+#[cfg(feature = "pixel")]
+fn block_hash(block: &str) -> u64 {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    block.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// The next stable kitty image id: unique within the process, seeded from
+/// the process id so two applications sharing a terminal are unlikely to
+/// collide. Never zero — the protocol reserves it.
+#[cfg(feature = "pixel")]
+fn next_pixel_id() -> u32 {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+    let base = std::process::id().wrapping_mul(0x9E37_79B1);
+    let id = base.wrapping_add(COUNTER.fetch_add(1, Ordering::Relaxed));
+    if id == 0 { 1 } else { id }
 }
 
 /// Clamps a terminal coordinate into a rectangle.

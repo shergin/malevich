@@ -142,13 +142,17 @@ malevich::present_pixels(&mut std::io::stdout(), &g, &mut [&mut chart])?;
 The widget reserves its rectangle in the buffer — spaces, skip-marked so
 ratatui's diff never writes under the image, with one fresh-ground frame
 whenever the rectangle changes — and stores the encoded block in the
-`PlotState`. `present_pixels` writes exactly what it is told to the handle
-it is given (the `stream::Live` precedent): emit on state changes, not on
-a timer, and the previous transmission stays on screen through quiet
-frames. `clear_pixels` says goodbye to kitty placements when a view
-switch leaves the charts (cell repaints cannot cover them — they live on
-their own layer); pair it with `invalidate_pixels` so the return paints
-fresh ground.
+`PlotState`. Repaints never flicker, because nothing is ever cleared:
+each panel's kitty image travels under a stable id, and the terminal
+swaps old for new atomically when the retransmission lands — there is no
+deleted-but-not-yet-drawn gap for the eye to catch, however large the
+payload. A panel whose content already matches the screen is not
+transmitted at all. `present_pixels` writes exactly what it is told to
+the handle it is given (the `stream::Live` precedent): emit on state
+changes, not on a timer, and the previous transmission stays on screen
+through quiet frames. `clear_pixels` retires the panels' own images —
+by id, never touching other applications' — when a view switch leaves
+the charts, and resets their states so the return paints fresh ground.
 
 Hit-testing, zoom, pan, and snapping are unchanged — the mapping answers
 in cells regardless of what fills them. The interaction chrome upgrades:

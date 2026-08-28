@@ -522,9 +522,10 @@ mod pixels {
         assert_eq!(corner.symbol(), " ");
         assert_eq!(corner.diff_option, CellDiffOption::None, "fresh ground");
 
-        let (rect, block) = state.pixels.clone().expect("a pending block");
+        let (rect, block, _) = state.pixels.clone().expect("a pending block");
         assert_eq!(rect, area);
         assert!(block.contains("\x1b_G"), "kitty APC in the block");
+        assert!(block.contains(",i="), "a stable image id rides the block");
         assert!(block.contains("\r\n"), "raw-mode row separators");
         assert!(
             !block.replace("\r\n", "").contains('\n'),
@@ -554,7 +555,7 @@ mod pixels {
         let area = Rect::new(0, 0, 50, 18);
         let mut state = PlotState::default();
         render_pixel_frame(&mut state, area);
-        let (_, plain) = state.pixels.take().expect("block without a cursor");
+        let (_, plain, _) = state.pixels.take().expect("block without a cursor");
 
         let panel = state.plot_area().unwrap();
         state.on_mouse(Mouse::Moved {
@@ -565,7 +566,7 @@ mod pixels {
         // image already on screen.
         std::thread::sleep(std::time::Duration::from_millis(40));
         render_pixel_frame(&mut state, area);
-        let (_, hovered) = state.pixels.take().expect("block with a cursor");
+        let (_, hovered, _) = state.pixels.take().expect("block with a cursor");
         assert_ne!(
             plain, hovered,
             "crosshair, markers, and readout in the image"
@@ -620,7 +621,10 @@ mod pixels {
         let text = String::from_utf8_lossy(&out);
         assert!(text.starts_with("\x1b[?2026h"), "synchronized begin");
         assert!(text.ends_with("\x1b[?2026l"), "synchronized end");
-        assert!(text.contains("\x1b_Ga=d,d=A\x1b\\"), "kitty replace");
+        assert!(
+            !text.contains("a=d"),
+            "no delete — id retransmission replaces atomically"
+        );
         assert!(text.contains("\x1b[2;3H"), "absolute move to the area");
         assert!(state.pixels.is_none(), "the block is consumed");
 
@@ -630,13 +634,59 @@ mod pixels {
     }
 
     #[test]
-    fn clear_pixels_speaks_only_kitty() {
+    fn clear_pixels_retires_only_our_presented_images() {
+        let area = Rect::new(0, 0, 50, 18);
+        let mut presented = PlotState::default();
+        render_pixel_frame(&mut presented, area);
         let mut out: Vec<u8> = Vec::new();
-        clear_pixels(&mut out, &kitty()).unwrap();
-        assert_eq!(out, b"\x1b_Ga=d,d=A\x1b\\");
+        present_pixels(&mut out, &kitty(), &mut [&mut presented]).unwrap();
+
+        let mut goodbye: Vec<u8> = Vec::new();
+        let mut untouched = PlotState::default();
+        clear_pixels(
+            &mut goodbye,
+            &kitty(),
+            &mut [&mut presented, &mut untouched],
+        )
+        .unwrap();
+        let text = String::from_utf8_lossy(&goodbye);
+        assert!(text.contains("a=d,d=I,i="), "delete by our id: {text:?}");
+        assert_eq!(text.matches("a=d").count(), 1, "only the presented panel");
+        assert!(presented.pixel_sent.is_none(), "presentation memory reset");
+
         let mut sixel: Vec<u8> = Vec::new();
-        clear_pixels(&mut sixel, &Graphics::new(Protocol::Sixel)).unwrap();
-        assert!(sixel.is_empty());
+        clear_pixels(
+            &mut sixel,
+            &Graphics::new(Protocol::Sixel),
+            &mut [&mut presented],
+        )
+        .unwrap();
+        assert!(sixel.is_empty(), "cells cover themselves");
+    }
+
+    #[test]
+    fn an_unchanged_panel_is_never_retransmitted() {
+        let area = Rect::new(0, 0, 50, 18);
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, area);
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+
+        // Past the pace window with nothing changed: the encode runs, matches
+        // what is on screen, and queues nothing.
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_none(), "identical content is suppressed");
+
+        // A cursor changes the image, so it queues again.
+        let panel = state.plot_area().unwrap();
+        state.on_mouse(Mouse::Moved {
+            column: panel.x + 2,
+            row: panel.y + 2,
+        });
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_some(), "changed content queues");
     }
 
     #[test]

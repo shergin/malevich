@@ -184,11 +184,14 @@ fn main() -> std::io::Result<()> {
                 }
             } else if was_series {
                 // Kitty images live on their own layer; cell repaints cannot
-                // cover them. Returning to the series view starts from fresh
-                // ground and a fresh emission.
-                malevich::clear_pixels(&mut std::io::stdout(), graphics)?;
-                app.series_state.invalidate_pixels();
-                app.strip_state.invalidate_pixels();
+                // cover them. Retiring them also resets both states, so a
+                // return to the series view starts from fresh ground and a
+                // fresh emission.
+                malevich::clear_pixels(
+                    &mut std::io::stdout(),
+                    graphics,
+                    &mut [&mut app.series_state, &mut app.strip_state],
+                )?;
                 emit_needed = true;
             }
         }

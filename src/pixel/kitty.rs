@@ -27,7 +27,7 @@ pub(crate) fn encode(image: &Image) -> String {
             None => rgba.extend_from_slice(&[0, 0, 0, 0]),
         }
     }
-    encode_rgba(image.width, image.height, (0, 0), &rgba)
+    encode_rgba(image.width, image.height, (0, 0), &rgba, None)
 }
 
 /// Encodes raw RGBA. A nonzero `placement` (columns, rows) pins the image
@@ -35,11 +35,18 @@ pub(crate) fn encode(image: &Image) -> String {
 /// a host may transmit fewer device pixels than the rectangle holds (a
 /// speed knob — Retina-sized panels cost the terminal real decode and
 /// upload time) and stays correct even when cell-size detection was off.
+///
+/// An `id` makes the transmission a replacement: kitty deletes the previous
+/// image carrying that id — placements included — as part of accepting this
+/// one, so a repaint swaps atomically with no visible gap and no separate
+/// delete. Interactive hosts assign one stable id per panel; scrollback
+/// strings stay id-less, since each print is a new image.
 pub(crate) fn encode_rgba(
     width: usize,
     height: usize,
     placement: (usize, usize),
     rgba: &[u8],
+    id: Option<u32>,
 ) -> String {
     if width == 0 || height == 0 {
         return String::new();
@@ -55,6 +62,9 @@ pub(crate) fn encode_rgba(
         out.push_str("\x1b_G");
         if first {
             let _ = write!(out, "a=T,f=32,o=z,s={width},v={height},");
+            if let Some(id) = id {
+                let _ = write!(out, "i={id},");
+            }
             if placement.0 > 0 && placement.1 > 0 {
                 let _ = write!(out, "c={},r={},", placement.0, placement.1);
             }

@@ -56,7 +56,13 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   ~33 ms window an unchanged-view render reuses the image already on
   screen, so hover floods and tick redraws cost nearly nothing and even
   a one-event-per-frame host loop stops falling behind (a changed
-  viewport always renders — a zoomed window never shows stale). fred
+  viewport always renders — a zoomed window never shows stale). And
+  repaints never flicker, because nothing is ever cleared: each panel's
+  kitty image travels under a stable per-panel id and the terminal swaps
+  old for new atomically when the retransmission lands, while a panel
+  whose content already matches the screen is not transmitted at all;
+  `clear_pixels` retires images by id, never touching other
+  applications'. fred
   renders its series view this way wherever the terminal speaks sixel,
   kitty, or iTerm2 (`--cells` opts out), and both fred and the zoom
   example drain their event queues before redrawing, collapsing input
