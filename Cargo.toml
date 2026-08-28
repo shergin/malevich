@@ -58,6 +58,10 @@ name = "tui"
 required-features = ["ratatui"]
 
 [[example]]
+name = "zoom"
+required-features = ["ratatui"]
+
+[[example]]
 name = "pixels"
 required-features = ["pixel"]
 

@@ -14,8 +14,12 @@ use std::time::Duration;
 
 use fred::data::{Catalog, parse_csv};
 use fred::views::{self, Transform, View};
-use malevich::{Charset, LineStyle};
-use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use malevich::{Charset, LineStyle, Mouse, MouseButton, PlotState};
+use ratatui::crossterm::event::{
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind,
+    MouseButton as CtButton, MouseEvent, MouseEventKind,
+};
+use ratatui::crossterm::execute;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line as TextLine;
@@ -47,6 +51,41 @@ struct App {
     /// An in-flight live fetch, if any. Fetches run on their own thread — a slow
     /// or stalled network must never freeze the event loop.
     fetch: Option<Receiver<Fetch>>,
+    /// The series chart's interaction state: the malevich widget caches its
+    /// cell↔data mapping here and applies the zoom/pan viewport from it, while
+    /// this app stays the owner of the event loop and the key policy.
+    series_state: PlotState,
+}
+
+/// Crossterm's mouse event into malevich's backend-neutral vocabulary.
+fn mouse(event: MouseEvent) -> Option<Mouse> {
+    let button = |b: CtButton| match b {
+        CtButton::Left => MouseButton::Left,
+        CtButton::Right => MouseButton::Right,
+        CtButton::Middle => MouseButton::Middle,
+    };
+    let (column, row) = (event.column, event.row);
+    Some(match event.kind {
+        MouseEventKind::Moved => Mouse::Moved { column, row },
+        MouseEventKind::Down(b) => Mouse::Down {
+            button: button(b),
+            column,
+            row,
+        },
+        MouseEventKind::Drag(b) => Mouse::Drag {
+            button: button(b),
+            column,
+            row,
+        },
+        MouseEventKind::Up(b) => Mouse::Up {
+            button: button(b),
+            column,
+            row,
+        },
+        MouseEventKind::ScrollUp => Mouse::ScrollUp { column, row },
+        MouseEventKind::ScrollDown => Mouse::ScrollDown { column, row },
+        _ => return None,
+    })
 }
 
 fn main() -> std::io::Result<()> {
@@ -60,6 +99,7 @@ fn main() -> std::io::Result<()> {
         shade_recessions: true,
         status: String::from("vendored snapshot — press f to refresh live from FRED"),
         fetch: None,
+        series_state: PlotState::default(),
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -68,6 +108,9 @@ fn main() -> std::io::Result<()> {
     }
 
     let mut terminal = ratatui::init();
+    // The mouse drives the series chart: hover crosshair, wheel zoom, drag
+    // pan, right-drag zoom. Capture is the host's to enable and release.
+    let _ = execute!(std::io::stdout(), EnableMouseCapture);
     let mut list_state = ListState::default();
     let result = loop {
         app.poll_fetch();
@@ -77,14 +120,26 @@ fn main() -> std::io::Result<()> {
         if !event::poll(Duration::from_millis(250))? {
             continue;
         }
-        let Event::Key(key) = event::read()? else {
-            continue;
+        let key = match event::read()? {
+            // The chart's PlotState interprets coordinates; this app only
+            // routes them to the pane they landed on.
+            Event::Mouse(raw) => {
+                if app.view == View::Series
+                    && let Some(input) = mouse(raw)
+                {
+                    app.series_state.on_mouse(input);
+                }
+                continue;
+            }
+            Event::Key(key) => key,
+            _ => continue,
         };
         if key.kind != KeyEventKind::Press {
             continue;
         }
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
+            KeyCode::Char('r') => app.series_state.reset_view(),
             KeyCode::Tab | KeyCode::Right => app.view = app.view.next(),
             KeyCode::BackTab | KeyCode::Left => app.view = app.view.previous(),
             KeyCode::Char(digit @ '1'..='5') => {
@@ -117,12 +172,13 @@ fn main() -> std::io::Result<()> {
             _ => {}
         }
     };
+    let _ = execute!(std::io::stdout(), DisableMouseCapture);
     ratatui::restore();
     result
 }
 
 impl App {
-    fn draw(&self, frame: &mut ratatui::Frame, list_state: &mut ListState) {
+    fn draw(&mut self, frame: &mut ratatui::Frame, list_state: &mut ListState) {
         let [tabs_area, body, footer] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
@@ -178,7 +234,7 @@ impl App {
         }
     }
 
-    fn draw_series(&self, frame: &mut ratatui::Frame, area: Rect, list_state: &mut ListState) {
+    fn draw_series(&mut self, frame: &mut ratatui::Frame, area: Rect, list_state: &mut ListState) {
         let [sidebar, chart_area] =
             Layout::horizontal([Constraint::Length(26), Constraint::Fill(1)]).areas(area);
         let items: Vec<ListItem> = self
@@ -205,7 +261,14 @@ impl App {
             self.shade_recessions
                 .then_some(self.catalog.recessions.as_slice()),
         );
-        frame.render_widget(chart.widget().charset(self.charset), chart_area);
+        // Stateful rendering is what makes the chart interactive: the widget
+        // caches its cell↔data mapping in `series_state`, applies the state's
+        // zoom/pan viewport, and draws the crosshair and readout overlays.
+        frame.render_stateful_widget(
+            chart.widget().charset(self.charset),
+            chart_area,
+            &mut self.series_state,
+        );
     }
 
     /// Renders two plots side by side. `plot.widget()` is malevich's ratatui
@@ -245,7 +308,7 @@ impl App {
                 .unwrap_or_else(|| "—".into()),
         ));
         let keys = TextLine::from(format!(
-            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [q] quit ",
+            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
             if self.shade_recessions { "on" } else { "off" },
         ))
         .style(Style::default().add_modifier(Modifier::DIM));
