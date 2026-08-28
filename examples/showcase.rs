@@ -11,8 +11,8 @@
 use malevich::scale::{Colormap, Palette};
 use malevich::stat::{Bins, Reducer, binned, ewma};
 use malevich::{
-    Area, Cells, Color, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points, Range, Rule, Scale,
-    Text,
+    Area, Cells, Color, Dash, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points, Range, Rule,
+    Scale, Text,
 };
 
 /// The tour's render: one chart per row, or a cells-versus-pixels comparison
@@ -73,6 +73,131 @@ fn main() {
             .title("loss with annotations (synthetic)")
             .x_label("step")
             .y_label("loss")
+            .show(&frame)
+    );
+
+    // The effects corner: what the alpha canvas buys. Anti-aliased
+    // strokes with a glow over a translucent wash, dashed and dotted
+    // annotation strokes — pixel panes show the full treatment, cell
+    // panes stay solid ink.
+    let vermilion = Color::Rgb(227, 66, 52);
+    let sky = Color::Rgb(108, 153, 212);
+    let train_smooth = ewma(&train, 0.9);
+    let val_smooth = ewma(&val, 0.9);
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(
+                Area::xy(&steps[..], &train_smooth[..])
+                    .color(vermilion)
+                    .opacity(0.13)
+            )
+            .layer(
+                Line::xy(&steps[..], &train_smooth[..])
+                    .label("train")
+                    .color(vermilion)
+                    .glow()
+            )
+            .layer(
+                Line::xy(&steps[..], &val_smooth[..])
+                    .label("val")
+                    .color(sky)
+                    .dash(Dash::Dotted)
+            )
+            .layer(Rule::h(0.5).label("target").dash(Dash::Dashed))
+            .title("glow over a wash, dashed annotations (synthetic)")
+            .x_label("step")
+            .y_label("loss")
+            .show(&frame)
+    );
+
+    // A trajectory graded by progress: each point wears its position in
+    // training through a colormap — cold start, hot finish.
+    let turns: Vec<f64> = (0..500)
+        .map(|i| i as f64 / 499.0 * 18.0)
+        .collect();
+    let spiral_x: Vec<f64> = turns
+        .iter()
+        .map(|&a| a.cos() * (0.15 + a * 0.05) + (a * 2.3).sin() * 0.04)
+        .collect();
+    let spiral_y: Vec<f64> = turns
+        .iter()
+        .map(|&a| a.sin() * (0.15 + a * 0.05) * 0.8 + (a * 1.9).cos() * 0.04)
+        .collect();
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(
+                Line::xy(&spiral_x[..], &spiral_y[..])
+                    .grade(&turns[..], Colormap::VIRIDIS)
+                    .label("optimizer path")
+            )
+            .title("a trajectory graded by step (synthetic)")
+            .show(&frame)
+    );
+
+    // Overplotting as brightness: accumulated low-opacity markers turn a
+    // fifteen-thousand-point cloud into a density field.
+    let mut state = 0x9E37_79B9_7F4A_7C15u64;
+    let mut unit = || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        (state >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut cloud_x = Vec::new();
+    let mut cloud_y = Vec::new();
+    for index in 0..15_000 {
+        // Two gaussian-ish blobs (sum of uniforms), one twice as heavy.
+        let center = if index % 3 == 0 { (2.4, 1.2) } else { (1.0, 0.8) };
+        let sample = |unit: &mut dyn FnMut() -> f64, spread: f64| {
+            (0..6).map(|_| unit()).sum::<f64>() / 6.0 * spread - spread / 2.0
+        };
+        cloud_x.push(center.0 + sample(&mut unit, 1.6));
+        cloud_y.push(center.1 + sample(&mut unit, 1.1));
+    }
+    println!(
+        "{}\n",
+        Plot::new()
+            .layer(
+                Points::xy(&cloud_x[..], &cloud_y[..])
+                    .color(Color::Rgb(86, 178, 163))
+                    .opacity(0.18)
+                    .density()
+            )
+            .title("15,000 points as accumulated ink (synthetic)")
+            .show(&frame)
+    );
+
+    // A smooth field under its own contours: bilinear cells read as a
+    // continuous surface, marching squares traces the levels over it.
+    let field_size = 24usize;
+    let field: Vec<f64> = (0..field_size * field_size)
+        .map(|i| {
+            let (fx, fy) = (
+                (i % field_size) as f64 / 4.0,
+                (i / field_size) as f64 / 4.0,
+            );
+            (fx - 3.0).powi(2) * 0.4
+                + (fy - 2.6).powi(2) * 0.7
+                + ((fx * 1.7).sin() * (fy * 1.3).cos()) * 0.8
+        })
+        .collect();
+    let mut landscape = Plot::new().layer(
+        Cells::matrix(field_size, &field[..])
+            .colormap(Colormap::MAGMA)
+            .smooth(),
+    );
+    let levels: Vec<f64> = (1..7).map(|i| f64::from(i) * 1.6).collect();
+    for line in malevich::stat::contours(&field, field_size, &levels) {
+        landscape = landscape.layer(
+            Line::xy(line.x.clone(), line.y.clone()).color(Color::Rgb(235, 235, 230)),
+        );
+    }
+    println!(
+        "{}\n",
+        landscape
+            .title("a smooth loss landscape with contours (synthetic)")
             .show(&frame)
     );
 

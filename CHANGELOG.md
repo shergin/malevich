@@ -5,6 +5,30 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- The pixel canvas learned coverage: pixels are straight RGBA with alpha
+  as coverage, and everything drawn on it is anti-aliased — strokes with
+  round caps and sub-pixel endpoints, discs, rings. Fringes composite
+  over any terminal background; kitty and iTerm2 transmit the raster
+  verbatim, sixel thresholds to solid ink.
+
+- New ink, mark by mark: `Line::glow` (a soft halo fading from the
+  stroke), `Line::dash` and `Rule::dash` (dashes and dots whose phase
+  flows through polyline joints), `Line::grade` (gradient strokes
+  through a colormap), `Area::opacity` (translucent fills and bands),
+  `Points::opacity` + `Points::density` (accumulated ink — overplotting
+  reads as brightness), `Cells::smooth` (bilinear heatmaps), and text
+  annotations that ride their exact data anchor on pixel targets.
+
+- Two long-standing fill bugs died on the way: area fills stopped one
+  gutter short of the plot's far edge, and isolated line points (the
+  first point of every NaN-jointed contour segment) drew with the
+  marker pen instead of the stroke's weight.
+
+- The showcase tour opens an effects corner: glow over a wash with
+  dashed annotations, a trajectory graded by step, fifteen thousand
+  points as accumulated ink, and a smooth loss landscape under its
+  contours.
+
 ## 1.18.6 — 2026-08-27
 
 - `Graphics::stroke` overrides the cell-derived line width in device
