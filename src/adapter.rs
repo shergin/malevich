@@ -283,7 +283,7 @@ impl PlotWidget<'_> {
                 && let Some(line) =
                     self.readout_line(state, &snapped, columns.saturating_sub(2) as u16)
             {
-                let line = line.replace('·', "-").replace('—', "-");
+                let line = line.replace(['·', '—'], "-");
                 let x = x_low + (x_high - x_low) * 0.02;
                 let y = y_high - (y_high - y_low) * 0.06;
                 plot = plot.layer(crate::Text::at(x, y, line).color(Color::BrightBlack));
