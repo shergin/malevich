@@ -35,13 +35,13 @@ fn oversized_canvas_geometry_is_rejected_before_allocation() {
 #[test]
 fn dot_stamps_a_point_marker_and_clips_outside() {
     let mut canvas = PixelCanvas::new(2, 2, (8, 8));
-    canvas.dot(3.4, 5.6, RED);
+    canvas.point(3.4, 5.6, PointShape::Dot, RED);
     // At the classic density the point pen is 2×2 — one step above the
     // 1-pixel stroke, so scatter dots read over lines.
     assert_eq!(canvas.get(3, 6), Some(RED));
-    canvas.dot(-2.0, 0.0, RED);
-    canvas.dot(1000.0, 0.0, RED);
-    canvas.dot(f64::NAN, 0.0, RED);
+    canvas.point(-2.0, 0.0, PointShape::Dot, RED);
+    canvas.point(1000.0, 0.0, PointShape::Dot, RED);
+    canvas.point(f64::NAN, 0.0, PointShape::Dot, RED);
     let drawn = (0..16)
         .flat_map(|y| (0..16).map(move |x| (x, y)))
         .filter(|&(x, y)| canvas.get(x, y).is_some())
@@ -84,7 +84,7 @@ fn strokes_scale_with_cell_density() {
 #[test]
 fn points_read_above_lines_at_any_density() {
     let mut canvas = PixelCanvas::new(2, 1, (20, 44));
-    canvas.dot(20.0, 22.0, RED);
+    canvas.point(20.0, 22.0, PointShape::Dot, RED);
     let drawn = (0..44)
         .flat_map(|y| (0..40).map(move |x| (x, y)))
         .filter(|&(x, y)| canvas.get(x, y).is_some())
@@ -402,9 +402,9 @@ fn accumulated_ink_brightens_where_markers_pile_up() {
     canvas.set_opacity(0.3);
     canvas.set_accumulate(true);
     for _ in 0..3 {
-        canvas.dot(10.0, 8.0, RED);
+        canvas.point(10.0, 8.0, PointShape::Dot, RED);
     }
-    canvas.dot(24.0, 8.0, RED);
+    canvas.point(24.0, 8.0, PointShape::Dot, RED);
     canvas.set_accumulate(false);
     canvas.set_opacity(1.0);
     let piled = canvas.rgba(10, 8)[3];
@@ -415,7 +415,7 @@ fn accumulated_ink_brightens_where_markers_pile_up() {
     let mut plain = PixelCanvas::new(4, 2, (8, 8));
     plain.set_opacity(0.3);
     for _ in 0..3 {
-        plain.dot(10.0, 8.0, RED);
+        plain.point(10.0, 8.0, PointShape::Dot, RED);
     }
     assert_eq!(plain.rgba(10, 8)[3], single);
 }

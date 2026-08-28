@@ -50,9 +50,6 @@ pub(crate) trait Canvas {
     /// scatters). Glyph targets ignore it.
     fn set_accumulate(&mut self, _on: bool) {}
 
-    /// Sets the subpixel nearest to `(x, y)`; non-finite coordinates draw nothing.
-    fn dot(&mut self, x: f64, y: f64, color: Color);
-
     /// Draws a point marker centered nearest `(x, y)` at target-native fidelity.
     fn point(&mut self, x: f64, y: f64, shape: PointShape, color: Color);
 

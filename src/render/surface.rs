@@ -509,10 +509,6 @@ impl Canvas for Surface {
         Surface::clear_clip(self);
     }
 
-    fn dot(&mut self, x: f64, y: f64, color: Color) {
-        Surface::dot(self, x, y, color);
-    }
-
     fn point(&mut self, x: f64, y: f64, shape: PointShape, color: Color) {
         if shape == PointShape::Dot {
             Surface::dot(self, x, y, color);

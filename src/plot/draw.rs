@@ -342,7 +342,11 @@ fn draw_series<C: Canvas>(
                         }
                         dash_segment(surface, from, position, ink, *dash, &mut phase);
                     }
-                    _ => surface.dot(position.0, position.1, ink),
+                    // A zero-length stroke: the round cap makes a gap-isolated
+                    // point (or the first point of a NaN-jointed segment, as
+                    // the contour preset emits) a stroke-weight dot — the
+                    // marker pen would bead every joint on pixel targets.
+                    _ => surface.line(position, position, ink),
                 }
                 previous = Some((position, category));
             }

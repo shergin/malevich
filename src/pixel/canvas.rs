@@ -356,12 +356,6 @@ impl Canvas for PixelCanvas {
         self.accumulate = on;
     }
 
-    fn dot(&mut self, x: f64, y: f64, color: Color) {
-        if x.is_finite() && y.is_finite() {
-            self.aa_disc(x, y, self.point as f64 / 2.0, color.to_rgb());
-        }
-    }
-
     fn point(&mut self, x: f64, y: f64, shape: PointShape, color: Color) {
         if !x.is_finite() || !y.is_finite() {
             return;
