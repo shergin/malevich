@@ -101,7 +101,7 @@ pub use error::{Error, Result};
 pub use mark::{
     Area, Bars, Cells, Dash, Line, LineStyle, Mark, PointStyle, Points, Range, Rule, Text,
 };
-pub use plot::{Frame, Grid, Plot};
+pub use plot::{Frame, Grid, Mapping, Plot, Viewport};
 pub use presets::{
     ContourLevels, ContourOptions, DensityOptions, EcdfOptions, HeatmapOptions, Histogram2dOptions,
     HistogramOptions, TrendOptions, ViolinOptions, bar, box_plot, contour, contour_with, density,

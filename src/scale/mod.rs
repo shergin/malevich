@@ -2,12 +2,12 @@
 
 mod band;
 mod colormap;
-mod format;
+pub(crate) mod format;
 mod linear;
 mod palette;
 mod spec;
 mod ticks;
-mod time;
+pub(crate) mod time;
 
 pub use band::Band;
 pub use colormap::Colormap;

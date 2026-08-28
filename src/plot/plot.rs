@@ -3,6 +3,7 @@
 
 use super::frame::Frame;
 use super::layout::Layout;
+use super::mapping::Mapping;
 use super::resolve::{Kind, Reduce, ResolvedLayer};
 use crate::mark::{LineStyle, Mark};
 use crate::render::Surface;
@@ -230,6 +231,40 @@ impl<'a> Plot<'a> {
     pub fn title(mut self, title: impl Into<String>) -> Plot<'a> {
         self.title = Some(title.into());
         self
+    }
+
+    /// Applies a [`Viewport`](crate::Viewport): a fixed window overrides that
+    /// axis's domain, an automatic axis leaves the plot's own setting — data
+    /// fit, or a domain the plot already fixed — untouched. Sugar over
+    /// [`Plot::x_domain`]/[`Plot::y_domain`], which is the point: an
+    /// interactive view is a scale option, not a render mode.
+    #[must_use]
+    pub fn viewport(mut self, viewport: &crate::plot::Viewport) -> Plot<'a> {
+        if let Some(window) = viewport.x() {
+            self.x_domain = Some(window);
+        }
+        if let Some(window) = viewport.y() {
+            self.y_domain = Some(window);
+        }
+        self
+    }
+
+    /// The resolved geometry of this plot in `frame`, without rendering: the
+    /// plot rectangle and the cell ↔ data mapping, from the same resolve →
+    /// layout pass rendering runs. Pure — same plot and frame, same mapping.
+    ///
+    /// This is the physics interactive hosts build on: hit-test a cursor with
+    /// [`Mapping::data_at`], anchor an overlay with [`Mapping::cell_at`], seed
+    /// zoom and pan with [`Mapping::viewport`]. A frame too small to draw a
+    /// plot panel yields a mapping whose positional queries return `None`.
+    pub fn mapping(&self, frame: &Frame) -> Mapping {
+        if frame.width == 0 || frame.height == 0 {
+            return Mapping::empty();
+        }
+        match self.prepare_render(frame, TargetPolicy::cells(frame, true)) {
+            Ok(prepared) => Mapping::new(&prepared.layout, &self.x, &self.y),
+            Err(_) => Mapping::empty(),
+        }
     }
 
     /// Detaches from any borrowed storage, making the plot `'static`.
@@ -763,8 +798,17 @@ impl<'a> Plot<'a> {
             .unwrap_or_else(|_| Surface::new(0, 0, frame.charset))
     }
 
+    /// Rasterizes and returns the resolved [`Mapping`] from the same pass — the
+    /// one-render path the ratatui stateful widget caches its geometry from.
+    #[cfg(feature = "ratatui")]
+    pub(crate) fn rasterize_mapped(&self, frame: &Frame) -> (Surface, Mapping) {
+        self.try_rasterize_with(frame, true)
+            .unwrap_or_else(|_| (Surface::new(0, 0, frame.charset), Mapping::empty()))
+    }
+
     pub(crate) fn try_rasterize(&self, frame: &Frame) -> crate::Result<Surface> {
         self.try_rasterize_with(frame, true)
+            .map(|(surface, _)| surface)
     }
 
     /// Rasterizes with M4 line downsampling optionally disabled. With `downsample`
@@ -773,17 +817,23 @@ impl<'a> Plot<'a> {
     #[cfg(test)]
     pub(crate) fn rasterize_with(&self, frame: &Frame, downsample: bool) -> Surface {
         self.try_rasterize_with(frame, downsample)
+            .map(|(surface, _)| surface)
             .unwrap_or_else(|_| Surface::new(0, 0, frame.charset))
     }
 
-    fn try_rasterize_with(&self, frame: &Frame, downsample: bool) -> crate::Result<Surface> {
+    fn try_rasterize_with(
+        &self,
+        frame: &Frame,
+        downsample: bool,
+    ) -> crate::Result<(Surface, Mapping)> {
         let mut surface = Surface::try_new(frame.width, frame.height, frame.charset)?;
         if frame.width == 0 || frame.height == 0 {
-            return Ok(surface);
+            return Ok((surface, Mapping::empty()));
         }
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
         let PreparedRender { layout, layers } =
             self.prepare_render(frame, TargetPolicy::cells(frame, downsample))?;
+        let mapping = Mapping::new(&layout, &self.x, &self.y);
         super::chrome::draw(
             &mut surface,
             &layout,
@@ -792,7 +842,7 @@ impl<'a> Plot<'a> {
             &layers,
         );
         super::draw::layers(&mut surface, &layout, &layers);
-        Ok(surface)
+        Ok((surface, mapping))
     }
 }
 

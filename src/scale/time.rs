@@ -311,6 +311,40 @@ fn label(stamps: &[i64], interval: Interval) -> Vec<Tick> {
         .collect()
 }
 
+/// A cursor-readout label for one instant, at the largest unit `resolution`
+/// seconds — what one cell of the axis actually distinguishes — can honestly
+/// carry: seconds, minutes, days with their year, months, or years alone.
+/// Instants outside the supported calendar range fall back to the numeric
+/// value.
+pub(crate) fn readout(value: f64, resolution: f64) -> String {
+    let (supported_lo, supported_hi) = supported_seconds();
+    if !value.is_finite() || value < supported_lo as f64 || value > supported_hi as f64 {
+        return value.to_string();
+    }
+    let t = value.floor() as i64;
+    let days = t.div_euclid(DAY);
+    let second_of_day = t.rem_euclid(DAY);
+    let (year, month, day) = civil_from_days(days);
+    let (hour, minute, second) = (
+        second_of_day / HOUR,
+        (second_of_day % HOUR) / MINUTE,
+        second_of_day % MINUTE,
+    );
+    let month_name = MONTHS[(month - 1) as usize];
+    let resolution = resolution.abs();
+    if resolution <= MINUTE as f64 {
+        format!("{month_name} {day} {hour:02}:{minute:02}:{second:02}")
+    } else if resolution <= HOUR as f64 {
+        format!("{month_name} {day} {hour:02}:{minute:02}")
+    } else if resolution <= 3.0 * DAY as f64 {
+        format!("{month_name} {day} {year}")
+    } else if resolution <= 90.0 * DAY as f64 {
+        format!("{month_name} {year}")
+    } else {
+        format!("{year}")
+    }
+}
+
 /// Hinnant's `civil_from_days`: days since 1970-01-01 to `(year, month, day)`.
 fn civil_from_days(days: i64) -> (i32, u32, u32) {
     let z = days + 719_468;
