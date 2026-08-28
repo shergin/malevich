@@ -32,6 +32,7 @@ pub struct Line<'a> {
     pub(crate) label: Option<String>,
     pub(crate) style: LineStyle,
     pub(crate) color_by: Option<Categories>,
+    pub(crate) glow: bool,
 }
 
 #[derive(Clone)]
@@ -58,6 +59,7 @@ impl<'a> Line<'a> {
             label: None,
             style: LineStyle::Pixels,
             color_by: None,
+            glow: false,
         }
     }
 
@@ -75,6 +77,7 @@ impl<'a> Line<'a> {
             label: None,
             style: LineStyle::Pixels,
             color_by: None,
+            glow: false,
         };
         line.validate()
             .expect("Line::xy requires series of equal length");
@@ -102,6 +105,7 @@ impl<'a> Line<'a> {
             label: None,
             style: LineStyle::Pixels,
             color_by: None,
+            glow: false,
         };
         line.validate()
             .expect("Line::function requires a finite, non-empty domain");
@@ -119,6 +123,15 @@ impl<'a> Line<'a> {
     #[must_use]
     pub fn color(mut self, color: Color) -> Line<'a> {
         self.color = Some(color);
+        self
+    }
+
+    /// Draws a soft halo around the stroke on pixel targets — a wide
+    /// under-stroke in the line's own hue at low intensity. Cell targets
+    /// ignore it.
+    #[must_use]
+    pub fn glow(mut self) -> Line<'a> {
+        self.glow = true;
         self
     }
 
@@ -190,6 +203,7 @@ impl<'a> Line<'a> {
             label: self.label,
             style: self.style,
             color_by: self.color_by,
+            glow: self.glow,
         }
     }
 }
@@ -228,6 +242,13 @@ mod serde_impls {
         style: LineStyle,
         #[serde(skip_serializing_if = "Option::is_none")]
         color_by: &'s Option<Categories>,
+        /// Absent when off, keeping v1 wire documents byte-stable.
+        #[serde(skip_serializing_if = "is_false")]
+        glow: bool,
+    }
+
+    fn is_false(value: &bool) -> bool {
+        !*value
     }
 
     #[derive(serde::Deserialize)]
@@ -239,6 +260,8 @@ mod serde_impls {
         style: LineStyle,
         #[serde(default)]
         color_by: Option<Categories>,
+        #[serde(default)]
+        glow: bool,
     }
 
     impl serde::Serialize for Line<'_> {
@@ -251,6 +274,7 @@ mod serde_impls {
                     label: &self.label,
                     style: self.style,
                     color_by: &self.color_by,
+                    glow: self.glow,
                 }
                 .serialize(serializer),
                 Source::Function { .. } => Err(S::Error::custom(
@@ -272,6 +296,7 @@ mod serde_impls {
                 label: repr.label,
                 style: repr.style,
                 color_by: repr.color_by,
+                glow: repr.glow,
             })
         }
     }

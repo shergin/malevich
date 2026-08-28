@@ -323,3 +323,19 @@ fn crossing_strokes_blend_where_they_overlap() {
     assert!(r > 0 && b > 0, "both inks present: r={r} b={b}");
     assert!(a > 0);
 }
+
+#[test]
+fn glow_lays_a_soft_halo_the_stroke_rides_over() {
+    let mut canvas = PixelCanvas::new(4, 2, (8, 8));
+    canvas.glow((4.0, 8.0), (24.0, 8.0), RED);
+    canvas.line((4.0, 8.0), (24.0, 8.0), RED);
+    // The stroke itself is full strength.
+    assert_eq!(canvas.rgba(14, 8), [255, 0, 0, 255]);
+    // Beyond the stroke, the halo carries faint ink that fades outward.
+    let near = canvas.rgba(14, 9)[3];
+    let far = canvas.rgba(14, 10)[3];
+    assert!(near > 0 && near < 128, "near halo is faint: {near}");
+    assert!(far < near, "the halo fades with distance: {far} < {near}");
+    // Well outside the reach: nothing.
+    assert_eq!(canvas.rgba(14, 13), [0; 4]);
+}

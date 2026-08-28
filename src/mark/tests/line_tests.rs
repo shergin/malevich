@@ -41,3 +41,11 @@ fn debug_stays_curated() {
     assert!(debug.contains("points: 3"), "unexpected debug: {debug}");
     assert!(!debug.contains("1.0"), "debug dumps data: {debug}");
 }
+
+#[test]
+fn glow_is_off_by_default_and_survives_into_owned() {
+    let line = Line::y(&[1.0, 2.0][..]);
+    assert!(!line.glow);
+    let glowing = Line::y(&[1.0, 2.0][..]).glow().into_owned();
+    assert!(glowing.glow);
+}

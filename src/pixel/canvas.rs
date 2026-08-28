@@ -102,11 +102,34 @@ impl PixelCanvas {
 
     /// An anti-aliased stroked segment with round caps: coverage falls off
     /// over one pixel at the stroke's edge, and endpoints are sub-pixel —
-    /// no rounding before rasterization. Long segments render in bounded
+    /// no rounding before rasterization.
+    fn aa_segment(
+        &mut self,
+        from: (f64, f64),
+        to: (f64, f64),
+        half_width: f64,
+        rgb: (u8, u8, u8),
+        intensity: f64,
+    ) {
+        self.sweep_segment(from, to, half_width + 1.0, rgb, |distance| {
+            (half_width + 0.5 - distance).clamp(0.0, 1.0) * intensity
+        });
+    }
+
+    /// Sweeps every pixel within `pad` of the segment, blending by the
+    /// coverage `profile` of its distance. Long segments sweep in bounded
     /// chunks so a diagonal never scans its full bounding square; interior
-    /// chunk caps land inside the stroke, where same-color blending
-    /// absorbs them exactly.
-    fn aa_segment(&mut self, from: (f64, f64), to: (f64, f64), half_width: f64, rgb: (u8, u8, u8)) {
+    /// chunk caps land inside the shape, where same-color blending absorbs
+    /// them exactly. Pixel centers sit at integer coordinates, matching
+    /// where cell-snapped drawing always put its ink.
+    fn sweep_segment(
+        &mut self,
+        from: (f64, f64),
+        to: (f64, f64),
+        pad: f64,
+        rgb: (u8, u8, u8),
+        profile: impl Fn(f64) -> f64 + Copy,
+    ) {
         let (dx, dy) = (to.0 - from.0, to.1 - from.1);
         let length = (dx * dx + dy * dy).sqrt();
         if !length.is_finite() {
@@ -116,22 +139,26 @@ impl PixelCanvas {
         for chunk in 0..chunks {
             let t0 = chunk as f64 / chunks as f64;
             let t1 = (chunk + 1) as f64 / chunks as f64;
-            self.aa_span(
+            self.sweep_span(
                 (from.0 + dx * t0, from.1 + dy * t0),
                 (from.0 + dx * t1, from.1 + dy * t1),
-                half_width,
+                pad,
                 rgb,
+                profile,
             );
         }
     }
 
-    /// One bounded span of [`aa_segment`](Self::aa_segment): every pixel
-    /// within reach blends by its distance to the segment. Pixel centers
-    /// sit at integer coordinates, matching where cell-snapped drawing
-    /// always put its ink.
-    fn aa_span(&mut self, a: (f64, f64), b: (f64, f64), half_width: f64, rgb: (u8, u8, u8)) {
+    /// One bounded span of [`sweep_segment`](Self::sweep_segment).
+    fn sweep_span(
+        &mut self,
+        a: (f64, f64),
+        b: (f64, f64),
+        pad: f64,
+        rgb: (u8, u8, u8),
+        profile: impl Fn(f64) -> f64,
+    ) {
         let (wx0, wy0, wx1, wy1) = self.window();
-        let pad = half_width + 1.0;
         let x0 = (a.0.min(b.0) - pad).floor().max(wx0) as i64;
         let x1 = (a.0.max(b.0) + pad).ceil().min(wx1) as i64;
         let y0 = (a.1.min(b.1) - pad).floor().max(wy0) as i64;
@@ -147,8 +174,7 @@ impl PixelCanvas {
                     0.0
                 };
                 let (cx, cy) = (vx - t * ex, vy - t * ey);
-                let distance = (cx * cx + cy * cy).sqrt();
-                let coverage = (half_width + 0.5 - distance).clamp(0.0, 1.0);
+                let coverage = profile((cx * cx + cy * cy).sqrt());
                 if coverage > 0.0 {
                     self.blend(px, py, rgb, coverage);
                 }
@@ -158,7 +184,7 @@ impl PixelCanvas {
 
     /// An anti-aliased filled disc at a sub-pixel center.
     fn aa_disc(&mut self, x: f64, y: f64, radius: f64, rgb: (u8, u8, u8)) {
-        self.aa_span((x, y), (x, y), radius, rgb);
+        self.aa_segment((x, y), (x, y), radius, rgb, 1.0);
     }
 
     /// An anti-aliased one-pixel ring at a sub-pixel center.
@@ -340,7 +366,26 @@ impl Canvas for PixelCanvas {
         if self.width == 0 || self.height == 0 {
             return;
         }
-        self.aa_segment(from, to, self.stroke as f64 / 2.0, color.to_rgb());
+        self.aa_segment(from, to, self.stroke as f64 / 2.0, color.to_rgb(), 1.0);
+    }
+
+    /// The glow pass: a halo fading quadratically from the stroke's edge
+    /// to twice the stroke away. Drawn before the stroke, it tints
+    /// neighbors and crossings while the same-color rule keeps the stroke
+    /// itself at full strength.
+    fn glow(&mut self, from: (f64, f64), to: (f64, f64), color: Color) {
+        if !(from.0.is_finite() && from.1.is_finite() && to.0.is_finite() && to.1.is_finite()) {
+            return;
+        }
+        if self.width == 0 || self.height == 0 {
+            return;
+        }
+        let core = self.stroke as f64 / 2.0;
+        let reach = core + (self.stroke as f64 * 1.5).max(2.5);
+        self.sweep_segment(from, to, reach + 1.0, color.to_rgb(), move |distance| {
+            let t = ((reach + 0.5 - distance) / (reach + 0.5 - core)).clamp(0.0, 1.0);
+            0.28 * t * t
+        });
     }
 
     /// Text through the baked font: glyphs advance by whole cells — labels land

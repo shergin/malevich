@@ -84,7 +84,7 @@ pub(crate) enum Reduce {
 
 /// How a resolved series layer draws its columns.
 pub(crate) enum Kind {
-    Line(LineStyle),
+    Line { style: LineStyle, glow: bool },
     Points(PointStyle),
 }
 
@@ -510,8 +510,8 @@ fn series_swatch(
     ascii: bool,
 ) -> &'static str {
     match kind {
-        Kind::Line(_) if ascii => "--",
-        Kind::Line(_) => "\u{2500}\u{2500}",
+        Kind::Line { .. } if ascii => "--",
+        Kind::Line { .. } => "\u{2500}\u{2500}",
         Kind::Points(style) => match color.point_style_for_category(category, *style) {
             PointStyle::Dot if ascii => "..",
             PointStyle::Dot => "\u{2022}\u{2022}",
@@ -562,14 +562,20 @@ pub(crate) fn resolve<'p>(
                                 x: Coordinates::Values(Cow::Owned(dx)),
                                 y: Cow::Owned(dy),
                                 color: colors.categories(categories, Cow::Owned(ids)),
-                                kind: Kind::Line(line.style),
+                                kind: Kind::Line {
+                                    style: line.style,
+                                    glow: line.glow,
+                                },
                             },
                             None => ResolvedLayer::Series {
                                 x: coordinates(x.as_ref(), y.len()),
                                 y: Cow::Borrowed(y.as_slice()),
                                 color: colors
                                     .categories(categories, Cow::Borrowed(categories.ids())),
-                                kind: Kind::Line(line.style),
+                                kind: Kind::Line {
+                                    style: line.style,
+                                    glow: line.glow,
+                                },
                             },
                         }
                     } else {
@@ -583,13 +589,19 @@ pub(crate) fn resolve<'p>(
                                 x: Coordinates::Values(Cow::Owned(dx)),
                                 y: Cow::Owned(dy),
                                 color,
-                                kind: Kind::Line(line.style),
+                                kind: Kind::Line {
+                                    style: line.style,
+                                    glow: line.glow,
+                                },
                             },
                             None => ResolvedLayer::Series {
                                 x: coordinates(x.as_ref(), y.len()),
                                 y: Cow::Borrowed(y.as_slice()),
                                 color,
-                                kind: Kind::Line(line.style),
+                                kind: Kind::Line {
+                                    style: line.style,
+                                    glow: line.glow,
+                                },
                             },
                         }
                     }
@@ -610,7 +622,10 @@ pub(crate) fn resolve<'p>(
                         x: Coordinates::Values(Cow::Owned(x)),
                         y: Cow::Owned(y),
                         color: colors.fixed(line.color, line.label.as_deref()),
-                        kind: Kind::Line(line.style),
+                        kind: Kind::Line {
+                            style: line.style,
+                            glow: line.glow,
+                        },
                     }
                 }
             },

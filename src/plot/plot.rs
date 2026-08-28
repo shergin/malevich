@@ -687,9 +687,10 @@ impl<'a> Plot<'a> {
             // the line itself.
             for layer in &mut layers {
                 if let ResolvedLayer::Series { kind, .. } = layer
-                    && matches!(kind, Kind::Line(LineStyle::Corners))
+                    && let Kind::Line { style, .. } = kind
+                    && *style == LineStyle::Corners
                 {
-                    *kind = Kind::Line(LineStyle::Pixels);
+                    *style = LineStyle::Pixels;
                 }
             }
         }

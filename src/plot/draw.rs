@@ -59,7 +59,11 @@ pub(crate) fn layers<C: Canvas>(
                 x,
                 y,
                 color,
-                kind: Kind::Line(LineStyle::Corners),
+                kind:
+                    Kind::Line {
+                        style: LineStyle::Corners,
+                        ..
+                    },
                 ..
             } => {
                 draw_corners(surface, layout, x, y, color);
@@ -236,10 +240,16 @@ fn draw_series<C: Canvas>(
     offset: (f64, f64),
 ) {
     match kind {
-        Kind::Line(LineStyle::Corners) => {
+        Kind::Line {
+            style: LineStyle::Corners,
+            ..
+        } => {
             unreachable!("corners are drawn by draw_corners");
         }
-        Kind::Line(LineStyle::Pixels) => {
+        Kind::Line {
+            style: LineStyle::Pixels,
+            glow,
+        } => {
             let mut previous: Option<((f64, f64), Option<usize>)> = None;
             for (index, (xv, &yv)) in x.iter().zip(y.iter()).enumerate() {
                 if !xv.is_finite() || !yv.is_finite() {
@@ -257,6 +267,9 @@ fn draw_series<C: Canvas>(
                 let ink = color.color(index);
                 match previous {
                     Some((from, previous_category)) if previous_category == category => {
+                        if *glow {
+                            surface.glow(from, position, ink);
+                        }
                         surface.line(from, position, ink);
                     }
                     _ => surface.dot(position.0, position.1, ink),

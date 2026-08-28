@@ -49,6 +49,11 @@ pub(crate) trait Canvas {
     /// Draws a line between two subpixel positions, clipped to the target.
     fn line(&mut self, from: (f64, f64), to: (f64, f64), color: Color);
 
+    /// A soft, wide under-stroke beneath a line segment — the glow pass a
+    /// blending target draws before the stroke itself. Glyph targets have
+    /// no notion of a fringe and ignore it.
+    fn glow(&mut self, _from: (f64, f64), _to: (f64, f64), _color: Color) {}
+
     /// Writes text starting at the cell `(column, row)`; cells outside clip away.
     fn text(&mut self, column: i64, row: i64, text: &str, color: Color);
 
