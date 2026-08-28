@@ -8,8 +8,9 @@
 //!
 //! Run with `cargo run -p fred` — add `--release` in a pixel-capable
 //! terminal (sixel, kitty, iTerm2): the series view renders as real images
-//! at native device-pixel density. `--fast` halves the image density for
-//! slow links, `--cells` forces glyphs. Headless:
+//! at native device-pixel density. `p` toggles pixel drawing live (the
+//! glyph/image comparison switch), `--fast` halves the image density for
+//! slow links, `--cells` forces glyphs from the start. Headless:
 //! `cargo run -p fred -- --render [view] [SERIES]`.
 
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
@@ -69,6 +70,9 @@ struct App {
     /// The detected pixel protocol, when the terminal speaks one: the series
     /// charts render as real images through the same stateful widgets.
     graphics: Option<malevich::pixel::Graphics>,
+    /// The live opt-out: `p` flips between pixel panels and glyph charts
+    /// without restarting — the comparison switch.
+    pixels_on: bool,
 }
 
 /// The linked-panes pattern: the x view is a value, so sharing it is
@@ -128,6 +132,7 @@ fn main() -> std::io::Result<()> {
         strip_shown: false,
         drag_in_strip: None,
         graphics: None,
+        pixels_on: true,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -179,7 +184,7 @@ fn main() -> std::io::Result<()> {
         terminal.draw(|frame| app.draw(frame, &mut list_state))?;
 
         if let Some(graphics) = &app.graphics {
-            if app.view == View::Series {
+            if app.view == View::Series && app.pixels_on {
                 if emit_needed {
                     malevich::present_pixels(
                         &mut std::io::stdout(),
@@ -233,6 +238,21 @@ fn main() -> std::io::Result<()> {
                         KeyCode::Char('r') => {
                             app.series_state.reset_view();
                             app.strip_state.reset_view();
+                        }
+                        // The pixel/glyph switch: retiring the images lets the
+                        // next cell frame actually show (kitty images sit on
+                        // their own layer above text).
+                        KeyCode::Char('p') => {
+                            app.pixels_on = !app.pixels_on;
+                            if !app.pixels_on
+                                && let Some(graphics) = &app.graphics
+                            {
+                                let _ = malevich::clear_pixels(
+                                    &mut std::io::stdout(),
+                                    graphics,
+                                    &mut [&mut app.series_state, &mut app.strip_state],
+                                );
+                            }
                         }
                         // h/l pan the series chart (arrows switch views); the
                         // strip follows through the same mirroring the mouse
@@ -405,8 +425,8 @@ impl App {
     fn styled<'a>(&self, widget: malevich::PlotWidget<'a>) -> malevich::PlotWidget<'a> {
         let widget = widget.charset(self.charset);
         match self.graphics {
-            Some(graphics) => widget.graphics(graphics),
-            None => widget,
+            Some(graphics) if self.pixels_on => widget.graphics(graphics),
+            _ => widget,
         }
     }
 
@@ -531,8 +551,13 @@ impl App {
             ))
         };
         let keys = TextLine::from(format!(
-            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [hl] pan  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
+            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}{}  [f] fetch  [hl] pan  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
             if self.shade_recessions { "on" } else { "off" },
+            match self.graphics {
+                Some(_) if self.pixels_on => "  [p] pixels: on",
+                Some(_) => "  [p] pixels: off",
+                None => "",
+            },
         ))
         .style(Style::default().add_modifier(Modifier::DIM));
         let status = TextLine::from(format!(" {} · source: {}", self.status, series.source))

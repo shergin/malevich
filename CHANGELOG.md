@@ -69,8 +69,8 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   applications'. fred
   renders its series view this way wherever the terminal speaks sixel,
   kitty, or iTerm2 — at native device-pixel density, so the image is
-  crisp on Retina cells (`--fast` halves the density for slow links,
-  `--cells` forces glyphs) — and both fred and the zoom example drain
+  crisp on Retina cells (`p` toggles pixel drawing live, `--fast` halves
+  the density for slow links, `--cells` forces glyphs from the start) — and both fred and the zoom example drain
   their event queues before redrawing, collapsing input bursts into one
   repaint.
 
