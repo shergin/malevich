@@ -55,6 +55,14 @@ struct App {
     /// cell↔data mapping here and applies the zoom/pan viewport from it, while
     /// this app stays the owner of the event loop and the key policy.
     series_state: PlotState,
+    /// The year-over-year context strip's state — a second pane linked to the
+    /// main chart by mirroring the x window after every event.
+    strip_state: PlotState,
+    /// Whether the strip was drawn last frame; a hidden pane receives nothing.
+    strip_shown: bool,
+    /// Which pane a drag started in (`true` = strip): drags stay with their
+    /// pane even when the cursor crosses into the other one.
+    drag_in_strip: Option<bool>,
 }
 
 /// Crossterm's mouse event into malevich's backend-neutral vocabulary.
@@ -100,6 +108,9 @@ fn main() -> std::io::Result<()> {
         status: String::from("vendored snapshot — press f to refresh live from FRED"),
         fetch: None,
         series_state: PlotState::default(),
+        strip_state: PlotState::default(),
+        strip_shown: false,
+        drag_in_strip: None,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -121,13 +132,14 @@ fn main() -> std::io::Result<()> {
             continue;
         }
         let key = match event::read()? {
-            // The chart's PlotState interprets coordinates; this app only
-            // routes them to the pane they landed on.
+            // The charts' PlotStates interpret coordinates; this app only
+            // routes them to the pane they landed on and keeps the two panes'
+            // x windows mirrored (docs/interaction.md, "Linked panes").
             Event::Mouse(raw) => {
                 if app.view == View::Series
                     && let Some(input) = mouse(raw)
                 {
-                    app.series_state.on_mouse(input);
+                    app.route_mouse(input);
                 }
                 continue;
             }
@@ -139,7 +151,10 @@ fn main() -> std::io::Result<()> {
         }
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-            KeyCode::Char('r') => app.series_state.reset_view(),
+            KeyCode::Char('r') => {
+                app.series_state.reset_view();
+                app.strip_state.reset_view();
+            }
             KeyCode::Tab | KeyCode::Right => app.view = app.view.next(),
             KeyCode::BackTab | KeyCode::Left => app.view = app.view.previous(),
             KeyCode::Char(digit @ '1'..='5') => {
@@ -263,12 +278,79 @@ impl App {
         );
         // Stateful rendering is what makes the chart interactive: the widget
         // caches its cell↔data mapping in `series_state`, applies the state's
-        // zoom/pan viewport, and draws the crosshair and readout overlays.
+        // zoom/pan viewport, and draws the crosshair, snap, and readout
+        // overlays. When there is room (and the main chart is not already the
+        // year-over-year view), a linked context strip renders below it from
+        // its own state — `route_mouse` keeps the two x windows mirrored.
+        self.strip_shown = chart_area.height >= 22 && self.transform != Transform::YearOverYear;
+        let main_area = if self.strip_shown {
+            let [main_area, strip_area] =
+                Layout::vertical([Constraint::Fill(1), Constraint::Length(8)]).areas(chart_area);
+            let strip = views::context_strip(self.series());
+            frame.render_stateful_widget(
+                strip.widget().charset(self.charset),
+                strip_area,
+                &mut self.strip_state,
+            );
+            main_area
+        } else {
+            chart_area
+        };
         frame.render_stateful_widget(
             chart.widget().charset(self.charset),
-            chart_area,
+            main_area,
             &mut self.series_state,
         );
+    }
+
+    /// Routes one mouse input to the pane it belongs to and mirrors the x
+    /// window onto the other pane — the linked-panes pattern from
+    /// docs/interaction.md. Drags stay with the pane they started in; a hover
+    /// entering one pane clears the other's cursor.
+    fn route_mouse(&mut self, input: Mouse) {
+        fn contains(rect: Rect, column: u16, row: u16) -> bool {
+            column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
+        }
+        let (column, row) = match input {
+            Mouse::Moved { column, row }
+            | Mouse::ScrollUp { column, row }
+            | Mouse::ScrollDown { column, row }
+            | Mouse::Down { column, row, .. }
+            | Mouse::Drag { column, row, .. }
+            | Mouse::Up { column, row, .. } => (column, row),
+        };
+        let positional = self.strip_shown
+            && self
+                .strip_state
+                .plot_area()
+                .is_some_and(|rect| contains(rect, column, row));
+        let in_strip = match input {
+            Mouse::Drag { .. } | Mouse::Up { .. } => self.drag_in_strip.unwrap_or(positional),
+            _ => positional,
+        };
+        let (pane, other) = if in_strip {
+            (&mut self.strip_state, &mut self.series_state)
+        } else {
+            (&mut self.series_state, &mut self.strip_state)
+        };
+        pane.on_mouse(input);
+        if let Mouse::Moved { .. } = input {
+            // (0, 0) is the tab row — outside any plot — so this clears.
+            other.on_mouse(Mouse::Moved { column: 0, row: 0 });
+        }
+        match input {
+            Mouse::Down { .. } => self.drag_in_strip = Some(in_strip),
+            Mouse::Up { .. } => self.drag_in_strip = None,
+            _ => {}
+        }
+        // The linked-panes pattern: the x view is a value, so sharing it is
+        // assignment. Each pane keeps its own y.
+        let window = pane.viewport().x();
+        let view = other.viewport();
+        other.set_viewport(match window {
+            Some((low, high)) => view.with_x(low, high),
+            None => view.reset_x(),
+        });
     }
 
     /// Renders two plots side by side. `plot.widget()` is malevich's ratatui
@@ -294,19 +376,58 @@ impl App {
 
     fn footer(&self) -> Vec<TextLine<'static>> {
         let series = self.series();
-        let stats = TextLine::from(format!(
-            " {}  ·  {}  ·  latest {}  ·  1y {}",
-            series.title,
-            self.transform.label(series.kind),
-            series
-                .latest()
-                .map(|v| format!("{v:.2} {}", series.unit))
-                .unwrap_or_else(|| "—".into()),
-            series
-                .latest_year_change()
-                .map(|c| format!("{}{c:.1}", if c >= 0.0 { "+" } else { "" }))
-                .unwrap_or_else(|| "—".into()),
-        ));
+        // Zoomed in, the stats line describes what is on screen instead of the
+        // whole series — the selection → statistics pattern from
+        // docs/interaction.md: the rubber-band window is the selection, and
+        // the visible data summarizes with the ordinary stat vocabulary.
+        let stats = if self.view == View::Series
+            && let Some((low, high)) = self.series_state.viewport().x()
+        {
+            let year_over_year;
+            let values: &[f64] = match self.transform {
+                Transform::Level | Transform::Log => &series.values,
+                Transform::YearOverYear => {
+                    year_over_year = series.year_over_year();
+                    &year_over_year
+                }
+            };
+            let mut visible = malevich::stat::Moments::new();
+            for (&date, &value) in series.dates.iter().zip(values) {
+                if (low..=high).contains(&date) && value.is_finite() {
+                    visible.add(value);
+                }
+            }
+            let range = self
+                .series_state
+                .mapping()
+                .map(|m| format!("{} – {}", m.format_x(low), m.format_x(high)))
+                .unwrap_or_default();
+            match (visible.mean(), visible.min(), visible.max()) {
+                (Some(mean), Some(min), Some(max)) => TextLine::from(format!(
+                    " {}  ·  visible {range}  ·  {} obs  ·  mean {mean:.2}  ·  min {min:.2}  ·  max {max:.2}",
+                    series.title,
+                    visible.count(),
+                )),
+                _ => TextLine::from(format!(
+                    " {}  ·  visible {range}  ·  no data in view",
+                    series.title
+                )),
+            }
+        } else {
+            TextLine::from(format!(
+                " {}  ·  {}  ·  latest {}  ·  1y {}",
+                series.title,
+                self.transform.label(series.kind),
+                series
+                    .latest()
+                    .map(|v| format!("{v:.2} {}", series.unit))
+                    .unwrap_or_else(|| "—".into()),
+                series
+                    .latest_year_change()
+                    .map(|c| format!("{}{c:.1}", if c >= 0.0 { "+" } else { "" }))
+                    .unwrap_or_else(|| "—".into()),
+            ))
+        };
         let keys = TextLine::from(format!(
             " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
             if self.shade_recessions { "on" } else { "off" },

@@ -28,8 +28,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   before. Because a zoom is just a domain window, M4 re-aggregates to the
   visible window every frame — `cargo run --release --example zoom
   --features ratatui` pans and zooms through millions of points with the
-  drawn line pixel-identical to plotting every point; `fred` wears the
-  full gesture set on its series view.
+  drawn line pixel-identical to plotting every point. `docs/interaction.md`
+  is the guide: the three-layer model, the gesture table, and the patterns
+  that need no library support — linked panes (a view is a value; sharing
+  it is assignment), selection → statistics (a rubber-band window
+  summarized with the ordinary stat vocabulary), follow-the-stream.
+  `fred` wears all of it on its series view: the full gesture set, a
+  year-over-year context strip linked to the main chart by mirroring the
+  x window, and a footer that describes the visible window when zoomed.
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a

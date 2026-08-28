@@ -14,6 +14,7 @@ What to read when.
   same change as the code.
 - **How do I…**
   - meet any terminal honestly — [terminal.md](terminal.md)
+  - make a chart interactive in a TUI — [interaction.md](interaction.md)
   - draw real pixels in a terminal — [pixels.md](pixels.md)
   - plot in a Jupyter notebook — [notebooks.md](notebooks.md)
   - understand the speed story — [performance.md](performance.md)

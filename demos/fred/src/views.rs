@@ -218,6 +218,25 @@ fn recession_ribbon(
     plot
 }
 
+/// The linked context strip under the series chart: the one-year change of the
+/// same series, quiet on purpose — no title, a dotted zero rule, a muted color.
+///
+/// malevich notes: linking this strip to the main chart is entirely the host's
+/// doing — a `Viewport` is a plain value, so after every mouse event fred
+/// copies the active pane's x window onto the other pane's state
+/// (`docs/interaction.md`, "Linked panes"). Nothing in this function knows a
+/// second chart exists.
+pub fn context_strip(series: &Series) -> Plot<'static> {
+    Plot::new()
+        .layer(Rule::h(0.0).color(Color::BrightBlack).dash(Dash::Dotted))
+        .layer(Line::xy(series.dates.clone(), series.year_over_year()).color(Color::Magenta))
+        .time_x()
+        .y_label(match series.kind {
+            Kind::Index => "1y %",
+            Kind::Rate => "1y Δ",
+        })
+}
+
 /// The distribution view: how the series' period changes distribute, and how its
 /// level moved by decade. Returns `(histogram, decade box plots)`.
 ///
@@ -359,5 +378,19 @@ mod tests {
         .render(&frame);
         let bare = series_chart(series, Transform::Level, LineStyle::Pixels, None).render(&frame);
         assert_ne!(shaded, bare, "toggling recessions must change the chart");
+    }
+
+    #[test]
+    fn the_context_strip_renders_and_honors_a_shared_window() {
+        let catalog = Catalog::load();
+        let series = catalog.by_id("UNRATE").unwrap();
+        let frame = malevich::Frame::plain(80, 8);
+        let full = context_strip(series).render(&frame);
+        assert!(full.contains('┤'), "the strip has axes");
+        // Linking is domain assignment: a fixed x window changes the render.
+        let (first, last) = (series.dates[0], *series.dates.last().unwrap());
+        let mid = first + (last - first) / 2.0;
+        let windowed = context_strip(series).x_domain(mid, last).render(&frame);
+        assert_ne!(full, windowed, "the mirrored window narrows the strip");
     }
 }
