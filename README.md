@@ -202,7 +202,8 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   stateful, makes it interactive without malevich ever handling input: the
   widget caches the render's cell↔data `Mapping` for hit-testing, applies a
   `Viewport` (zoom and pan as pure domain arithmetic), and interprets default
-  mouse gestures — hover crosshair with an axis-formatted readout, wheel zoom
+  mouse gestures — a crosshair that snaps to the nearest datum and reads out
+  its value axis-formatted (gaps as `—`, never interpolated), wheel zoom
   under the cursor, drag pan, rubber-band zoom — from coordinates the host
   feeds it. Zooming is just a domain window, so M4 re-aggregates per frame
   and `cargo run --release --example zoom --features ratatui` drills through

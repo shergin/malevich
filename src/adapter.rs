@@ -24,6 +24,8 @@ use ratatui_core::style::Color as RatColor;
 use ratatui_core::style::Style;
 use ratatui_core::widgets::{StatefulWidget, Widget};
 
+use crate::data::Series;
+use crate::mark::Mark;
 use crate::plot::{Frame, Mapping, Plot, Viewport};
 use crate::render::{Charset, Color, ColorMode, display_width};
 use crate::theme::Theme;
@@ -55,6 +57,7 @@ impl Plot<'_> {
             theme: Theme::DARK,
             crosshair: true,
             readout: true,
+            snap: true,
         }
     }
 }
@@ -70,6 +73,7 @@ pub struct PlotWidget<'a> {
     theme: Theme,
     crosshair: bool,
     readout: bool,
+    snap: bool,
 }
 
 impl PlotWidget<'_> {
@@ -99,10 +103,27 @@ impl PlotWidget<'_> {
 
     /// Whether a stateful render writes the cursor's data coordinates —
     /// formatted the way the axes format their own labels — in the plot
-    /// panel's top-right corner (on by default).
+    /// panel's top-right corner (on by default). With snapping on, the
+    /// readout shows the values of the data under the cursor instead; see
+    /// [`PlotWidget::snap`].
     #[must_use]
     pub fn readout(mut self, on: bool) -> Self {
         self.readout = on;
+        self
+    }
+
+    /// Whether the cursor snaps to the data (on by default). For every point-
+    /// backed [`Line`](crate::Line) and [`Points`](crate::Points) layer, a
+    /// stateful render finds the datum nearest the cursor's x inside the
+    /// visible window, highlights its cell, and the readout lists the datum's
+    /// value — `label: value` for labeled layers — instead of the cursor's
+    /// own coordinates. A gap at the snapped x reads as `—`, never an
+    /// interpolation; function-backed lines and other marks do not
+    /// participate. With `snap(false)` the readout returns to plain cursor
+    /// coordinates.
+    #[must_use]
+    pub fn snap(mut self, on: bool) -> Self {
+        self.snap = on;
         self
     }
 
@@ -635,26 +656,157 @@ impl PlotWidget<'_> {
                 }
             }
         }
+        if cursor.is_none() {
+            return;
+        }
+        let snapped = if self.snap {
+            self.snapped(state)
+        } else {
+            Vec::new()
+        };
+        // The snapped data get their cells marked brighter than the crosshair
+        // tint, so the eye lands on the datum the readout is describing.
+        let highlight = if light {
+            RatColor::DarkGray
+        } else {
+            RatColor::Gray
+        };
+        for snap in &snapped {
+            if let Some(value) = snap.value
+                && let Some(mapping) = state.mapping()
+                && let Some((column, row)) = mapping.cell_at(snap.x, value)
+            {
+                let x = state.area.x.saturating_add(column as u16);
+                let y = state.area.y.saturating_add(row as u16);
+                if x < rect.right() && y < rect.bottom() {
+                    buffer[(x, y)].set_bg(highlight);
+                }
+            }
+        }
         if self.readout
-            && cursor.is_some()
-            && let Some((x, y)) = state.cursor_data()
+            && let Some((cursor_x, cursor_y)) = state.cursor_data()
             && let Some(mapping) = state.mapping()
         {
-            let text = format!("{} · {}", mapping.format_x(x), mapping.format_y(y));
-            let width = display_width(&text) as u16;
-            if width + 2 <= rect.width {
-                let foreground = if light {
-                    RatColor::DarkGray
-                } else {
-                    RatColor::Gray
-                };
-                buffer.set_string(
-                    rect.right() - width - 1,
-                    rect.y,
-                    &text,
-                    Style::new().fg(foreground),
-                );
+            // One snapped series speaks for the x part with its own datum's
+            // position; several share the cursor's. No snap: plain cursor
+            // coordinates.
+            let x_part = match snapped.as_slice() {
+                [only] => mapping.format_x(only.x),
+                [] | [..] => mapping.format_x(cursor_x),
+            };
+            let mut parts = vec![x_part];
+            if snapped.is_empty() {
+                parts.push(mapping.format_y(cursor_y));
             }
+            for snap in &snapped {
+                let value = snap
+                    .value
+                    .map_or_else(|| "—".to_string(), |value| mapping.format_y(value));
+                parts.push(match &snap.label {
+                    Some(label) => format!("{label}: {value}"),
+                    None => value,
+                });
+            }
+            // Shed trailing series until the line fits; the x part and one
+            // value always stay together or the readout is skipped entirely.
+            loop {
+                let text = parts.join(" · ");
+                let width = display_width(&text) as u16;
+                if width + 2 <= rect.width {
+                    buffer.set_string(
+                        rect.right() - width - 1,
+                        rect.y,
+                        &text,
+                        Style::new().fg(highlight),
+                    );
+                    break;
+                }
+                if parts.len() <= 2 {
+                    break;
+                }
+                parts.pop();
+            }
+        }
+    }
+
+    /// The datum nearest the cursor's x on every point-backed Line and Points
+    /// layer, restricted to the visible x window — the snap targets.
+    fn snapped(&self, state: &PlotState) -> Vec<Snapped> {
+        let Some((cursor_x, _)) = state.cursor_data() else {
+            return Vec::new();
+        };
+        let Some(mapping) = state.mapping() else {
+            return Vec::new();
+        };
+        let window = mapping.x_domain();
+        let mut snapped = Vec::new();
+        for layer in self.plot.layers() {
+            let (x, y, label) = match layer {
+                Mark::Line(line) => match line.channels() {
+                    Some((x, y)) => (x, y, line.label.as_ref()),
+                    None => continue,
+                },
+                Mark::Points(points) => (points.x.as_ref(), &points.y, points.label.as_ref()),
+                _ => continue,
+            };
+            let Some(index) = nearest_visible(x.map(Series::as_slice), y.len(), cursor_x, window)
+            else {
+                continue;
+            };
+            snapped.push(Snapped {
+                label: label.cloned(),
+                x: x.map_or(index as f64, |series| series.as_slice()[index]),
+                value: y.as_slice().get(index).copied().filter(|v| v.is_finite()),
+            });
+        }
+        snapped
+    }
+}
+
+/// One snap target: the datum nearest the cursor's x on one layer. A `value`
+/// of `None` is a gap at the snapped position — shown as `—`, never
+/// interpolated away.
+struct Snapped {
+    label: Option<String>,
+    x: f64,
+    value: Option<f64>,
+}
+
+/// The index of the datum nearest `target` whose x lies inside the visible
+/// `window`: explicit x scans like [`crate::stat::nearest`], implicit indices
+/// round in place.
+fn nearest_visible(
+    x: Option<&[f64]>,
+    len: usize,
+    target: f64,
+    window: (f64, f64),
+) -> Option<usize> {
+    match x {
+        Some(values) => {
+            let mut best: Option<(usize, f64)> = None;
+            for (index, &value) in values.iter().enumerate() {
+                if !value.is_finite() || value < window.0 || value > window.1 {
+                    continue;
+                }
+                let distance = (value - target).abs();
+                if best.is_none_or(|(_, nearest)| distance < nearest) {
+                    best = Some((index, distance));
+                }
+            }
+            best.map(|(index, _)| index)
+        }
+        None => {
+            let mut index = target.round();
+            if index < window.0 {
+                index = target.ceil();
+            } else if index > window.1 {
+                index = target.floor();
+            }
+            if index < window.0.max(0.0) || index > window.1 {
+                return None;
+            }
+            let index = index as usize;
+            (index < len).then_some(index)
         }
     }
 }

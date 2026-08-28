@@ -144,6 +144,16 @@ impl<'a> Line<'a> {
         line
     }
 
+    /// The retained point channels — `(x, y)`, with `x` `None` for
+    /// index-positioned values — or `None` for a function-backed line.
+    /// In-crate presentation (the widget's snap readout) reads data here.
+    pub(crate) fn channels(&self) -> Option<(Option<&Series<'a>>, &Series<'a>)> {
+        match &self.source {
+            Source::Points { x, y } => Some((x.as_ref(), y)),
+            Source::Function { .. } => None,
+        }
+    }
+
     /// Sets the rendering style; [`LineStyle::Pixels`] by default.
     #[must_use]
     pub fn style(mut self, style: LineStyle) -> Line<'a> {

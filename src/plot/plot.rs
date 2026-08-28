@@ -216,6 +216,13 @@ impl<'a> Plot<'a> {
         self
     }
 
+    /// The retained layers, in draw order. In-crate presentation (the ratatui
+    /// widget's snap readout) reads series data through this.
+    #[cfg(feature = "ratatui")]
+    pub(crate) fn layers(&self) -> &[Mark<'a>] {
+        &self.layers
+    }
+
     /// Adds a mark as the next layer. Layers share scales: domains are the union of
     /// all layers' data, resolved at render time. A [`crate::mark::Bars`] layer puts
     /// a band scale on the x axis; other layers then position x against category

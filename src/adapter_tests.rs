@@ -62,7 +62,7 @@ fn heatmap_half_blocks_map_both_colors_into_ratatui_styles() {
 
 use ratatui_core::widgets::StatefulWidget;
 
-use crate::{Mouse, MouseButton, PlotState};
+use crate::{Mouse, MouseButton, PlotState, Points};
 
 fn stateful_plot() -> Plot<'static> {
     Plot::new()
@@ -311,4 +311,156 @@ fn an_automatic_viewport_renders_exactly_like_the_stateless_widget() {
     let mut state = PlotState::default();
     let stateful = render_stateful(&plot, area, &mut state);
     assert_eq!(stateless, stateful, "no cursor, no overlays, same cells");
+}
+
+fn hover_center(plot: &Plot<'_>, area: Rect, state: &mut PlotState) -> (Rect, (u16, u16)) {
+    render_stateful(plot, area, state);
+    let rect = state.plot_area().unwrap();
+    let at = (rect.x + rect.width / 2, rect.y + rect.height / 2);
+    state.on_mouse(Mouse::Moved {
+        column: at.0,
+        row: at.1,
+    });
+    (rect, at)
+}
+
+fn top_row(buffer: &Buffer, rect: Rect) -> String {
+    (rect.x..rect.right())
+        .map(|x| buffer[(x, rect.y)].symbol().to_string())
+        .collect()
+}
+
+#[test]
+fn the_readout_snaps_to_the_labeled_series() {
+    let x: Vec<f64> = (0..=10).map(f64::from).collect();
+    let y = x.clone();
+    let plot = Plot::new()
+        .layer(Line::xy(&x[..], &y[..]).label("loss"))
+        .x_domain(0.0, 10.0)
+        .y_domain(0.0, 10.0);
+    let area = Rect::new(0, 0, 60, 20);
+    let mut state = PlotState::default();
+    let (rect, _) = hover_center(&plot, area, &mut state);
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(
+        plot.widget().crosshair(false),
+        area,
+        &mut buffer,
+        &mut state,
+    );
+    let row = top_row(&buffer, rect);
+    assert!(
+        row.contains("loss:"),
+        "snapped label in the readout: {row:?}"
+    );
+
+    // The snapped datum's cell wears the highlight.
+    let (cursor_x, _) = state.cursor_data().unwrap();
+    let snap_x = cursor_x.round();
+    let mapping = state.mapping().unwrap();
+    let (column, prow) = mapping.cell_at(snap_x, snap_x).unwrap();
+    let cell = &buffer[(area.x + column as u16, area.y + prow as u16)];
+    assert_ne!(cell.bg, ratatui_core::style::Color::Reset, "snap highlight");
+}
+
+#[test]
+fn a_gap_at_the_snapped_position_reads_as_a_dash() {
+    let mut y: Vec<f64> = (0..=10).map(f64::from).collect();
+    y[5] = f64::NAN;
+    let plot = Plot::new()
+        .layer(Line::y(&y[..]).label("loss"))
+        .x_domain(0.0, 10.0)
+        .y_domain(0.0, 10.0);
+    let mut state = PlotState::default();
+    let (rect, at) = hover_center(&plot, Rect::new(0, 0, 60, 20), &mut state);
+    let (cursor_x, _) = state.data_at(at.0, at.1).unwrap();
+    assert_eq!(cursor_x.round(), 5.0, "the center cell hovers the gap");
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(
+        plot.widget().crosshair(false),
+        Rect::new(0, 0, 60, 20),
+        &mut buffer,
+        &mut state,
+    );
+    let row = top_row(&buffer, rect);
+    assert!(
+        row.contains("loss: —"),
+        "the gap is a dash, not a value: {row:?}"
+    );
+}
+
+#[test]
+fn snapping_disabled_returns_to_cursor_coordinates() {
+    let x: Vec<f64> = (0..=10).map(f64::from).collect();
+    let plot = Plot::new()
+        .layer(Line::xy(&x[..], &x[..]).label("loss"))
+        .x_domain(0.0, 10.0)
+        .y_domain(0.0, 10.0);
+    let mut state = PlotState::default();
+    let (rect, _) = hover_center(&plot, Rect::new(0, 0, 60, 20), &mut state);
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(
+        plot.widget().crosshair(false).snap(false),
+        Rect::new(0, 0, 60, 20),
+        &mut buffer,
+        &mut state,
+    );
+    let row = top_row(&buffer, rect);
+    assert!(
+        !row.contains("loss"),
+        "no snapped label without snap: {row:?}"
+    );
+    assert!(row.contains('·'), "the coordinate readout remains: {row:?}");
+}
+
+#[test]
+fn data_outside_the_zoomed_window_does_not_snap() {
+    // All data lives in x 0..10; the viewport looks at 100..110.
+    let x: Vec<f64> = (0..=10).map(f64::from).collect();
+    let plot = Plot::new()
+        .layer(Line::xy(&x[..], &x[..]).label("loss"))
+        .y_domain(0.0, 10.0);
+    let mut state = PlotState::default();
+    state.set_viewport(crate::Viewport::auto().with_x(100.0, 110.0));
+    let (rect, _) = hover_center(&plot, Rect::new(0, 0, 60, 20), &mut state);
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(
+        plot.widget().crosshair(false),
+        Rect::new(0, 0, 60, 20),
+        &mut buffer,
+        &mut state,
+    );
+    let row = top_row(&buffer, rect);
+    assert!(!row.contains("loss"), "nothing visible to snap to: {row:?}");
+    assert!(row.contains('·'), "falls back to coordinates: {row:?}");
+}
+
+#[test]
+fn every_snappable_series_joins_the_readout() {
+    let x: Vec<f64> = (0..=10).map(f64::from).collect();
+    let doubled: Vec<f64> = x.iter().map(|v| v / 2.0).collect();
+    let plot = Plot::new()
+        .layer(Line::xy(&x[..], &x[..]).label("a"))
+        .layer(Points::xy(&x[..], &doubled[..]).label("b"))
+        .layer(crate::Rule::h(3.0).label("rule"))
+        .x_domain(0.0, 10.0)
+        .y_domain(0.0, 10.0);
+    let mut state = PlotState::default();
+    let (rect, _) = hover_center(&plot, Rect::new(0, 0, 70, 22), &mut state);
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(
+        plot.widget().crosshair(false),
+        Rect::new(0, 0, 70, 22),
+        &mut buffer,
+        &mut state,
+    );
+    let row = top_row(&buffer, rect);
+    assert!(row.contains("a:"), "the line snaps: {row:?}");
+    assert!(row.contains("b:"), "the points snap: {row:?}");
+    assert!(!row.contains("rule"), "a rule is not a series: {row:?}");
 }

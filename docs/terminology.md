@@ -162,12 +162,16 @@ a `PlotState` — the interaction controller: it caches the render's `Mapping`
 for hit-testing, applies its `Viewport` on the next draw, and interprets the
 default mouse gestures (hover crosshair, wheel zoom at the cursor, left-drag
 pan, right-drag rubber-band zoom) from the backend-neutral `Mouse` vocabulary
-the host feeds it. The widget never reads the terminal: event loops, mouse
-capture, and key policy stay in the host, and the gestures are a preset over
-the public physics — a host with different policy drives `Viewport` and
-`Mapping` directly. Interaction chrome (crosshair, selection band, readout)
-draws into the buffer only; the plot value renders byte-identically with or
-without it.
+the host feeds it. The cursor snaps to the data: for every point-backed line
+and points layer, the readout lists the value of the datum nearest the
+cursor's x inside the visible window — axis-formatted, its cell highlighted,
+a gap shown as `—` rather than an interpolation (`snap(false)` returns to
+plain cursor coordinates). The widget never reads the terminal: event loops,
+mouse capture, and key policy stay in the host, and the gestures are a preset
+over the public physics — a host with different policy drives `Viewport` and
+`Mapping` directly. Interaction chrome (crosshair, snap highlights, selection
+band, readout) draws into the buffer only; the plot value renders
+byte-identically with or without it.
 
 ## Surface
 

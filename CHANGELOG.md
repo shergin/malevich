@@ -18,7 +18,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   crosshair with an axis-formatted readout, wheel zoom anchored under the
   cursor, left-drag pan, right-drag rubber-band zoom — from a
   backend-neutral `Mouse` vocabulary the host feeds it (a six-line match
-  from crossterm, shown in the docs). Overlays draw into the buffer only:
+  from crossterm, shown in the docs). The cursor snaps to the data: for
+  every point-backed line and points layer the readout lists the datum
+  nearest the cursor's x — `label: value`, axis-formatted, its cell
+  highlighted, gaps as `—` and never an interpolation — instead of the
+  cursor's own coordinates; `snap(false)` returns plain coordinates.
+  Overlays draw into the buffer only:
   the plot value and the stateless widget render byte-identically as
   before. Because a zoom is just a domain window, M4 re-aggregates to the
   visible window every frame — `cargo run --release --example zoom
