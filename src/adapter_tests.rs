@@ -561,12 +561,54 @@ mod pixels {
             column: panel.x + panel.width / 2,
             row: panel.y + panel.height / 2,
         });
+        // Step past the pace window; an immediate re-render would reuse the
+        // image already on screen.
+        std::thread::sleep(std::time::Duration::from_millis(40));
         render_pixel_frame(&mut state, area);
         let (_, hovered) = state.pixels.take().expect("block with a cursor");
         assert_ne!(
             plain, hovered,
             "crosshair, markers, and readout in the image"
         );
+    }
+
+    #[test]
+    fn renders_inside_the_pace_window_reuse_the_screen() {
+        let area = Rect::new(0, 0, 50, 18);
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_some(), "the first render always encodes");
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+
+        // A hover flood within the window: nothing new to encode or present —
+        // the image already on screen stays, and the frames cost nothing.
+        let panel = state.plot_area().unwrap();
+        state.on_mouse(Mouse::Moved {
+            column: panel.x + 2,
+            row: panel.y + 2,
+        });
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_none(), "paced: reuse, not re-encode");
+
+        // A changed viewport must never show stale, pace or no pace.
+        state.on_mouse(Mouse::ScrollUp {
+            column: panel.x + 2,
+            row: panel.y + 2,
+        });
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_some(), "a zoom bypasses the pace");
+
+        // Past the window, a cursor move renders again.
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        state.on_mouse(Mouse::Moved {
+            column: panel.x + 3,
+            row: panel.y + 3,
+        });
+        render_pixel_frame(&mut state, area);
+        assert!(state.pixels.is_some(), "the pace window expired");
     }
 
     #[test]

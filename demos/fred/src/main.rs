@@ -6,8 +6,10 @@
 //! pure function in `malevich_demos::fred::views` — the same plots render in the
 //! TUI, in headless `--render` mode, and under test.
 //!
-//! Run with `cargo run -p fred`. Headless:
-//! `cargo run -p fred -- --render [view] [SERIES]`.
+//! Run with `cargo run -p fred` — add `--release` in a pixel-capable
+//! terminal (sixel, kitty, iTerm2): the series view renders as real images,
+//! and a debug pixel frame is an order of magnitude slower (`--cells` forces
+//! glyphs). Headless: `cargo run -p fred -- --render [view] [SERIES]`.
 
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
 use std::time::Duration;
@@ -163,7 +165,7 @@ fn main() -> std::io::Result<()> {
     // 250 ms poll frames.
     let mut emit_needed = true;
     let mut was_series = false;
-    let result = loop {
+    let result = 'ui: loop {
         if app.poll_fetch() {
             emit_needed = true;
         }
@@ -195,76 +197,82 @@ fn main() -> std::io::Result<()> {
         if !event::poll(Duration::from_millis(250))? {
             continue;
         }
-        let key = match event::read()? {
-            // The charts' PlotStates interpret coordinates; this app only
-            // routes them to the pane they landed on and keeps the two panes'
-            // x windows mirrored (docs/interaction.md, "Linked panes").
-            Event::Mouse(raw) => {
-                if app.view == View::Series
-                    && let Some(input) = mouse(raw)
-                    && app.route_mouse(input)
-                {
-                    emit_needed = true;
+        // Drain the whole queue before redrawing: mouse motion arrives far
+        // faster than a pixel frame renders and transmits, so handling one
+        // event per frame would grow an unbounded lag queue — the cursor
+        // trailing seconds behind the hand. A burst collapses into one
+        // repaint of the final state; that coalescing is the throttle, and
+        // it adds no latency of its own.
+        loop {
+            match event::read()? {
+                // The charts' PlotStates interpret coordinates; this app only
+                // routes them to the pane they landed on and keeps the two
+                // panes' x windows mirrored (docs/interaction.md).
+                Event::Mouse(raw) => {
+                    if app.view == View::Series
+                        && let Some(input) = mouse(raw)
+                        && app.route_mouse(input)
+                    {
+                        emit_needed = true;
+                    }
                 }
-                continue;
+                Event::Resize(..) => emit_needed = true,
+                Event::Key(key) if key.kind == KeyEventKind::Press => {
+                    emit_needed = true;
+                    match key.code {
+                        KeyCode::Char('q') | KeyCode::Esc => break 'ui Ok(()),
+                        KeyCode::Char('r') => {
+                            app.series_state.reset_view();
+                            app.strip_state.reset_view();
+                        }
+                        // h/l pan the series chart (arrows switch views); the
+                        // strip follows through the same mirroring the mouse
+                        // path uses.
+                        KeyCode::Char('h') if app.view == View::Series => {
+                            app.series_state.pan_left();
+                            mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
+                        }
+                        KeyCode::Char('l') if app.view == View::Series => {
+                            app.series_state.pan_right();
+                            mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
+                        }
+                        KeyCode::Tab | KeyCode::Right => app.view = app.view.next(),
+                        KeyCode::BackTab | KeyCode::Left => app.view = app.view.previous(),
+                        KeyCode::Char(digit @ '1'..='5') => {
+                            app.view = View::ALL[digit as usize - '1' as usize];
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            app.selected = (app.selected + 1) % app.catalog.series.len();
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            let count = app.catalog.series.len();
+                            app.selected = (app.selected + count - 1) % count;
+                        }
+                        KeyCode::Char('t') => app.transform = app.transform.next(),
+                        KeyCode::Char('s') => app.shade_recessions = !app.shade_recessions,
+                        KeyCode::Char('c') => {
+                            app.line_style = match app.line_style {
+                                LineStyle::Pixels => LineStyle::Corners,
+                                _ => LineStyle::Pixels,
+                            };
+                        }
+                        KeyCode::Char('g') => {
+                            app.charset = match app.charset {
+                                Charset::Braille => Charset::Octants,
+                                Charset::Octants => Charset::Quadrants,
+                                Charset::Quadrants => Charset::HalfBlocks,
+                                _ => Charset::Braille,
+                            };
+                        }
+                        KeyCode::Char('f') => app.refresh_selected(),
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
-            Event::Key(key) => key,
-            Event::Resize(..) => {
-                emit_needed = true;
-                continue;
+            if !event::poll(Duration::ZERO)? {
+                break;
             }
-            _ => continue,
-        };
-        if key.kind != KeyEventKind::Press {
-            continue;
-        }
-        emit_needed = true;
-        match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-            KeyCode::Char('r') => {
-                app.series_state.reset_view();
-                app.strip_state.reset_view();
-            }
-            // h/l pan the series chart (arrows switch views); the strip
-            // follows through the same mirroring the mouse path uses.
-            KeyCode::Char('h') if app.view == View::Series => {
-                app.series_state.pan_left();
-                mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
-            }
-            KeyCode::Char('l') if app.view == View::Series => {
-                app.series_state.pan_right();
-                mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
-            }
-            KeyCode::Tab | KeyCode::Right => app.view = app.view.next(),
-            KeyCode::BackTab | KeyCode::Left => app.view = app.view.previous(),
-            KeyCode::Char(digit @ '1'..='5') => {
-                app.view = View::ALL[digit as usize - '1' as usize];
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                app.selected = (app.selected + 1) % app.catalog.series.len();
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                let count = app.catalog.series.len();
-                app.selected = (app.selected + count - 1) % count;
-            }
-            KeyCode::Char('t') => app.transform = app.transform.next(),
-            KeyCode::Char('s') => app.shade_recessions = !app.shade_recessions,
-            KeyCode::Char('c') => {
-                app.line_style = match app.line_style {
-                    LineStyle::Pixels => LineStyle::Corners,
-                    _ => LineStyle::Pixels,
-                };
-            }
-            KeyCode::Char('g') => {
-                app.charset = match app.charset {
-                    Charset::Braille => Charset::Octants,
-                    Charset::Octants => Charset::Quadrants,
-                    Charset::Quadrants => Charset::HalfBlocks,
-                    _ => Charset::Braille,
-                };
-            }
-            KeyCode::Char('f') => app.refresh_selected(),
-            _ => {}
         }
     };
     let _ = execute!(std::io::stdout(), DisableMouseCapture);

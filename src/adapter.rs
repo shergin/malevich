@@ -209,6 +209,30 @@ impl PlotWidget<'_> {
         buffer: &mut Buffer,
         state: &mut PlotState,
     ) -> bool {
+        // Self-pacing: encoding and transmitting an image panel costs
+        // milliseconds, and hover motion asks for it hundreds of times a
+        // second. Within the pace window — same rectangle, same viewport —
+        // this render only re-reserves the ground and keeps the image already
+        // on screen: at most one window of crosshair staleness, and a naive
+        // one-event-per-frame host loop stops falling behind, because the
+        // redundant frames it draws cost nearly nothing. A changed viewport
+        // or rectangle always renders: a zoomed window must never show stale.
+        let unchanged = state.pixel_area == Some(area) && state.pixel_view == Some(state.view);
+        if unchanged
+            && state
+                .pixel_pace
+                .is_some_and(|last| last.elapsed() < PIXEL_PACE)
+        {
+            for y in area.y..area.bottom() {
+                for x in area.x..area.right() {
+                    let cell = &mut buffer[(x, y)];
+                    cell.reset();
+                    cell.set_diff_option(ratatui_core::buffer::CellDiffOption::Skip);
+                }
+            }
+            state.area = area;
+            return true;
+        }
         let mut plot = self.plot.clone().viewport(&state.view);
         if let Some((cursor_x, cursor_y)) = state.cursor_data()
             && cursor_x.is_finite()
@@ -286,6 +310,8 @@ impl PlotWidget<'_> {
         state.area = area;
         state.mapping = Some(mapping);
         state.pixel_area = Some(area);
+        state.pixel_pace = Some(std::time::Instant::now());
+        state.pixel_view = Some(state.view);
         // Raw mode: LF moves down without returning the carriage; the block's
         // rows need explicit carriage returns. Image payloads never contain a
         // raw newline, so this touches only the row separators.
@@ -477,6 +503,14 @@ pub struct PlotState {
     /// triggers a fresh blanking frame.
     #[cfg(feature = "pixel")]
     pixel_area: Option<Rect>,
+    /// When the last full pixel render ran — the self-pacing clock that keeps
+    /// redundant re-encodes (hover floods, tick redraws) nearly free.
+    #[cfg(feature = "pixel")]
+    pixel_pace: Option<std::time::Instant>,
+    /// The viewport the last pixel render drew; a change bypasses the pace —
+    /// a zoomed or panned window must never show stale.
+    #[cfg(feature = "pixel")]
+    pixel_view: Option<Viewport>,
 }
 
 impl PlotState {
@@ -539,6 +573,8 @@ impl PlotState {
     pub fn invalidate_pixels(&mut self) {
         self.pixels = None;
         self.pixel_area = None;
+        self.pixel_pace = None;
+        self.pixel_view = None;
     }
 
     /// Back to the automatic view on both axes — the host's reset binding.
@@ -790,6 +826,10 @@ const ZOOM_IN: f64 = 0.8;
 const ZOOM_OUT: f64 = 1.25;
 /// The keyboard pan step, as a fraction of the visible window.
 const PAN_STEP: f64 = 0.1;
+/// The pixel render's self-pacing window (~30 full renders per second):
+/// within it, an unchanged-view render reuses the image already on screen.
+#[cfg(feature = "pixel")]
+const PIXEL_PACE: std::time::Duration = std::time::Duration::from_millis(33);
 
 /// Presents the pending pixel blocks of a frame — call after
 /// `terminal.draw` with every pixel-rendered [`PlotState`] of the current

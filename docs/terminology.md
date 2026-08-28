@@ -178,7 +178,10 @@ emits it after `terminal.draw` with `present_pixels` (one synchronized
 write; `clear_pixels` retires kitty placements on view switches).
 Interaction chrome then becomes annotation marks drawn into the image, and
 hit-testing is unchanged — the mapping answers in cells regardless of what
-fills them.
+fills them. The pixel render paces itself (~30 full encodes per second):
+within the window, an unchanged-view render reuses the image already on
+screen, so hover floods and tick redraws cost nearly nothing; a changed
+viewport or rectangle always renders.
 
 ## Surface
 
@@ -261,8 +264,10 @@ Live data machinery, kept at the edge of the crate: `stream::Ring` (a
 sliding window shared across threads — the one lock in the library),
 `stream::Rate` (counters into deltas), and `stream::Live` (in-place repaint:
 cursor up, erase down, one buffered write — flicker-free, scrollback-safe,
-never owning the screen). The core stays pure; only this module knows time
-passes.
+never owning the screen). The core stays pure; time enters only at the rims —
+this module, and the ratatui widget's pixel pacing (below), which uses a
+monotonic clock to skip redundant re-encodes. Every render that does run
+remains a pure function of its inputs.
 
 ## Gap
 

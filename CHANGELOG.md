@@ -52,9 +52,15 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   view switches. Interaction chrome upgrades to annotation marks drawn
   into the image — anti-aliased crosshair rules, snap markers, in-panel
   readout — with domains pinned to the last frame so hovering never
-  jitters an automatic axis. fred renders its series view this way
-  wherever the terminal speaks sixel, kitty, or iTerm2 (`--cells` opts
-  out).
+  jitters an automatic axis. The pixel render paces itself: within a
+  ~33 ms window an unchanged-view render reuses the image already on
+  screen, so hover floods and tick redraws cost nearly nothing and even
+  a one-event-per-frame host loop stops falling behind (a changed
+  viewport always renders — a zoomed window never shows stale). fred
+  renders its series view this way wherever the terminal speaks sixel,
+  kitty, or iTerm2 (`--cells` opts out), and both fred and the zoom
+  example drain their event queues before redrawing, collapsing input
+  bursts into one repaint.
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a

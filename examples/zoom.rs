@@ -82,7 +82,7 @@ fn main() -> std::io::Result<()> {
     let mut terminal = ratatui::init();
     execute!(stdout(), EnableMouseCapture)?;
     let mut state = PlotState::default();
-    let result = loop {
+    let result = 'ui: loop {
         terminal.draw(|frame| {
             let window = state
                 .viewport()
@@ -101,30 +101,39 @@ fn main() -> std::io::Result<()> {
                 &mut state,
             );
         })?;
-        match event::read()? {
-            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-                KeyCode::Char('r') => state.reset_view(),
-                KeyCode::Char('+') | KeyCode::Char('=') => {
-                    state.zoom_in();
-                }
-                KeyCode::Char('-') => {
-                    state.zoom_out();
-                }
-                KeyCode::Left => {
-                    state.pan_left();
-                }
-                KeyCode::Right => {
-                    state.pan_right();
+        // Drain the whole queue before redrawing: key repeat and mouse
+        // motion arrive faster than a ten-million-point frame renders, and
+        // handling one event per frame would grow an unbounded lag queue —
+        // a burst collapses into one repaint of the final state.
+        loop {
+            match event::read()? {
+                Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => break 'ui Ok(()),
+                    KeyCode::Char('r') => state.reset_view(),
+                    KeyCode::Char('+') | KeyCode::Char('=') => {
+                        state.zoom_in();
+                    }
+                    KeyCode::Char('-') => {
+                        state.zoom_out();
+                    }
+                    KeyCode::Left => {
+                        state.pan_left();
+                    }
+                    KeyCode::Right => {
+                        state.pan_right();
+                    }
+                    _ => {}
+                },
+                Event::Mouse(raw) => {
+                    if let Some(input) = mouse(raw) {
+                        state.on_mouse(input);
+                    }
                 }
                 _ => {}
-            },
-            Event::Mouse(raw) => {
-                if let Some(input) = mouse(raw) {
-                    state.on_mouse(input);
-                }
             }
-            _ => {}
+            if !event::poll(std::time::Duration::ZERO)? {
+                break;
+            }
         }
     };
     execute!(stdout(), DisableMouseCapture)?;

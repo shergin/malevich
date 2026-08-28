@@ -158,6 +158,19 @@ domains pinned to the last frame so hovering cannot jitter an automatic
 axis. fred does all of this when its terminal speaks a protocol
 (`--cells` opts out).
 
+Two rates keep it smooth. **The widget paces itself**: encoding and
+transmitting a panel costs milliseconds, and hover motion asks for it
+hundreds of times a second — so within a ~33 ms window, an
+unchanged-view render reuses the image already on screen (at most one
+window of crosshair staleness; a changed viewport or rectangle always
+renders). Even a loop that redraws per event stays responsive, because
+the redundant frames cost nearly nothing. **The host should still drain
+its event queue before redrawing** — read until `poll(ZERO)` is empty,
+then draw once — so a burst of input collapses into one repaint of the
+final state instead of queueing behind full frames; fred and the zoom
+example both do. And build with `--release` when pixels are on: a debug
+frame renders an order of magnitude slower.
+
 ## What stays out
 
 The widget never reads the terminal; the core never sees input; there is no
