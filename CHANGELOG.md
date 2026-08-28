@@ -58,13 +58,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   screen, so hover floods and tick redraws cost nearly nothing and even
   a one-event-per-frame host loop stops falling behind (a changed
   viewport always renders — a zoomed window never shows stale). And
-  repaints never flicker, because nothing is ever cleared: each panel's
-  kitty image travels under a stable per-panel image id *and* a fixed
-  placement id — one placement per (image, placement) pair is the
-  protocol's replacement rule; an unspecified placement id would stack a
-  new placement per repaint — so the terminal swaps old for new
-  atomically when the retransmission lands, while a panel whose content
-  already matches the screen is not transmitted at all;
+  repaints never flicker and never rely on replacement semantics: each
+  panel's kitty image data travels transmit-only (`a=t`) under a stable
+  per-panel image id, and the presenter then creates a fresh placement
+  under an alternating placement id before retiring the one on screen —
+  create-before-delete in one synchronized write, so there is no gap on
+  any terminal, including those whose same-placement replacement
+  misbehaves; a panel whose content already matches the screen is not
+  transmitted at all;
   `clear_pixels` retires images by id, never touching other
   applications'. fred
   renders its series view this way wherever the terminal speaks sixel,
@@ -79,11 +80,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   streaming inflater — block output positions drift, so matches still
   straddled the drain boundaries where Zig ≤0.15's flate (Ghostty ≤1.3.1)
   aborts a fixed-Huffman transmission mid-match; a real chart stream
-  carried four hundred straddling matches, which is why large kitty
-  panels froze on affected terminals while small ones squeaked through.
-  Costs one shortened match per 32 KiB (+0.2% on a measured chart
-  stream); an emission-site assertion and a five-window regression test
-  pin the invariant.
+  carried four hundred straddling matches. (Measured against Zig 0.15.2's
+  exact buffered decode path, those particular streams happened to
+  survive — the truncation is defense in depth against the documented
+  abort, not the explanation of any observed freeze.) Costs one shortened
+  match per 32 KiB (+0.2% on a measured chart stream); an emission-site
+  assertion and a five-window regression test pin the invariant.
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a

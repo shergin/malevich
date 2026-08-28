@@ -525,10 +525,16 @@ pub struct PlotState {
     #[cfg(feature = "pixel")]
     pixel_area: Option<Rect>,
     /// This panel's stable kitty image id: retransmitting under it replaces
-    /// the on-screen image atomically, which is what makes repaints
-    /// flicker-free. Assigned on the first pixel render, kept for life.
+    /// the stored image data. Assigned on the first pixel render, kept for
+    /// life.
     #[cfg(feature = "pixel")]
     pixel_id: Option<u32>,
+    /// The kitty placement currently on screen (0 = none): presents
+    /// alternate between placement ids 1 and 2 — create the new placement,
+    /// then delete the old — so a repaint never relies on same-placement
+    /// replacement semantics and never blinks through a gap.
+    #[cfg(feature = "pixel")]
+    pixel_placement: u32,
     /// What the last [`present_pixels`] put on screen (rectangle, content
     /// hash): an identical re-render is not queued again — unchanged panels
     /// cost no bandwidth and cause no repaint.
@@ -901,12 +907,38 @@ pub fn present_pixels(
     states: &mut [&mut PlotState],
 ) -> std::io::Result<()> {
     use std::fmt::Write as _;
-    let _ = graphics;
+    let kitty = graphics.protocol == crate::pixel::Protocol::Kitty;
     let mut blocks = String::new();
     for state in states.iter_mut() {
         if let Some((rect, block, hash)) = state.pixels.take() {
             let _ = write!(blocks, "\x1b[{};{}H", rect.y + 1, rect.x + 1);
             blocks.push_str(&block);
+            // Kitty: the block only transmitted the data (`a=t`). Place it
+            // under the alternate placement id, then retire the placement
+            // previously on screen — create before delete, so the swap never
+            // shows a gap, and no same-placement replacement semantics are
+            // ever relied on.
+            if kitty
+                && let Some(id) = state.pixel_id
+                && let Some(mapping) = state.mapping()
+                && let Some((left, top, columns, rows)) = mapping.plot_area()
+            {
+                let placement = if state.pixel_placement == 1 { 2 } else { 1 };
+                let _ = write!(
+                    blocks,
+                    "\x1b[{};{}H\x1b_Ga=p,i={id},p={placement},c={columns},r={rows},C=1,q=2\x1b\\",
+                    rect.y as usize + top + 1,
+                    rect.x as usize + left + 1,
+                );
+                if state.pixel_placement != 0 {
+                    let _ = write!(
+                        blocks,
+                        "\x1b_Ga=d,d=i,i={id},p={},q=2\x1b\\",
+                        state.pixel_placement
+                    );
+                }
+                state.pixel_placement = placement;
+            }
             state.pixel_sent = Some((rect, hash));
         }
     }
@@ -939,7 +971,7 @@ pub fn clear_pixels(
     if graphics.protocol == crate::pixel::Protocol::Kitty {
         for state in states.iter() {
             if let Some(id) = state.pixel_id
-                && state.pixel_sent.is_some()
+                && state.pixel_placement != 0
             {
                 let _ = write!(goodbye, "\x1b_Ga=d,d=I,i={id},q=2\x1b\\");
             }
@@ -947,6 +979,7 @@ pub fn clear_pixels(
     }
     for state in states.iter_mut() {
         state.invalidate_pixels();
+        state.pixel_placement = 0;
     }
     if goodbye.is_empty() {
         return Ok(());

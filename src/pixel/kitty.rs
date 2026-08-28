@@ -36,14 +36,16 @@ pub(crate) fn encode(image: &Image) -> String {
 /// speed knob — Retina-sized panels cost the terminal real decode and
 /// upload time) and stays correct even when cell-size detection was off.
 ///
-/// An `id` makes the transmission a replacement: the image data replaces
-/// what the id held, and the fixed placement id (`p=1`) makes the placement
-/// replace too — one placement per (image, placement) pair is the protocol's
-/// rule, and terminals (Ghostty included) treat an *unspecified* placement id
-/// as "add another placement", which would stack every repaint on screen.
-/// With both keys the swap is atomic: no visible gap, no separate delete.
-/// Interactive hosts assign one stable id per panel; scrollback strings stay
-/// id-less, since each print is a new image.
+/// An `id` switches the command to transmit-only (`a=t`): the image data
+/// replaces what the id held, and *no placement is created* — the
+/// interactive presenter places it separately (`a=p` with an alternating
+/// placement id, then deletes the previous placement), because relying on
+/// same-(image, placement) replacement semantics proved fragile in the
+/// field while create-and-delete is universally solid. Keeping the
+/// placement out of these bytes also keeps them content-stable, so an
+/// unchanged panel hashes equal and is never retransmitted. Scrollback
+/// strings stay id-less `a=T`, transmit-and-display — each print is a new
+/// image there.
 pub(crate) fn encode_rgba(
     width: usize,
     height: usize,
@@ -64,14 +66,18 @@ pub(crate) fn encode_rgba(
         let more = u8::from(chunks.peek().is_some());
         out.push_str("\x1b_G");
         if first {
-            let _ = write!(out, "a=T,f=32,o=z,s={width},v={height},");
-            if let Some(id) = id {
-                let _ = write!(out, "i={id},p=1,");
+            match id {
+                Some(id) => {
+                    let _ = write!(out, "a=t,f=32,o=z,s={width},v={height},i={id},q=2,");
+                }
+                None => {
+                    let _ = write!(out, "a=T,f=32,o=z,s={width},v={height},");
+                    if placement.0 > 0 && placement.1 > 0 {
+                        let _ = write!(out, "c={},r={},", placement.0, placement.1);
+                    }
+                    out.push_str("C=1,q=2,");
+                }
             }
-            if placement.0 > 0 && placement.1 > 0 {
-                let _ = write!(out, "c={},r={},", placement.0, placement.1);
-            }
-            out.push_str("C=1,q=2,");
             first = false;
         }
         let _ = write!(out, "m={more};");

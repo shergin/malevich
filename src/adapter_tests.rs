@@ -562,8 +562,8 @@ mod pixels {
         assert!(block.contains("\x1b_G"), "kitty APC in the block");
         assert!(block.contains(",i="), "a stable image id rides the block");
         assert!(
-            block.contains(",p=1,"),
-            "a fixed placement id makes repaints replace, not stack"
+            block.contains("a=t") && !block.contains("a=T"),
+            "the block transmits data only; the presenter places it"
         );
         assert!(block.contains("\r\n"), "raw-mode row separators");
         assert!(
@@ -661,11 +661,35 @@ mod pixels {
         assert!(text.starts_with("\x1b[?2026h"), "synchronized begin");
         assert!(text.ends_with("\x1b[?2026l"), "synchronized end");
         assert!(
+            text.contains("a=p,i=") && text.contains(",p=1,"),
+            "the first present creates placement 1: {text:?}"
+        );
+        assert!(
             !text.contains("a=d"),
-            "no delete — id retransmission replaces atomically"
+            "nothing to retire on the first present"
         );
         assert!(text.contains("\x1b[2;3H"), "absolute move to the area");
         assert!(state.pixels.is_none(), "the block is consumed");
+
+        // A changed frame flips to placement 2 and retires placement 1 —
+        // create before delete, never a gap, no replacement semantics.
+        let panel = state.plot_area().unwrap();
+        state.on_mouse(Mouse::ScrollUp {
+            column: panel.x + 2,
+            row: panel.y + 2,
+        });
+        render_pixel_frame(&mut state, Rect::new(2, 1, 50, 18));
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        let text = String::from_utf8_lossy(&out);
+        assert!(text.contains(",p=2,"), "the alternate placement: {text:?}");
+        let place = text.find("a=p").expect("a placement");
+        let retire = text.find("a=d").expect("a retirement");
+        assert!(place < retire, "create before delete");
+        assert!(
+            text.contains("d=i,") && text.contains(",p=1,"),
+            "placement 1 retired"
+        );
 
         let mut quiet: Vec<u8> = Vec::new();
         present_pixels(&mut quiet, &kitty(), &mut [&mut state]).unwrap();
