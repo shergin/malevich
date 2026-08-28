@@ -5,6 +5,15 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.19.0 (White on White) — 2026-08-27
+
+The ink release. The pixel canvas learns coverage, and everything drawn on
+it turns from stamped rectangles into graded light: anti-aliased strokes,
+glow, translucent washes, dashes that flow through joints, gradient
+trajectories, density scatters, bilinear heatmaps. Every effect degrades
+honestly on glyph targets, the wire format is byte-stable, and the whole
+gallery wears the new ink.
+
 - The pixel canvas learned coverage: pixels are straight RGBA with alpha
   as coverage, and everything drawn on it is anti-aliased — strokes with
   round caps and sub-pixel endpoints, discs, rings. Fringes composite
