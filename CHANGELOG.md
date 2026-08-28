@@ -43,7 +43,8 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   two-minute window while the rings fill. `pan_left`/`pan_right` join the
   keyboard sugar (h/l in fred, arrow keys in the zoom example), and
   gestures stacked between renders compound instead of re-reading a stale
-  mapping. And with the `pixel` feature, the interactive widget draws
+  mapping — drag pans included, which an event-drained burst previously
+  collapsed to a single step. And with the `pixel` feature, the interactive widget draws
   real images: `widget().graphics(g)` reserves the area in the buffer
   (skip cells, fresh ground on layout change) and stores the hybrid
   chrome-plus-image block in the `PlotState`; `present_pixels` emits the

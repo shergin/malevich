@@ -184,6 +184,41 @@ fn a_left_drag_pans_the_view() {
 }
 
 #[test]
+fn drags_stacked_between_renders_compound() {
+    let plot = stateful_plot();
+    let mut state = PlotState::default();
+    render_stateful(&plot, Rect::new(0, 0, 50, 18), &mut state);
+    let rect = state.plot_area().unwrap();
+    let start = (rect.x + rect.width / 2, rect.y + rect.height / 2);
+    let per_cell = 10.0 / f64::from(rect.width);
+
+    // An event-drained burst: two drags against one stale mapping. They
+    // must compound to six cells of pan, not overwrite each other.
+    state.on_mouse(Mouse::Down {
+        button: MouseButton::Left,
+        column: start.0,
+        row: start.1,
+    });
+    state.on_mouse(Mouse::Drag {
+        button: MouseButton::Left,
+        column: start.0 + 3,
+        row: start.1,
+    });
+    state.on_mouse(Mouse::Drag {
+        button: MouseButton::Left,
+        column: start.0 + 6,
+        row: start.1,
+    });
+    let (lo, hi) = state.viewport().x().expect("panning fixed x");
+    let expected = -6.0 * per_cell;
+    assert!(
+        (lo - expected).abs() < 1e-9,
+        "six cells of drag compound: lo={lo}, expected {expected}"
+    );
+    assert!((hi - lo - 10.0).abs() < 1e-9, "the span is preserved");
+}
+
+#[test]
 fn a_right_drag_zooms_to_the_selection_and_a_click_does_not() {
     let plot = stateful_plot();
     let mut state = PlotState::default();

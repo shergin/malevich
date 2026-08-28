@@ -803,12 +803,29 @@ impl PlotState {
         }
         // Dragging right pulls the data right, so the window slides left;
         // dragging down pulls the data down, so the window slides up (y grows
-        // upward while rows grow downward).
-        let mut view = mapping.viewport();
-        view = view.pan_x(-dx / columns.max(1) as f64);
-        view = view.pan_y(dy / rows.max(1) as f64);
-        self.view = view;
+        // upward while rows grow downward). Seed from the view's own windows
+        // where fixed: drags stacked between renders — an event-drained burst
+        // is many drags against one stale mapping — must compound, not
+        // overwrite each other.
+        let view = self.seeded(mapping);
+        self.view = view
+            .pan_x(-dx / columns.max(1) as f64)
+            .pan_y(dy / rows.max(1) as f64);
         true
+    }
+
+    /// The mapping's viewport with every window the view has already fixed
+    /// kept as-is — the both-axes seeding for gestures that grab the whole
+    /// view (drag pan), so stacking between renders compounds.
+    fn seeded(&self, mapping: &Mapping) -> Viewport {
+        let mut seeded = mapping.viewport();
+        if let Some((low, high)) = self.view.x() {
+            seeded = seeded.with_x(low, high);
+        }
+        if let Some((low, high)) = self.view.y() {
+            seeded = seeded.with_y(low, high);
+        }
+        seeded
     }
 
     /// Zooms to a released rubber-band selection; a selection under two cells
