@@ -491,3 +491,124 @@ fn keyboard_pan_shifts_the_window_and_ignores_bands() {
     render_stateful(&bars, Rect::new(0, 0, 40, 12), &mut bands);
     assert!(!bands.pan_right(), "a bands axis never pans");
 }
+
+#[cfg(feature = "pixel")]
+mod pixels {
+    use super::*;
+    use crate::pixel::{Graphics, Protocol};
+    use crate::{Mouse, PlotState, clear_pixels, present_pixels};
+    use ratatui_core::buffer::CellDiffOption;
+    use ratatui_core::widgets::StatefulWidget;
+
+    fn kitty() -> Graphics {
+        Graphics::new(Protocol::Kitty)
+    }
+
+    fn render_pixel_frame(state: &mut PlotState, area: Rect) -> Buffer {
+        let plot = stateful_plot();
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+        StatefulWidget::render(plot.widget().graphics(kitty()), area, &mut buffer, state);
+        buffer
+    }
+
+    #[test]
+    fn a_pixel_render_reserves_the_ground_and_stores_the_block() {
+        let area = Rect::new(2, 1, 50, 18);
+        let mut state = PlotState::default();
+        let buffer = render_pixel_frame(&mut state, area);
+
+        // First frame: fresh ground — real spaces, not skipped.
+        let corner = &buffer[(area.x, area.y)];
+        assert_eq!(corner.symbol(), " ");
+        assert_eq!(corner.diff_option, CellDiffOption::None, "fresh ground");
+
+        let (rect, block) = state.pixels.clone().expect("a pending block");
+        assert_eq!(rect, area);
+        assert!(block.contains("\x1b_G"), "kitty APC in the block");
+        assert!(block.contains("\r\n"), "raw-mode row separators");
+        assert!(
+            !block.replace("\r\n", "").contains('\n'),
+            "no bare newlines remain"
+        );
+
+        // The mapping hit-tests the panel at cell resolution.
+        let panel = state.plot_area().expect("a plot panel");
+        assert!(
+            state
+                .data_at(panel.x + panel.width / 2, panel.y + panel.height / 2)
+                .is_some()
+        );
+
+        // Second frame at the same rectangle: the ground is already clear,
+        // cells skip so the diff leaves the image alone.
+        let buffer = render_pixel_frame(&mut state, area);
+        assert_eq!(
+            buffer[(area.x, area.y)].diff_option,
+            CellDiffOption::Skip,
+            "steady-state frames skip"
+        );
+    }
+
+    #[test]
+    fn the_cursor_draws_interaction_chrome_into_the_image() {
+        let area = Rect::new(0, 0, 50, 18);
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, area);
+        let (_, plain) = state.pixels.take().expect("block without a cursor");
+
+        let panel = state.plot_area().unwrap();
+        state.on_mouse(Mouse::Moved {
+            column: panel.x + panel.width / 2,
+            row: panel.y + panel.height / 2,
+        });
+        render_pixel_frame(&mut state, area);
+        let (_, hovered) = state.pixels.take().expect("block with a cursor");
+        assert_ne!(
+            plain, hovered,
+            "crosshair, markers, and readout in the image"
+        );
+    }
+
+    #[test]
+    fn present_consumes_the_blocks_in_one_synchronized_swap() {
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, Rect::new(2, 1, 50, 18));
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        let text = String::from_utf8_lossy(&out);
+        assert!(text.starts_with("\x1b[?2026h"), "synchronized begin");
+        assert!(text.ends_with("\x1b[?2026l"), "synchronized end");
+        assert!(text.contains("\x1b_Ga=d,d=A\x1b\\"), "kitty replace");
+        assert!(text.contains("\x1b[2;3H"), "absolute move to the area");
+        assert!(state.pixels.is_none(), "the block is consumed");
+
+        let mut quiet: Vec<u8> = Vec::new();
+        present_pixels(&mut quiet, &kitty(), &mut [&mut state]).unwrap();
+        assert!(quiet.is_empty(), "nothing pending, nothing written");
+    }
+
+    #[test]
+    fn clear_pixels_speaks_only_kitty() {
+        let mut out: Vec<u8> = Vec::new();
+        clear_pixels(&mut out, &kitty()).unwrap();
+        assert_eq!(out, b"\x1b_Ga=d,d=A\x1b\\");
+        let mut sixel: Vec<u8> = Vec::new();
+        clear_pixels(&mut sixel, &Graphics::new(Protocol::Sixel)).unwrap();
+        assert!(sixel.is_empty());
+    }
+
+    #[test]
+    fn invalidation_forces_fresh_ground() {
+        let area = Rect::new(0, 0, 50, 18);
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, area);
+        render_pixel_frame(&mut state, area);
+        state.invalidate_pixels();
+        let buffer = render_pixel_frame(&mut state, area);
+        assert_eq!(
+            buffer[(area.x, area.y)].diff_option,
+            CellDiffOption::None,
+            "after invalidation the ground is repainted"
+        );
+    }
+}

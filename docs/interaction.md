@@ -125,6 +125,39 @@ follow until `reset()`. sysmon pins its dashboard axes this way: the full
 two-minute window holds still from the first sample instead of rescaling
 while the rings fill.
 
+## Real pixels
+
+With the `pixel` feature, an interactive widget can draw its panel as a
+real image — sixel, kitty, iTerm2 — while everything above keeps working:
+
+```rust
+// Before ratatui::init(): the probe reads replies raw mode would swallow.
+let graphics = malevich::pixel::Capabilities::detect_for(&std::io::stdout()).best();
+// Render: same stateful widget, plus the protocol.
+frame.render_stateful_widget(plot.widget().graphics(g), area, &mut chart);
+// After terminal.draw: emit the pending image blocks in one synchronized swap.
+malevich::present_pixels(&mut std::io::stdout(), &g, &mut [&mut chart])?;
+```
+
+The widget reserves its rectangle in the buffer — spaces, skip-marked so
+ratatui's diff never writes under the image, with one fresh-ground frame
+whenever the rectangle changes — and stores the encoded block in the
+`PlotState`. `present_pixels` writes exactly what it is told to the handle
+it is given (the `stream::Live` precedent): emit on state changes, not on
+a timer, and the previous transmission stays on screen through quiet
+frames. `clear_pixels` says goodbye to kitty placements when a view
+switch leaves the charts (cell repaints cannot cover them — they live on
+their own layer); pair it with `invalidate_pixels` so the return paints
+fresh ground.
+
+Hit-testing, zoom, pan, and snapping are unchanged — the mapping answers
+in cells regardless of what fills them. The interaction chrome upgrades:
+crosshair rules, snap markers, and the readout render *into the image* as
+annotation marks — anti-aliased, never palette-consuming — with the
+domains pinned to the last frame so hovering cannot jitter an automatic
+axis. fred does all of this when its terminal speaks a protocol
+(`--cells` opts out).
+
 ## What stays out
 
 The widget never reads the terminal; the core never sees input; there is no

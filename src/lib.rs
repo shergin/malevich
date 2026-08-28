@@ -65,6 +65,9 @@
 //!   `Buffer`; rendered stateful with a [`PlotState`], it becomes interactive:
 //!   hit-testing through the cached [`Mapping`], zoom and pan through a
 //!   [`Viewport`], and default mouse gestures fed via [`PlotState::on_mouse`].
+//!   Combined with `pixel`, the widget draws its panel as a real image
+//!   ([`PlotWidget::graphics`], emitted by [`present_pixels`]) with the
+//!   interaction chrome rendered into the image itself.
 //! - `serde` — every spec type (plots, marks, scales, themes, frames)
 //!   round-trips through serde; `Document` is the versioned persistent envelope,
 //!   gaps survive JSON as `null`, and function-backed lines refuse to serialize
@@ -97,6 +100,8 @@ mod theme;
 
 #[cfg(feature = "ratatui")]
 pub use adapter::{Mouse, MouseButton, PlotState, PlotWidget};
+#[cfg(all(feature = "ratatui", feature = "pixel"))]
+pub use adapter::{clear_pixels, present_pixels};
 #[cfg(feature = "serde")]
 pub use document::{Document, DocumentKind};
 pub use error::{Error, Result};

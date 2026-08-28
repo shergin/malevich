@@ -27,6 +27,8 @@ mod sixel;
 
 pub(crate) use canvas::PixelCanvas;
 pub use capabilities::{Capabilities, Source};
+#[cfg(feature = "ratatui")]
+pub(crate) use render::try_render_mapped;
 pub(crate) use render::{render, try_render};
 
 /// The image protocol to emit.

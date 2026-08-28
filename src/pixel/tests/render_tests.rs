@@ -219,7 +219,7 @@ fn smooth_cells_read_as_a_continuous_field() {
         let cells = Cells::matrix(2, values);
         let cells = if smooth { cells.smooth() } else { cells };
         let plot = Plot::new().layer(cells);
-        let (_, canvas, rect) = plot
+        let (_, canvas, rect, _) = plot
             .try_rasterize_hybrid(&Frame::plain(24, 12), (8, 16), None)
             .unwrap();
         let (cw, ch) = canvas.cell();

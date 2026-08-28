@@ -209,7 +209,10 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   a zoomed ten-million-point frame renders in under 19 ms on the
   [recorded baseline](BENCHMARKS.md) — past 50 fps — and
   `cargo run --release --example zoom --features ratatui` is that claim,
-  live. [`demos/`](demos/) holds full apps: `fred`, a
+  live. With the `pixel` feature too, the same interactive widget draws
+  its panel as a real image — sixel, kitty, iTerm2 — crosshair and all,
+  rendered into the image as anti-aliased marks
+  ([docs/interaction.md](docs/interaction.md)). [`demos/`](demos/) holds full apps: `fred`, a
   five-view Federal Reserve data browser wearing the full gesture set;
   `sysmon`, a live system monitor; and `learn`, a two-moons MLP trained by
   [topos](https://crates.io/crates/topos), charting as it trains.

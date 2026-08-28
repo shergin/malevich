@@ -28,26 +28,39 @@ pub(crate) fn try_render(
     graphics: &Graphics,
     column: usize,
 ) -> crate::Result<String> {
+    try_render_mapped(plot, frame, graphics, column).map(|(block, _)| block)
+}
+
+/// [`try_render`] plus the render's resolved [`Mapping`] — the one-pass seam
+/// the ratatui widget's pixel path caches its hit-testing geometry from.
+pub(crate) fn try_render_mapped(
+    plot: &Plot<'_>,
+    frame: &Frame,
+    graphics: &Graphics,
+    column: usize,
+) -> crate::Result<(String, crate::plot::Mapping)> {
     let cell = (graphics.cell_size.0 as usize, graphics.cell_size.1 as usize);
     validate_geometry(frame, graphics.protocol, cell)?;
     if cell.0 == 0 || cell.1 == 0 {
         // No pixel geometry to draw into: degrade to ordinary cell output.
-        return at_column(&plot.try_render_unvalidated(frame)?, column);
+        let block = at_column(&plot.try_render_unvalidated(frame)?, column)?;
+        return Ok((block, plot.mapping(frame)));
     }
-    let (surface, canvas, rect) = plot.try_rasterize_hybrid(frame, cell, graphics.stroke)?;
+    let (surface, canvas, rect, mapping) =
+        plot.try_rasterize_hybrid(frame, cell, graphics.stroke)?;
     // Full-width rows: the block owns its whole rectangle, so reprinting
     // it in place replaces the previous block entirely (a shorter title
     // erases the longer one it lands on).
     let mut out = at_column(&surface.try_encode_full_width(frame.color)?, column)?;
     if rect.columns == 0 || rect.rows == 0 {
-        return Ok(out);
+        return Ok((out, mapping));
     }
     let payload = if graphics.protocol == Protocol::Sixel {
         // Sixel has no alpha channel: it consumes the thresholded image,
         // where only solid ink survives.
         let image = crop(&canvas, rect)?;
         if image.width == 0 || image.height == 0 {
-            return Ok(out);
+            return Ok((out, mapping));
         }
         sixel::encode(&image)
     } else {
@@ -55,7 +68,7 @@ pub(crate) fn try_render(
         // no intermediate buffer, anti-aliased coverage intact.
         let (width, height, rgba) = crop_rgba(&canvas, rect)?;
         if width == 0 || height == 0 {
-            return Ok(out);
+            return Ok((out, mapping));
         }
         match graphics.protocol {
             Protocol::Kitty => kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba),
@@ -100,7 +113,7 @@ pub(crate) fn try_render(
     }
     out.push_str(&payload);
     out.push_str("\x1b8");
-    Ok(out)
+    Ok((out, mapping))
 }
 
 fn validate_geometry(frame: &Frame, protocol: Protocol, cell: (usize, usize)) -> crate::Result<()> {

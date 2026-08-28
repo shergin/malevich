@@ -63,6 +63,9 @@ struct App {
     /// Which pane a drag started in (`true` = strip): drags stay with their
     /// pane even when the cursor crosses into the other one.
     drag_in_strip: Option<bool>,
+    /// The detected pixel protocol, when the terminal speaks one: the series
+    /// charts render as real images through the same stateful widgets.
+    graphics: Option<malevich::pixel::Graphics>,
 }
 
 /// The linked-panes pattern: the x view is a value, so sharing it is
@@ -121,6 +124,7 @@ fn main() -> std::io::Result<()> {
         strip_state: PlotState::default(),
         strip_shown: false,
         drag_in_strip: None,
+        graphics: None,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -128,15 +132,65 @@ fn main() -> std::io::Result<()> {
         return render_headless(&mut app, &args[1..]);
     }
 
+    // Real pixels where the terminal speaks them. Probe before raw mode: the
+    // capability query reads terminal replies, which the event loop below
+    // would swallow as input. `--cells` opts out.
+    if !args.iter().any(|argument| argument == "--cells") {
+        app.graphics = malevich::pixel::Capabilities::detect_for(&std::io::stdout()).best();
+    }
+    // Standard density on Retina cells (except sixel, which cannot scale a
+    // placement): the raster costs by area at every stage, and the placement
+    // rectangle stretches the image back over the panel. A slightly heavier
+    // stroke keeps the ink weight the chart had at native density.
+    if let Some(graphics) = &mut app.graphics
+        && graphics.protocol != malevich::pixel::Protocol::Sixel
+    {
+        let (w, h) = graphics.cell_size;
+        if w > 10 && h > 20 {
+            graphics.cell_size = (w / 2, h / 2);
+            let derived = (usize::from(graphics.cell_size.1) + 8) / 16;
+            graphics.stroke = Some((derived + 1).min(4) as u8);
+        }
+    }
+
     let mut terminal = ratatui::init();
     // The mouse drives the series chart: hover crosshair, wheel zoom, drag
     // pan, right-drag zoom. Capture is the host's to enable and release.
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
     let mut list_state = ListState::default();
+    // Repaint the image on state change, not on a timer: when nothing
+    // changed, the previous transmission stays on screen through the
+    // 250 ms poll frames.
+    let mut emit_needed = true;
+    let mut was_series = false;
     let result = loop {
-        app.poll_fetch();
+        if app.poll_fetch() {
+            emit_needed = true;
+        }
         list_state.select(Some(app.selected));
         terminal.draw(|frame| app.draw(frame, &mut list_state))?;
+
+        if let Some(graphics) = &app.graphics {
+            if app.view == View::Series {
+                if emit_needed {
+                    malevich::present_pixels(
+                        &mut std::io::stdout(),
+                        graphics,
+                        &mut [&mut app.series_state, &mut app.strip_state],
+                    )?;
+                    emit_needed = false;
+                }
+            } else if was_series {
+                // Kitty images live on their own layer; cell repaints cannot
+                // cover them. Returning to the series view starts from fresh
+                // ground and a fresh emission.
+                malevich::clear_pixels(&mut std::io::stdout(), graphics)?;
+                app.series_state.invalidate_pixels();
+                app.strip_state.invalidate_pixels();
+                emit_needed = true;
+            }
+        }
+        was_series = app.view == View::Series;
 
         if !event::poll(Duration::from_millis(250))? {
             continue;
@@ -148,17 +202,23 @@ fn main() -> std::io::Result<()> {
             Event::Mouse(raw) => {
                 if app.view == View::Series
                     && let Some(input) = mouse(raw)
+                    && app.route_mouse(input)
                 {
-                    app.route_mouse(input);
+                    emit_needed = true;
                 }
                 continue;
             }
             Event::Key(key) => key,
+            Event::Resize(..) => {
+                emit_needed = true;
+                continue;
+            }
             _ => continue,
         };
         if key.kind != KeyEventKind::Press {
             continue;
         }
+        emit_needed = true;
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
             KeyCode::Char('r') => {
@@ -308,7 +368,7 @@ impl App {
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(8)]).areas(chart_area);
             let strip = views::context_strip(self.series());
             frame.render_stateful_widget(
-                strip.widget().charset(self.charset),
+                self.styled(strip.widget()),
                 strip_area,
                 &mut self.strip_state,
             );
@@ -317,17 +377,28 @@ impl App {
             chart_area
         };
         frame.render_stateful_widget(
-            chart.widget().charset(self.charset),
+            self.styled(chart.widget()),
             main_area,
             &mut self.series_state,
         );
     }
 
+    /// The app's widget dressing: the chosen charset, and — where the
+    /// terminal speaks a pixel protocol — the plot panel as a real image.
+    fn styled<'a>(&self, widget: malevich::PlotWidget<'a>) -> malevich::PlotWidget<'a> {
+        let widget = widget.charset(self.charset);
+        match self.graphics {
+            Some(graphics) => widget.graphics(graphics),
+            None => widget,
+        }
+    }
+
     /// Routes one mouse input to the pane it belongs to and mirrors the x
     /// window onto the other pane — the linked-panes pattern from
     /// docs/interaction.md. Drags stay with the pane they started in; a hover
-    /// entering one pane clears the other's cursor.
-    fn route_mouse(&mut self, input: Mouse) {
+    /// entering one pane clears the other's cursor. True when any pane's
+    /// state changed.
+    fn route_mouse(&mut self, input: Mouse) -> bool {
         fn contains(rect: Rect, column: u16, row: u16) -> bool {
             column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
         }
@@ -353,10 +424,10 @@ impl App {
         } else {
             (&mut self.series_state, &mut self.strip_state)
         };
-        pane.on_mouse(input);
+        let mut changed = pane.on_mouse(input);
         if let Mouse::Moved { .. } = input {
             // (0, 0) is the tab row — outside any plot — so this clears.
-            other.on_mouse(Mouse::Moved { column: 0, row: 0 });
+            changed |= other.on_mouse(Mouse::Moved { column: 0, row: 0 });
         }
         match input {
             Mouse::Down { .. } => self.drag_in_strip = Some(in_strip),
@@ -364,6 +435,7 @@ impl App {
             _ => {}
         }
         mirror_x(pane.viewport().x(), other);
+        changed
     }
 
     /// Renders two plots side by side. `plot.widget()` is malevich's ratatui
@@ -491,8 +563,11 @@ impl App {
     }
 
     /// Applies a finished background fetch, if one has landed.
-    fn poll_fetch(&mut self) {
-        let Some(receiver) = &self.fetch else { return };
+    /// Applies a finished background fetch; true when anything changed.
+    fn poll_fetch(&mut self) -> bool {
+        let Some(receiver) = &self.fetch else {
+            return false;
+        };
         match receiver.try_recv() {
             Ok(Fetch::Done {
                 index,
@@ -507,15 +582,18 @@ impl App {
                 }
                 self.status = format!("refreshed {id} live ({points} observations)");
                 self.fetch = None;
+                true
             }
             Ok(Fetch::Failed { id, error }) => {
                 self.status = format!("fetch {id} failed: {error}");
                 self.fetch = None;
+                true
             }
-            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Empty) => false,
             Err(TryRecvError::Disconnected) => {
                 self.status = String::from("fetch thread died");
                 self.fetch = None;
+                true
             }
         }
     }

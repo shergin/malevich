@@ -64,6 +64,21 @@ stream that will receive the plot; `detect()` is the stdout convenience.
 An unanswered probe is not evidence — it degrades to the sniff answer. The
 value records which tier answered (`Source::Probed` or `Source::Sniffed`).
 
+## Inside a ratatui app
+
+With both `pixel` and `ratatui` enabled, the same panels render inside a
+TUI: `chart.widget().graphics(g)` on a stateful widget reserves its area
+in the buffer (spaces, skipped so ratatui's diff leaves the image alone)
+and stores the encoded block in the `PlotState`; the host emits it after
+`terminal.draw` with `present_pixels` — one synchronized write, kitty
+placements replaced atomically. Probe capabilities *before*
+`ratatui::init()`: the query reads terminal replies a raw-mode event loop
+would swallow. Interaction — zoom, pan, crosshair, snap — keeps working
+over the image; the chrome becomes anti-aliased marks drawn into the
+panel itself. The mechanics live in
+[interaction.md](interaction.md#real-pixels); `cargo run -p fred` in a
+kitty/sixel/iTerm2 terminal is the live proof.
+
 ## Rough edges
 
 - A multiplexer (tmux, screen) blocks probing by design; sniffed answers

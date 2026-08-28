@@ -58,6 +58,8 @@ impl Plot<'_> {
             crosshair: true,
             readout: true,
             snap: true,
+            #[cfg(feature = "pixel")]
+            graphics: None,
         }
     }
 }
@@ -74,6 +76,8 @@ pub struct PlotWidget<'a> {
     crosshair: bool,
     readout: bool,
     snap: bool,
+    #[cfg(feature = "pixel")]
+    graphics: Option<crate::pixel::Graphics>,
 }
 
 impl PlotWidget<'_> {
@@ -127,6 +131,33 @@ impl PlotWidget<'_> {
         self
     }
 
+    /// Draws the plot panel as a real image (feature `pixel`): sixel, kitty
+    /// graphics, or iTerm2, in the protocol and cell geometry `graphics`
+    /// names. Requires a stateful render — the widget reserves its area in
+    /// the buffer (spaces, skipped so ratatui's diff leaves the image alone)
+    /// and stores the encoded block in the [`PlotState`]; the host emits it
+    /// after `terminal.draw` with [`present_pixels`]. Interaction chrome
+    /// becomes annotation marks rendered into the image itself: anti-aliased
+    /// crosshair rules, snap markers, and the readout as in-panel text.
+    ///
+    /// Detect capabilities *before* `ratatui::init()` — the probe reads
+    /// terminal replies that a raw-mode event loop would swallow:
+    ///
+    /// ```no_run
+    /// let graphics = malevich::pixel::Capabilities::detect_for(&std::io::stdout()).best();
+    /// // let mut terminal = ratatui::init();
+    /// // ... chart.widget().graphics(graphics.unwrap()) when Some ...
+    /// ```
+    ///
+    /// A stateless render ignores this setting and stays glyphs — it has no
+    /// state to carry the image block in.
+    #[cfg(feature = "pixel")]
+    #[must_use]
+    pub fn graphics(mut self, graphics: crate::pixel::Graphics) -> Self {
+        self.graphics = Some(graphics);
+        self
+    }
+
     fn frame(&self, area: Rect) -> Frame {
         Frame {
             width: area.width as usize,
@@ -145,14 +176,121 @@ impl PlotWidget<'_> {
     }
 
     /// The interactive render both `StatefulWidget` impls delegate to: apply
-    /// the state's viewport, cache the mapping, draw the overlays.
+    /// the state's viewport, cache the mapping, draw the overlays — as buffer
+    /// cells, or as a reserved rectangle plus a pending image block when a
+    /// pixel protocol is configured.
     fn draw_stateful(&self, area: Rect, buffer: &mut Buffer, state: &mut PlotState) {
+        #[cfg(feature = "pixel")]
+        if let Some(graphics) = self.graphics
+            && self.draw_stateful_pixels(&graphics, area, buffer, state)
+        {
+            return;
+        }
         let plot = self.plot.clone().viewport(&state.view);
         let (surface, mapping) = plot.rasterize_mapped(&self.frame(area));
         blit(&surface, area, buffer);
         state.area = area;
         state.mapping = Some(mapping);
         self.overlays(buffer, state);
+    }
+
+    /// The pixel render: the whole area becomes a post-frame block — chrome
+    /// text and image woven by the hybrid renderer — and the buffer only
+    /// reserves the ground. Interaction chrome rides the clone as annotation
+    /// marks (never palette-consuming data layers), with the domains pinned
+    /// to the last frame's mapping so hovering cannot jitter an automatic
+    /// axis. Returns false when bounded geometry refuses the pixel path, and
+    /// the caller degrades to glyphs.
+    #[cfg(feature = "pixel")]
+    fn draw_stateful_pixels(
+        &self,
+        graphics: &crate::pixel::Graphics,
+        area: Rect,
+        buffer: &mut Buffer,
+        state: &mut PlotState,
+    ) -> bool {
+        let mut plot = self.plot.clone().viewport(&state.view);
+        if let Some((cursor_x, cursor_y)) = state.cursor_data()
+            && cursor_x.is_finite()
+            && cursor_y.is_finite()
+            && let Some(mapping) = state.mapping().cloned()
+        {
+            let (x_low, x_high) = mapping.x_domain();
+            let (y_low, y_high) = mapping.y_domain();
+            if mapping.x_bands().is_none() {
+                plot = plot.x_domain(x_low, x_high);
+            }
+            if mapping.y_bands().is_none() {
+                plot = plot.y_domain(y_low, y_high);
+            }
+            if self.crosshair {
+                plot = plot
+                    .layer(
+                        crate::Rule::v(cursor_x)
+                            .color(Color::BrightBlack)
+                            .dash(crate::Dash::Dotted),
+                    )
+                    .layer(
+                        crate::Rule::h(cursor_y)
+                            .color(Color::BrightBlack)
+                            .dash(crate::Dash::Dotted),
+                    );
+            }
+            let snapped = if self.snap {
+                self.snapped(state)
+            } else {
+                Vec::new()
+            };
+            let ink = if self.theme == Theme::LIGHT {
+                Color::Black
+            } else {
+                Color::BrightWhite
+            };
+            for snap in &snapped {
+                if let Some(value) = snap.value {
+                    plot = plot.layer(crate::Text::at(snap.x, value, "●").color(ink));
+                }
+            }
+            if self.readout
+                && let Some((_, _, columns, _)) = mapping.plot_area()
+                && let Some(line) =
+                    self.readout_line(state, &snapped, columns.saturating_sub(2) as u16)
+            {
+                let x = x_low + (x_high - x_low) * 0.02;
+                let y = y_high - (y_high - y_low) * 0.06;
+                plot = plot.layer(crate::Text::at(x, y, line).color(Color::BrightBlack));
+            }
+        }
+        let Ok((block, mapping)) =
+            crate::pixel::try_render_mapped(&plot, &self.frame(area), graphics, area.x as usize)
+        else {
+            return false;
+        };
+        // Reserve the ground: spaces, skipped so ratatui's diff never writes
+        // under the image — except the first frame at this rectangle, whose
+        // real spaces clear whatever the cells held before (transparent
+        // panels would otherwise show it through their alpha).
+        let fresh = state.pixel_area != Some(area);
+        let diff = if fresh {
+            ratatui_core::buffer::CellDiffOption::None
+        } else {
+            ratatui_core::buffer::CellDiffOption::Skip
+        };
+        for y in area.y..area.bottom() {
+            for x in area.x..area.right() {
+                let cell = &mut buffer[(x, y)];
+                cell.reset();
+                cell.set_diff_option(diff);
+            }
+        }
+        state.area = area;
+        state.mapping = Some(mapping);
+        state.pixel_area = Some(area);
+        // Raw mode: LF moves down without returning the carriage; the block's
+        // rows need explicit carriage returns. Image payloads never contain a
+        // raw newline, so this touches only the row separators.
+        state.pixels = Some((area, block.replace('\n', "\r\n")));
+        true
     }
 }
 
@@ -331,6 +469,14 @@ pub struct PlotState {
     view: Viewport,
     cursor: Option<(u16, u16)>,
     drag: Option<Drag>,
+    /// The pending image block of the last pixel render, consumed by
+    /// [`present_pixels`].
+    #[cfg(feature = "pixel")]
+    pixels: Option<(Rect, String)>,
+    /// The rectangle whose ground was last cleared for an image; a change
+    /// triggers a fresh blanking frame.
+    #[cfg(feature = "pixel")]
+    pixel_area: Option<Rect>,
 }
 
 impl PlotState {
@@ -383,6 +529,16 @@ impl PlotState {
     /// gesture policy over [`Viewport`]'s arithmetic.
     pub fn set_viewport(&mut self, viewport: Viewport) {
         self.view = viewport;
+    }
+
+    /// Forgets pixel-presentation state: the next pixel render paints fresh
+    /// ground and the next [`present_pixels`] re-emits. Call when something
+    /// outside the widget disturbed the screen — a view switch away and back,
+    /// an overlay that covered the panel.
+    #[cfg(feature = "pixel")]
+    pub fn invalidate_pixels(&mut self) {
+        self.pixels = None;
+        self.pixel_area = None;
     }
 
     /// Back to the automatic view on both axes — the host's reset binding.
@@ -635,6 +791,63 @@ const ZOOM_OUT: f64 = 1.25;
 /// The keyboard pan step, as a fraction of the visible window.
 const PAN_STEP: f64 = 0.1;
 
+/// Presents the pending pixel blocks of a frame — call after
+/// `terminal.draw` with every pixel-rendered [`PlotState`] of the current
+/// view. The blocks land in one synchronized write (DEC 2026), so a redraw
+/// replaces the previous images without flashing blank; on kitty, existing
+/// placements are deleted first, since they live on their own layer and cell
+/// repaints cannot cover them. Each block is consumed: a state presents once
+/// per render.
+///
+/// This function writes exactly what it is told to the handle it is given —
+/// like [`stream::Live`](crate::stream::Live), it never owns the terminal.
+/// The host decides *when*: emit on state changes (input handled, data
+/// arrived, resize), not on a timer, and the previous transmission stays on
+/// screen through quiet frames.
+#[cfg(feature = "pixel")]
+pub fn present_pixels(
+    out: &mut impl std::io::Write,
+    graphics: &crate::pixel::Graphics,
+    states: &mut [&mut PlotState],
+) -> std::io::Result<()> {
+    use std::fmt::Write as _;
+    let mut blocks = String::new();
+    for state in states.iter_mut() {
+        if let Some((rect, block)) = state.pixels.take() {
+            let _ = write!(blocks, "\x1b[{};{}H", rect.y + 1, rect.x + 1);
+            blocks.push_str(&block);
+        }
+    }
+    if blocks.is_empty() {
+        return Ok(());
+    }
+    let mut swap = String::with_capacity(blocks.len() + 32);
+    swap.push_str("\x1b[?2026h");
+    if graphics.protocol == crate::pixel::Protocol::Kitty {
+        swap.push_str("\x1b_Ga=d,d=A\x1b\\");
+    }
+    swap.push_str(&blocks);
+    swap.push_str("\x1b[?2026l");
+    out.write_all(swap.as_bytes())?;
+    out.flush()
+}
+
+/// Deletes all visible kitty image placements — call when leaving a view
+/// whose charts were pixel-rendered. Other protocols paint into cells, which
+/// the next view's ordinary redraw already replaces; for them this writes
+/// nothing.
+#[cfg(feature = "pixel")]
+pub fn clear_pixels(
+    out: &mut impl std::io::Write,
+    graphics: &crate::pixel::Graphics,
+) -> std::io::Result<()> {
+    if graphics.protocol == crate::pixel::Protocol::Kitty {
+        out.write_all(b"\x1b_Ga=d,d=A\x1b\\")?;
+        out.flush()?;
+    }
+    Ok(())
+}
+
 /// Clamps a terminal coordinate into a rectangle.
 fn clamp_into(rect: Rect, column: u16, row: u16) -> (u16, u16) {
     (
@@ -713,48 +926,53 @@ impl PlotWidget<'_> {
             }
         }
         if self.readout
-            && let Some((cursor_x, cursor_y)) = state.cursor_data()
-            && let Some(mapping) = state.mapping()
+            && let Some(text) = self.readout_line(state, &snapped, rect.width.saturating_sub(2))
         {
-            // One snapped series speaks for the x part with its own datum's
-            // position; several share the cursor's. No snap: plain cursor
-            // coordinates.
-            let x_part = match snapped.as_slice() {
-                [only] => mapping.format_x(only.x),
-                [] | [..] => mapping.format_x(cursor_x),
-            };
-            let mut parts = vec![x_part];
-            if snapped.is_empty() {
-                parts.push(mapping.format_y(cursor_y));
+            let width = display_width(&text) as u16;
+            buffer.set_string(
+                rect.right() - width - 1,
+                rect.y,
+                &text,
+                Style::new().fg(highlight),
+            );
+        }
+    }
+
+    /// The readout text, shed to `budget` cells: the x position, then one
+    /// `label: value` entry per snapped series (or the plain cursor
+    /// coordinates when nothing snapped). One snapped series speaks for the x
+    /// part with its own datum's position; several share the cursor's.
+    /// Trailing series drop until the line fits; `None` when even the
+    /// two-part minimum cannot.
+    fn readout_line(&self, state: &PlotState, snapped: &[Snapped], budget: u16) -> Option<String> {
+        let (cursor_x, cursor_y) = state.cursor_data()?;
+        let mapping = state.mapping()?;
+        let x_part = match snapped {
+            [only] => mapping.format_x(only.x),
+            [] | [..] => mapping.format_x(cursor_x),
+        };
+        let mut parts = vec![x_part];
+        if snapped.is_empty() {
+            parts.push(mapping.format_y(cursor_y));
+        }
+        for snap in snapped {
+            let value = snap
+                .value
+                .map_or_else(|| "—".to_string(), |value| mapping.format_y(value));
+            parts.push(match &snap.label {
+                Some(label) => format!("{label}: {value}"),
+                None => value,
+            });
+        }
+        loop {
+            let text = parts.join(" · ");
+            if display_width(&text) as u16 <= budget {
+                return Some(text);
             }
-            for snap in &snapped {
-                let value = snap
-                    .value
-                    .map_or_else(|| "—".to_string(), |value| mapping.format_y(value));
-                parts.push(match &snap.label {
-                    Some(label) => format!("{label}: {value}"),
-                    None => value,
-                });
+            if parts.len() <= 2 {
+                return None;
             }
-            // Shed trailing series until the line fits; the x part and one
-            // value always stay together or the readout is skipped entirely.
-            loop {
-                let text = parts.join(" · ");
-                let width = display_width(&text) as u16;
-                if width + 2 <= rect.width {
-                    buffer.set_string(
-                        rect.right() - width - 1,
-                        rect.y,
-                        &text,
-                        Style::new().fg(highlight),
-                    );
-                    break;
-                }
-                if parts.len() <= 2 {
-                    break;
-                }
-                parts.pop();
-            }
+            parts.pop();
         }
     }
 

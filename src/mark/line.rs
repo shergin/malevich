@@ -147,6 +147,7 @@ impl<'a> Line<'a> {
     /// The retained point channels — `(x, y)`, with `x` `None` for
     /// index-positioned values — or `None` for a function-backed line.
     /// In-crate presentation (the widget's snap readout) reads data here.
+    #[cfg(feature = "ratatui")]
     pub(crate) fn channels(&self) -> Option<(Option<&Series<'a>>, &Series<'a>)> {
         match &self.source {
             Source::Points { x, y } => Some((x.as_ref(), y)),

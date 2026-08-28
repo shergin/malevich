@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 description = "A Federal Reserve economic-data browser built on malevich — not published"
 
 [dependencies]
-malevich = { path = "../..", features = ["ratatui"] }
+malevich = { path = "../..", features = ["ratatui", "pixel"] }
 ratatui = "0.30"
 crossterm = "0.29"
 ureq = "2"

@@ -171,7 +171,14 @@ mouse capture, and key policy stay in the host, and the gestures are a preset
 over the public physics — a host with different policy drives `Viewport` and
 `Mapping` directly. Interaction chrome (crosshair, snap highlights, selection
 band, readout) draws into the buffer only; the plot value renders
-byte-identically with or without it.
+byte-identically with or without it. With the `pixel` feature,
+`widget().graphics(g)` renders the panel as a real image: the buffer holds
+skip-reserved ground, the `PlotState` carries the encoded block, and the host
+emits it after `terminal.draw` with `present_pixels` (one synchronized
+write; `clear_pixels` retires kitty placements on view switches).
+Interaction chrome then becomes annotation marks drawn into the image, and
+hit-testing is unchanged — the mapping answers in cells regardless of what
+fills them.
 
 ## Surface
 

@@ -753,14 +753,22 @@ impl<'a> Plot<'a> {
 
     /// Rasterizes for hybrid pixel output: chrome on a cell surface, marks on a
     /// device-pixel canvas at `cell` pixels per cell, one shared layout — so the
-    /// scales map into device pixels and M4 buckets per pixel column.
+    /// scales map into device pixels and M4 buckets per pixel column. The
+    /// returned [`Mapping`] answers in cell coordinates (its subpixel density
+    /// is the device-pixel cell), so interactive hosts hit-test pixel panels
+    /// exactly like glyph ones.
     #[cfg(feature = "pixel")]
     pub(crate) fn try_rasterize_hybrid(
         &self,
         frame: &Frame,
         cell: (usize, usize),
         stroke: Option<u8>,
-    ) -> crate::Result<(Surface, crate::pixel::PixelCanvas, crate::render::PlotRect)> {
+    ) -> crate::Result<(
+        Surface,
+        crate::pixel::PixelCanvas,
+        crate::render::PlotRect,
+        Mapping,
+    )> {
         use crate::render::PlotRect;
 
         let mut surface = Surface::try_new(frame.width, frame.height, frame.charset)?;
@@ -772,12 +780,13 @@ impl<'a> Plot<'a> {
             rows: 0,
         };
         if frame.width == 0 || frame.height == 0 || cell.0 == 0 || cell.1 == 0 {
-            return Ok((surface, canvas, empty));
+            return Ok((surface, canvas, empty, Mapping::empty()));
         }
         let mut canvas = canvas;
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
         let PreparedRender { layout, layers } =
             self.prepare_render(frame, TargetPolicy::pixels(cell))?;
+        let mapping = Mapping::new(&layout, &self.x, &self.y);
         super::chrome::draw(
             &mut surface,
             &layout,
@@ -792,7 +801,7 @@ impl<'a> Plot<'a> {
             columns: layout.plot_cols,
             rows: layout.plot_rows,
         };
-        Ok((surface, canvas, rect))
+        Ok((surface, canvas, rect, mapping))
     }
 
     #[cfg_attr(

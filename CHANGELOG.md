@@ -43,7 +43,18 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   two-minute window while the rings fill. `pan_left`/`pan_right` join the
   keyboard sugar (h/l in fred, arrow keys in the zoom example), and
   gestures stacked between renders compound instead of re-reading a stale
-  mapping.
+  mapping. And with the `pixel` feature, the interactive widget draws
+  real images: `widget().graphics(g)` reserves the area in the buffer
+  (skip cells, fresh ground on layout change) and stores the hybrid
+  chrome-plus-image block in the `PlotState`; `present_pixels` emits the
+  pending blocks after `terminal.draw` in one synchronized write with
+  atomic kitty replacement, `clear_pixels`/`invalidate_pixels` handle
+  view switches. Interaction chrome upgrades to annotation marks drawn
+  into the image — anti-aliased crosshair rules, snap markers, in-panel
+  readout — with domains pinned to the last frame so hovering never
+  jitters an automatic axis. fred renders its series view this way
+  wherever the terminal speaks sixel, kitty, or iTerm2 (`--cells` opts
+  out).
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a
