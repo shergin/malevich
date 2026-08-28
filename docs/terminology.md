@@ -62,8 +62,10 @@ seaborn.objects (`Stat`) and ggplot (`stat_*`). It is the module-level
 umbrella, not one execution algebra: a stat may be an online accumulator, a
 reducer, keyed orchestration, or a batch transform. Maps to the `stat`
 module — `M4`, `Bins`/`bins2`, `Agg`, `BoxStats`, `kde`, `Window`, `ecdf`,
-`roc`/`auc`, `ewma`, `stack`, `lttb`, `Moments`, and `Fit` (streaming least
-squares behind the `trend` preset).
+`roc`/`auc`, `ewma`, `stack`, `lttb`, `Moments`, `Fit` (streaming least
+squares behind the `trend` preset), and `nearest` (the crosshair-snapping
+lookup: the index of the closest finite value, so cursor readouts show a
+datum that exists rather than an interpolation).
 
 ## Online accumulator
 
@@ -125,6 +127,47 @@ frames. `Frame::detect()` is the convenience that inspects the environment;
 the deterministic braille snapshot form; `Frame::portable()` is the
 conservative Unicode form. Maps to `plot::Frame` and `plot::ColorMode`. See
 [The frame is run state](principles/frame-is-run-state.md).
+
+## Mapping
+
+The resolved geometry of one render, as a queryable value: the plot rectangle
+in cells, the resolved axis windows, and the cell ↔ data mapping both ways —
+the `invert` half of the scale contract, reachable at plot level. Obtained
+purely from `Plot::mapping(&frame)`; the ratatui stateful widget caches one
+per render. Queries answer in the coordinate conventions marks use (band
+indices, unix seconds), disclose cell quantization (`x_span_at`), and format
+values the way the axis formats its own labels (`format_x`/`format_y`).
+Derived state, deliberately not serializable. This is the physics interactive
+hosts build on: malevich never handles input — a host maps its events to
+questions a `Mapping` can answer. Maps to `plot::Mapping`.
+
+## Viewport
+
+An axis window pair for interactive viewing: zoom and pan as pure domain
+arithmetic over `x_domain`/`y_domain` — a scale option, never a render mode,
+which is why zooming into millions of points re-aggregates (M4) to the new
+window with no special machinery. `None` on an axis means automatic; a window
+is seeded from `Mapping::viewport` ("the view I am looking at") and
+transformed by value: `zoom` around an anchor (decade space on log axes),
+`pan` by a fraction, `clamp` to an extent, `tail` for follow-the-stream,
+`reset` to automatic. Applied with `Plot::viewport`. Serializable — it is
+spec-shaped state a host may persist. Maps to `plot::Viewport`.
+
+## Widget
+
+The ratatui adapter (feature `ratatui`, depending only on `ratatui-core`):
+`Plot::widget()` renders any plot into a `Buffer` as cells and styles. The
+stateless `Widget` impl is fire-and-forget; the `StatefulWidget` impl threads
+a `PlotState` — the interaction controller: it caches the render's `Mapping`
+for hit-testing, applies its `Viewport` on the next draw, and interprets the
+default mouse gestures (hover crosshair, wheel zoom at the cursor, left-drag
+pan, right-drag rubber-band zoom) from the backend-neutral `Mouse` vocabulary
+the host feeds it. The widget never reads the terminal: event loops, mouse
+capture, and key policy stay in the host, and the gestures are a preset over
+the public physics — a host with different policy drives `Viewport` and
+`Mapping` directly. Interaction chrome (crosshair, selection band, readout)
+draws into the buffer only; the plot value renders byte-identically with or
+without it.
 
 ## Surface
 

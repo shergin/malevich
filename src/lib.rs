@@ -62,7 +62,9 @@
 //!   [`pixel::Capabilities`] query API, and [`Plot::render_best`] picking the
 //!   best tier the terminal offers.
 //! - `ratatui` — [`PlotWidget`], a `ratatui` widget rendering any plot into a
-//!   `Buffer`.
+//!   `Buffer`; rendered stateful with a [`PlotState`], it becomes interactive:
+//!   hit-testing through the cached [`Mapping`], zoom and pan through a
+//!   [`Viewport`], and default mouse gestures fed via [`PlotState::on_mouse`].
 //! - `serde` — every spec type (plots, marks, scales, themes, frames)
 //!   round-trips through serde; `Document` is the versioned persistent envelope,
 //!   gaps survive JSON as `null`, and function-backed lines refuse to serialize

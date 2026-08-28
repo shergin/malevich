@@ -5,6 +5,27 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- The widget becomes interactive — without malevich handling input. The
+  core gains the physics: `Plot::mapping(&frame)` exposes the resolved
+  geometry of a render as a queryable value (plot rectangle, cell ↔ data
+  both ways, per-cell data spans, values formatted the way the axes format
+  their labels); `Viewport` is zoom/pan as pure domain arithmetic over
+  `x_domain`/`y_domain` (decade space on log axes, `tail` for streams),
+  seeded from `mapping.viewport()`; `stat::nearest` snaps a cursor to the
+  datum that exists. On top, the ratatui adapter grows a `StatefulWidget`:
+  `PlotState` caches the render's mapping for hit-testing, applies its
+  viewport on the next draw, and interprets the default gestures — hover
+  crosshair with an axis-formatted readout, wheel zoom anchored under the
+  cursor, left-drag pan, right-drag rubber-band zoom — from a
+  backend-neutral `Mouse` vocabulary the host feeds it (a six-line match
+  from crossterm, shown in the docs). Overlays draw into the buffer only:
+  the plot value and the stateless widget render byte-identically as
+  before. Because a zoom is just a domain window, M4 re-aggregates to the
+  visible window every frame — `cargo run --release --example zoom
+  --features ratatui` pans and zooms through millions of points with the
+  drawn line pixel-identical to plotting every point; `fred` wears the
+  full gesture set on its series view.
+
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a
   "Spelled today" section that may rot while the argument must not — and

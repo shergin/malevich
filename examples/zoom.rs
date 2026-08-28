@@ -56,7 +56,9 @@ fn signal(n: usize) -> (Vec<f64>, Vec<f64>) {
     let mut lcg: u64 = 0x2545F491_4F6CDD1D;
     for i in 0..n {
         let t = i as f64 / n as f64;
-        lcg = lcg.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        lcg = lcg
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let noise = (lcg >> 33) as f64 / f64::from(1u32 << 31) - 1.0;
         let spike = if lcg % 1_000_003 < 2 { 6.0 } else { 0.0 };
         x.push(i as f64);

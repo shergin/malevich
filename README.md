@@ -198,10 +198,18 @@ assumes live in [docs/principles/](docs/principles/). The short version:
 - **Composition over modes.** `Grid` pastes small multiples side by side;
   `x_domain`/`y_domain` fix axes matplotlib-style, so shared scales are an
   explicit composition, not a mode. A ratatui widget (feature `ratatui`,
-  depending only on `ratatui-core`) drops any chart into a TUI, and
-  [`demos/`](demos/) holds full apps: `fred`, a five-view Federal Reserve
-  data browser; `sysmon`, a live system monitor; and `learn`, a two-moons MLP
-  trained by [topos](https://crates.io/crates/topos), charting as it trains.
+  depending only on `ratatui-core`) drops any chart into a TUI — and rendered
+  stateful, makes it interactive without malevich ever handling input: the
+  widget caches the render's cell↔data `Mapping` for hit-testing, applies a
+  `Viewport` (zoom and pan as pure domain arithmetic), and interprets default
+  mouse gestures — hover crosshair with an axis-formatted readout, wheel zoom
+  under the cursor, drag pan, rubber-band zoom — from coordinates the host
+  feeds it. Zooming is just a domain window, so M4 re-aggregates per frame
+  and `cargo run --release --example zoom --features ratatui` drills through
+  millions of points live. [`demos/`](demos/) holds full apps: `fred`, a
+  five-view Federal Reserve data browser wearing the full gesture set;
+  `sysmon`, a live system monitor; and `learn`, a two-moons MLP trained by
+  [topos](https://crates.io/crates/topos), charting as it trains.
 - **Serializable specs, no lies** (feature `serde`).
   [`Document`](docs/serde.md) is the validated, versioned format for files,
   caches, and network messages; gaps encode as `null` and decode back to

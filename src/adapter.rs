@@ -116,18 +116,34 @@ impl PlotWidget<'_> {
             theme: self.theme,
         }
     }
+
+    /// The fire-and-forget render both `Widget` impls delegate to.
+    fn draw(&self, area: Rect, buffer: &mut Buffer) {
+        let surface = self.plot.rasterize(&self.frame(area));
+        blit(&surface, area, buffer);
+    }
+
+    /// The interactive render both `StatefulWidget` impls delegate to: apply
+    /// the state's viewport, cache the mapping, draw the overlays.
+    fn draw_stateful(&self, area: Rect, buffer: &mut Buffer, state: &mut PlotState) {
+        let plot = self.plot.clone().viewport(&state.view);
+        let (surface, mapping) = plot.rasterize_mapped(&self.frame(area));
+        blit(&surface, area, buffer);
+        state.area = area;
+        state.mapping = Some(mapping);
+        self.overlays(buffer, state);
+    }
 }
 
 impl Widget for PlotWidget<'_> {
     fn render(self, area: Rect, buffer: &mut Buffer) {
-        Widget::render(&self, area, buffer);
+        self.draw(area, buffer);
     }
 }
 
 impl Widget for &PlotWidget<'_> {
     fn render(self, area: Rect, buffer: &mut Buffer) {
-        let surface = self.plot.rasterize(&self.frame(area));
-        blit(&surface, area, buffer);
+        self.draw(area, buffer);
     }
 }
 
@@ -135,7 +151,7 @@ impl StatefulWidget for PlotWidget<'_> {
     type State = PlotState;
 
     fn render(self, area: Rect, buffer: &mut Buffer, state: &mut PlotState) {
-        StatefulWidget::render(&self, area, buffer, state);
+        self.draw_stateful(area, buffer, state);
     }
 }
 
@@ -143,12 +159,7 @@ impl StatefulWidget for &PlotWidget<'_> {
     type State = PlotState;
 
     fn render(self, area: Rect, buffer: &mut Buffer, state: &mut PlotState) {
-        let plot = self.plot.clone().viewport(&state.view);
-        let (surface, mapping) = plot.rasterize_mapped(&self.frame(area));
-        blit(&surface, area, buffer);
-        state.area = area;
-        state.mapping = Some(mapping);
-        self.overlays(buffer, state);
+        self.draw_stateful(area, buffer, state);
     }
 }
 
