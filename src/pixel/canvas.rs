@@ -2,9 +2,11 @@
 //!
 //! Same raster convention as the cell surface — origin top-left, y downward,
 //! drawing is infallible (outside clips away, non-finite draws nothing) — but a
-//! subpixel here is one device pixel. A pixel holds `Option<Color>`: `None` is
-//! transparency, so the terminal background shows through everywhere marks did
-//! not draw, exactly as it does between glyphs in cell output.
+//! subpixel here is one device pixel. A pixel is straight (non-premultiplied)
+//! RGBA with alpha as coverage: alpha 0 is transparency, so the terminal
+//! background shows through everywhere marks did not draw, exactly as it does
+//! between glyphs in cell output — and fractional coverage composites over
+//! any background the terminal has.
 
 use super::font;
 use crate::render::{Canvas, Color, PlotRect, PointShape};
@@ -22,7 +24,8 @@ pub(crate) struct PixelCanvas {
     /// Point-marker side in device pixels: one step above the stroke, so
     /// scatter dots read over lines at every density.
     point: i64,
-    pixels: Vec<Option<Color>>,
+    /// Straight RGBA per pixel; alpha 0 is bare canvas.
+    pixels: Vec<[u8; 4]>,
     /// An optional drawing clip in pixel coordinates `(x0, y0, x1, y1)`, upper
     /// bounds exclusive — the same contract as the cell surface's clip.
     clip: Option<(i64, i64, i64, i64)>,
@@ -72,7 +75,7 @@ impl PixelCanvas {
         };
         let mut pixels = Vec::new();
         crate::render::reserve_vec(&mut pixels, count, "device-pixel canvas")?;
-        pixels.resize(count, None);
+        pixels.resize(count, [0; 4]);
         Ok(PixelCanvas {
             width,
             height,
@@ -119,12 +122,21 @@ impl PixelCanvas {
         self.cell
     }
 
-    /// The pixel at `(x, y)`: `None` outside the canvas or where nothing drew.
+    /// Solid ink at `(x, y)`: the color where coverage reaches at least
+    /// half, `None` outside the canvas, where nothing drew, or where only
+    /// an anti-aliased fringe landed. Encoders needing exact coverage read
+    /// [`PixelCanvas::rgba`].
     pub(crate) fn get(&self, x: usize, y: usize) -> Option<Color> {
+        let [r, g, b, a] = self.rgba(x, y);
+        (a >= 128).then_some(Color::Rgb(r, g, b))
+    }
+
+    /// The raw straight-RGBA pixel; `[0; 4]` outside the canvas.
+    pub(crate) fn rgba(&self, x: usize, y: usize) -> [u8; 4] {
         if x < self.width && y < self.height {
             self.pixels[y * self.width + x]
         } else {
-            None
+            [0; 4]
         }
     }
 
@@ -140,13 +152,14 @@ impl PixelCanvas {
 
     fn set(&mut self, x: i64, y: i64, color: Color) {
         if self.inside(x, y) {
-            self.pixels[y as usize * self.width + x as usize] = Some(color);
+            let (r, g, b) = color.to_rgb();
+            self.pixels[y as usize * self.width + x as usize] = [r, g, b, 255];
         }
     }
 
     fn clear(&mut self, x: i64, y: i64) {
         if self.inside(x, y) {
-            self.pixels[y as usize * self.width + x as usize] = None;
+            self.pixels[y as usize * self.width + x as usize] = [0; 4];
         }
     }
 

@@ -1,13 +1,14 @@
 use super::{crc32, encode};
 use crate::pixel::deflate::inflate;
-use crate::pixel::render::Image;
 
-fn image(width: usize, height: usize, pixels: Vec<Option<(u8, u8, u8)>>) -> Image {
-    Image {
-        width,
-        height,
-        pixels,
-    }
+fn rgba(pixels: Vec<Option<(u8, u8, u8)>>) -> Vec<u8> {
+    pixels
+        .into_iter()
+        .flat_map(|pixel| match pixel {
+            Some((r, g, b)) => [r, g, b, 255],
+            None => [0; 4],
+        })
+        .collect()
 }
 
 #[test]
@@ -18,11 +19,11 @@ fn crc32_matches_the_classic_check_value() {
 
 #[test]
 fn the_png_container_is_structurally_sound() {
-    let png = encode(&image(
+    let png = encode(
         2,
         2,
-        vec![Some((255, 0, 0)), None, None, Some((0, 0, 255))],
-    ));
+        &rgba(vec![Some((255, 0, 0)), None, None, Some((0, 0, 255))]),
+    );
     // Signature.
     assert_eq!(&png[..8], &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
     // IHDR: length 13, width 2, height 2, depth 8, color type 6 (RGBA).
@@ -40,7 +41,7 @@ fn the_png_container_is_structurally_sound() {
 
 #[test]
 fn the_idat_stream_inflates_to_the_scanlines() {
-    let png = encode(&image(2, 1, vec![Some((10, 20, 30)), None]));
+    let png = encode(2, 1, &rgba(vec![Some((10, 20, 30)), None]));
     // Find IDAT and inflate it with the deflate module's test oracle
     // (which also verifies the adler-32 trailer).
     let idat = png
@@ -57,7 +58,7 @@ fn the_idat_stream_inflates_to_the_scanlines() {
 fn large_flat_images_compress_and_roundtrip() {
     // 200×90 solid RGBA = 72,090 scanline bytes; a flat panel must both
     // survive the roundtrip and actually shrink in transport.
-    let png = encode(&image(200, 90, vec![Some((1, 2, 3)); 18000]));
+    let png = encode(200, 90, &rgba(vec![Some((1, 2, 3)); 18000]));
     let idat = png
         .windows(4)
         .position(|w| w == b"IDAT")
@@ -84,9 +85,9 @@ fn every_tiny_raster_encodes_deterministically() {
                     _ => Some((40, index as u8, 60)),
                 })
                 .collect();
-            let image = image(width, height, pixels);
-            let first = encode(&image);
-            assert_eq!(first, encode(&image));
+            let buffer = rgba(pixels);
+            let first = encode(width, height, &buffer);
+            assert_eq!(first, encode(width, height, &buffer));
             assert_eq!(
                 &first[..8],
                 &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]

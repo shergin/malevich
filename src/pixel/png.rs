@@ -6,26 +6,21 @@
 //! makes large panels repaint fast.
 
 use super::deflate;
-use super::render::Image;
 
-pub(crate) fn encode(image: &Image) -> Vec<u8> {
-    // Raw scanlines: filter byte 0 (None), then RGBA per pixel; alpha 0 keeps
-    // undrawn panel area transparent.
-    let mut raw = Vec::with_capacity(image.height * (1 + image.width * 4));
-    for y in 0..image.height {
+pub(crate) fn encode(width: usize, height: usize, rgba: &[u8]) -> Vec<u8> {
+    // Raw scanlines: filter byte 0 (None), then straight RGBA per pixel —
+    // coverage alpha rides through, so anti-aliased fringes and undrawn
+    // panel area stay transparent over any terminal background.
+    let mut raw = Vec::with_capacity(height * (1 + width * 4));
+    for y in 0..height {
         raw.push(0);
-        for x in 0..image.width {
-            match image.pixels[y * image.width + x] {
-                Some((r, g, b)) => raw.extend_from_slice(&[r, g, b, 255]),
-                None => raw.extend_from_slice(&[0, 0, 0, 0]),
-            }
-        }
+        raw.extend_from_slice(&rgba[y * width * 4..(y + 1) * width * 4]);
     }
     let mut png = Vec::new();
     png.extend_from_slice(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
     let mut ihdr = Vec::with_capacity(13);
-    ihdr.extend_from_slice(&(image.width as u32).to_be_bytes());
-    ihdr.extend_from_slice(&(image.height as u32).to_be_bytes());
+    ihdr.extend_from_slice(&(width as u32).to_be_bytes());
+    ihdr.extend_from_slice(&(height as u32).to_be_bytes());
     // Bit depth 8, color type 6 (truecolor with alpha), deflate, no filter,
     // no interlace.
     ihdr.extend_from_slice(&[8, 6, 0, 0, 0]);

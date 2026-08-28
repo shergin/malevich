@@ -244,3 +244,17 @@ fn a_stroke_override_outweighs_the_cell_default() {
     assert_eq!(zero.get(10, 8), Some(RED));
     assert_eq!(zero.get(10, 7), None);
 }
+
+#[test]
+fn coverage_semantics_solid_ink_and_raw_rgba() {
+    let mut canvas = PixelCanvas::new(2, 1, (8, 8));
+    canvas.line((2.0, 4.0), (10.0, 4.0), RED);
+    // Solid ink reads through get(); the raw pixel carries full alpha.
+    assert_eq!(canvas.get(5, 4), Some(RED));
+    assert_eq!(canvas.rgba(5, 4), [255, 0, 0, 255]);
+    // Bare canvas is transparent in both views.
+    assert_eq!(canvas.get(5, 1), None);
+    assert_eq!(canvas.rgba(5, 1), [0, 0, 0, 0]);
+    // Out of bounds is transparent, never a panic.
+    assert_eq!(canvas.rgba(999, 999), [0, 0, 0, 0]);
+}

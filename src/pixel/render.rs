@@ -42,24 +42,25 @@ pub(crate) fn try_render(
     if rect.columns == 0 || rect.rows == 0 {
         return Ok(out);
     }
-    let payload = if graphics.protocol == Protocol::Kitty {
-        // Kitty wants raw RGBA anyway: crop straight into it, skipping the
-        // intermediate `Image` buffer (a second full-panel pass and
-        // allocation the other encoders still need).
-        let (width, height, rgba) = crop_rgba(&canvas, rect)?;
-        if width == 0 || height == 0 {
-            return Ok(out);
-        }
-        kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba)
-    } else {
+    let payload = if graphics.protocol == Protocol::Sixel {
+        // Sixel has no alpha channel: it consumes the thresholded image,
+        // where only solid ink survives.
         let image = crop(&canvas, rect)?;
         if image.width == 0 || image.height == 0 {
             return Ok(out);
         }
+        sixel::encode(&image)
+    } else {
+        // The alpha-capable protocols take the raster verbatim — one pass,
+        // no intermediate buffer, anti-aliased coverage intact.
+        let (width, height, rgba) = crop_rgba(&canvas, rect)?;
+        if width == 0 || height == 0 {
+            return Ok(out);
+        }
         match graphics.protocol {
-            Protocol::Sixel => sixel::encode(&image),
-            Protocol::ITerm2 => iterm::encode(&image, rect.columns, rect.rows),
-            Protocol::Kitty => unreachable!("kitty took the RGBA path above"),
+            Protocol::Kitty => kitty::encode_rgba(width, height, (rect.columns, rect.rows), &rgba),
+            Protocol::ITerm2 => iterm::encode_rgba(width, height, rect.columns, rect.rows, &rgba),
+            Protocol::Sixel => unreachable!("sixel took the image path above"),
         }
     };
     let extra = payload
@@ -218,19 +219,14 @@ fn crop_rgba(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<(usize, usiz
     crate::render::reserve_vec(&mut rgba, bytes, "pixel crop")?;
     for y in 0..height {
         for x in 0..width {
-            match canvas.get(x0 + x, y0 + y) {
-                Some(color) => {
-                    let (r, g, b) = color.to_rgb();
-                    rgba.extend_from_slice(&[r, g, b, 255]);
-                }
-                None => rgba.extend_from_slice(&[0, 0, 0, 0]),
-            }
+            rgba.extend_from_slice(&canvas.rgba(x0 + x, y0 + y));
         }
     }
     Ok((width, height, rgba))
 }
 
-/// The panel rectangle of the canvas as an [`Image`] of resolved RGB pixels.
+/// The panel rectangle of the canvas as an [`Image`] of solid-ink pixels
+/// (coverage at least half) — the shape sixel wants, having no alpha.
 fn crop(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<Image> {
     let (x0, y0, width, height, count) = crop_geometry(canvas, rect)?;
     let mut pixels = Vec::new();
