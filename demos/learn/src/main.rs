@@ -112,7 +112,8 @@ fn main() {
             .layer(
                 Line::y(&smooth[..])
                     .style(LineStyle::Corners)
-                    .label("ewma 0.95"),
+                    .label("ewma 0.95")
+                    .glow(),
             )
             .log_y()
             .x_label("step")

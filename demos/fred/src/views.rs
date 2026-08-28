@@ -11,7 +11,7 @@
 //! can build and return them with no knowledge of where they will be drawn or at
 //! what size; the frame's dimensions only matter at render time.
 
-use malevich::{Area, Cells, Color, Line, LineStyle, Plot, Points, Rule};
+use malevich::{Area, Cells, Color, Dash, Line, LineStyle, Plot, Points, Rule};
 
 use crate::data::{Catalog, Kind, Series, align, extent, step_series};
 
@@ -162,15 +162,23 @@ pub fn series_chart(
 
     // Inflation charts get the Fed's 2% target as a reference rule: `Rule::h` is a
     // horizontal annotation line spanning the plot at y = 2, and giving any layer a
-    // `.label(...)` is what makes the legend appear.
+    // `.label(...)` is what makes the legend appear. `.dash(...)` sets the stroke
+    // pattern, so the target reads as annotation, never as data.
     if series.id == "CPIAUCSL" && transform == Transform::YearOverYear {
-        plot = plot.layer(Rule::h(2.0).label("2% target").color(Color::Yellow));
+        plot = plot.layer(
+            Rule::h(2.0)
+                .label("2% target")
+                .color(Color::Yellow)
+                .dash(Dash::Dashed),
+        );
     }
 
     // `.style(...)` switches how the same polyline rasterizes: subpixel braille
     // dots (`Pixels`, the default) or whole-cell `╭╮╰╯` elbows (`Corners`, the
     // classic asciichart look) — the data and scales are identical either way.
-    plot = plot.layer(Line::xy(x, y).style(style).color(Color::Cyan));
+    // `.glow()` marks the primary series with a soft halo on pixel targets;
+    // glyph rendering ignores it, so the cell view is unchanged.
+    plot = plot.layer(Line::xy(x, y).style(style).color(Color::Cyan).glow());
     if transform == Transform::Log {
         plot = plot.log_y();
     }

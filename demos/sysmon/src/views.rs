@@ -47,15 +47,20 @@ fn seconds_ago(len: usize, interval: f64) -> Vec<f64> {
 /// Total CPU utilization as a filled area.
 ///
 /// malevich notes: two layers share one dataset — `Area::xy` fills from the
-/// values down to zero, and a `Line::xy` over it draws a crisp subpixel edge the
-/// fill alone can't give. `.y_domain(0, 100)` pins the axis: utilization must not
+/// values down to zero (a translucent wash on pixel targets, solid ink in
+/// cells), and a `Line::xy` over it draws a crisp glowing edge the fill alone
+/// can't give. `.y_domain(0, 100)` pins the axis: utilization must not
 /// autoscale, or an idle machine would look busy.
 pub fn cpu_chart(cpu: &[f64], interval: f64) -> Plot<'static> {
     let x = seconds_ago(cpu.len(), interval);
     let latest = cpu.last().copied().unwrap_or(0.0);
     Plot::new()
-        .layer(Area::xy(x.clone(), cpu.to_vec()).color(Color::Cyan))
-        .layer(Line::xy(x, cpu.to_vec()).color(Color::BrightCyan))
+        .layer(
+            Area::xy(x.clone(), cpu.to_vec())
+                .color(Color::Cyan)
+                .opacity(0.4),
+        )
+        .layer(Line::xy(x, cpu.to_vec()).color(Color::BrightCyan).glow())
         .y_domain(0.0, 100.0)
         .title(format!("cpu  {latest:>5.1}%"))
         .y_label("%")
@@ -70,8 +75,12 @@ pub fn mem_chart(mem_bytes: &[f64], total_bytes: f64, interval: f64) -> Plot<'st
     let latest = mem.last().copied().unwrap_or(0.0);
     let total = total_bytes / GIB;
     Plot::new()
-        .layer(Area::xy(x.clone(), mem.clone()).color(Color::Green))
-        .layer(Line::xy(x, mem).color(Color::BrightGreen))
+        .layer(
+            Area::xy(x.clone(), mem.clone())
+                .color(Color::Green)
+                .opacity(0.4),
+        )
+        .layer(Line::xy(x, mem).color(Color::BrightGreen).glow())
         .y_domain(0.0, total)
         .title(format!("memory  {latest:.1} / {total:.0} GiB"))
         .y_label("GiB")
