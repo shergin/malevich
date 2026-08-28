@@ -86,5 +86,10 @@ name = "pixels"
 harness = false
 required-features = ["pixel"]
 
+[[bench]]
+name = "widget"
+harness = false
+required-features = ["ratatui"]
+
 [profile.bench]
 codegen-units = 1

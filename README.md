@@ -205,9 +205,11 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   mouse gestures — a crosshair that snaps to the nearest datum and reads out
   its value axis-formatted (gaps as `—`, never interpolated), wheel zoom
   under the cursor, drag pan, rubber-band zoom — from coordinates the host
-  feeds it. Zooming is just a domain window, so M4 re-aggregates per frame
-  and `cargo run --release --example zoom --features ratatui` drills through
-  millions of points live. [`demos/`](demos/) holds full apps: `fred`, a
+  feeds it. Zooming is just a domain window, so M4 re-aggregates per frame:
+  a zoomed ten-million-point frame renders in under 19 ms on the
+  [recorded baseline](BENCHMARKS.md) — past 50 fps — and
+  `cargo run --release --example zoom --features ratatui` is that claim,
+  live. [`demos/`](demos/) holds full apps: `fred`, a
   five-view Federal Reserve data browser wearing the full gesture set;
   `sysmon`, a live system monitor; and `learn`, a two-moons MLP trained by
   [topos](https://crates.io/crates/topos), charting as it trains.

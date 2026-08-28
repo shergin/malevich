@@ -5,6 +5,39 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
+## 2026-08-28 addition (unreleased)
+
+- Revision: `a6f03ec` (the interactive-widget series)
+- Machine, OS, profile: as in the 2026-08-07 baseline below
+- Compiler: `rustc 1.100.0-nightly (787af2b8c 2026-08-25)` — newer than the
+  baseline's stable; the anchor row was re-measured on this compiler so the
+  new rows compare in place
+
+| Measurement | Estimate | 95% interval |
+| --- | ---: | ---: |
+| `widget/dashboard_200x50` | 1.3376 ms | 1.3313–1.3483 ms |
+| `widget/zoom_10m_200x50` | 18.606 ms | 18.567–18.645 ms |
+| `widget/hover_snap_10m_200x50` | 25.015 ms | 24.949–25.083 ms |
+| `render/line_10m_80x20` (anchor, this compiler) | 30.536 ms | 30.503–30.570 ms |
+
+```sh
+cargo bench --bench widget --features ratatui
+```
+
+What one interactive frame costs, rasterize + buffer blit, no string
+encoding. The dashboard row is a two-pane 200×50 frame — a legended
+two-series 100k-point line chart beside a colorbarred 256×128 heatmap —
+through the stateless widget. The zoom row is the interactive headline: a
+ten-million-point line rendered stateful at a fixed 1% window, the cost of
+every frame while a user pans or zooms — M4 walks the full series and
+re-aggregates into the window each time (out-of-window points fail the
+column test early, which is why the zoomed frame undercuts the full-view
+anchor). The hover row adds a cursor to the same state: the snap readout's
+nearest scan over ten million explicit x values plus the overlays price at
+about 6.4 ms — roughly 0.6 ns per point, a memory-bandwidth linear scan —
+keeping the hovered frame at 40 fps. Index-positioned lines (`Line::y`)
+snap in constant time and skip that cost entirely.
+
 ## 2026-08-25 addition (released in 1.18.0)
 
 - Revision: `b0887bc` (the commit introducing the measured reduction)

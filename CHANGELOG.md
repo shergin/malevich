@@ -28,7 +28,10 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   before. Because a zoom is just a domain window, M4 re-aggregates to the
   visible window every frame — `cargo run --release --example zoom
   --features ratatui` pans and zooms through millions of points with the
-  drawn line pixel-identical to plotting every point. `docs/interaction.md`
+  drawn line pixel-identical to plotting every point — measured: the new
+  `widget` bench records a two-pane dashboard frame at 1.3 ms, a zoomed
+  ten-million-point frame at 18.6 ms, and a hovered one (the snap scan
+  included) at 25 ms on the BENCHMARKS.md baseline. `docs/interaction.md`
   is the guide: the three-layer model, the gesture table, and the patterns
   that need no library support — linked panes (a view is a value; sharing
   it is assignment), selection → statistics (a rubber-band window
