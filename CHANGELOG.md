@@ -64,9 +64,11 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   `clear_pixels` retires images by id, never touching other
   applications'. fred
   renders its series view this way wherever the terminal speaks sixel,
-  kitty, or iTerm2 (`--cells` opts out), and both fred and the zoom
-  example drain their event queues before redrawing, collapsing input
-  bursts into one repaint.
+  kitty, or iTerm2 — at native device-pixel density, so the image is
+  crisp on Retina cells (`--fast` halves the density for slow links,
+  `--cells` forces glyphs) — and both fred and the zoom example drain
+  their event queues before redrawing, collapsing input bursts into one
+  repaint.
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a

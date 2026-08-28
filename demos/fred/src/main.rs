@@ -7,9 +7,10 @@
 //! TUI, in headless `--render` mode, and under test.
 //!
 //! Run with `cargo run -p fred` — add `--release` in a pixel-capable
-//! terminal (sixel, kitty, iTerm2): the series view renders as real images,
-//! and a debug pixel frame is an order of magnitude slower (`--cells` forces
-//! glyphs). Headless: `cargo run -p fred -- --render [view] [SERIES]`.
+//! terminal (sixel, kitty, iTerm2): the series view renders as real images
+//! at native device-pixel density. `--fast` halves the image density for
+//! slow links, `--cells` forces glyphs. Headless:
+//! `cargo run -p fred -- --render [view] [SERIES]`.
 
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
 use std::time::Duration;
@@ -140,11 +141,16 @@ fn main() -> std::io::Result<()> {
     if !args.iter().any(|argument| argument == "--cells") {
         app.graphics = malevich::pixel::Capabilities::detect_for(&std::io::stdout()).best();
     }
-    // Standard density on Retina cells (except sixel, which cannot scale a
-    // placement): the raster costs by area at every stage, and the placement
-    // rectangle stretches the image back over the panel. A slightly heavier
-    // stroke keeps the ink weight the chart had at native density.
-    if let Some(graphics) = &mut app.graphics
+    // Native density by default: one transmitted pixel maps onto one device
+    // pixel, which is what crisp means — and the widget's pacing plus
+    // unchanged-panel suppression keep it interactive (a fred-sized kitty
+    // frame measures ~22 ms at Retina density in release). `--fast` halves
+    // the density for slow links — the placement rectangle scales the image
+    // back over the panel, trading sharpness for a quarter of the bytes —
+    // with a heavier stroke so the ink weight survives the upscale. Sixel
+    // has no placement scaling and always stays native.
+    if args.iter().any(|argument| argument == "--fast")
+        && let Some(graphics) = &mut app.graphics
         && graphics.protocol != malevich::pixel::Protocol::Sixel
     {
         let (w, h) = graphics.cell_size;
