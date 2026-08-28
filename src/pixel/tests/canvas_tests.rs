@@ -395,3 +395,27 @@ fn dashes_gap_and_flow_through_joints() {
     let lit = (0..61).filter(|&x| dotted.get(x, 3).is_some()).count();
     assert!((5..=25).contains(&lit), "sparse dots: {lit} lit");
 }
+
+#[test]
+fn accumulated_ink_brightens_where_markers_pile_up() {
+    let mut canvas = PixelCanvas::new(4, 2, (8, 8));
+    canvas.set_opacity(0.3);
+    canvas.set_accumulate(true);
+    for _ in 0..3 {
+        canvas.dot(10.0, 8.0, RED);
+    }
+    canvas.dot(24.0, 8.0, RED);
+    canvas.set_accumulate(false);
+    canvas.set_opacity(1.0);
+    let piled = canvas.rgba(10, 8)[3];
+    let single = canvas.rgba(24, 8)[3];
+    assert!(piled > single, "overplotting adds up: {piled} > {single}");
+    assert!(piled >= 3 * single - 6, "roughly linear accumulation");
+    // Ordinary blending would have capped a same-color pile at one coat.
+    let mut plain = PixelCanvas::new(4, 2, (8, 8));
+    plain.set_opacity(0.3);
+    for _ in 0..3 {
+        plain.dot(10.0, 8.0, RED);
+    }
+    assert_eq!(plain.rgba(10, 8)[3], single);
+}

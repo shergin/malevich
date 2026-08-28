@@ -350,7 +350,13 @@ fn draw_series<C: Canvas>(
                 previous = Some((position, category));
             }
         }
-        Kind::Points(style) => {
+        Kind::Points {
+            style,
+            opacity,
+            density,
+        } => {
+            surface.set_opacity(*opacity);
+            surface.set_accumulate(*density);
             for (index, (xv, &yv)) in x.iter().zip(y.iter()).enumerate() {
                 if xv.is_finite() && yv.is_finite() {
                     surface.point(
@@ -361,6 +367,8 @@ fn draw_series<C: Canvas>(
                     );
                 }
             }
+            surface.set_accumulate(false);
+            surface.set_opacity(1.0);
         }
     }
 }

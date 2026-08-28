@@ -45,6 +45,11 @@ pub(crate) trait Canvas {
     /// targets have no notion of partial ink and ignore it.
     fn set_opacity(&mut self, _opacity: f64) {}
 
+    /// Accumulating ink: overlapping draws add coverage instead of
+    /// compositing over — overplotting reads as brightness (density
+    /// scatters). Glyph targets ignore it.
+    fn set_accumulate(&mut self, _on: bool) {}
+
     /// Sets the subpixel nearest to `(x, y)`; non-finite coordinates draw nothing.
     fn dot(&mut self, x: f64, y: f64, color: Color);
 

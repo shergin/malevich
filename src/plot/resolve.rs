@@ -89,7 +89,11 @@ pub(crate) enum Kind {
         glow: bool,
         dash: Dash,
     },
-    Points(PointStyle),
+    Points {
+        style: PointStyle,
+        opacity: f64,
+        density: bool,
+    },
 }
 
 /// A resolved constant or data-bound color channel.
@@ -539,7 +543,7 @@ fn series_swatch(
     match kind {
         Kind::Line { .. } if ascii => "--",
         Kind::Line { .. } => "\u{2500}\u{2500}",
-        Kind::Points(style) => match color.point_style_for_category(category, *style) {
+        Kind::Points { style, .. } => match color.point_style_for_category(category, *style) {
             PointStyle::Dot if ascii => "..",
             PointStyle::Dot => "\u{2022}\u{2022}",
             PointStyle::Plus => "++",
@@ -703,7 +707,11 @@ pub(crate) fn resolve<'p>(
                     points.color,
                     points.label.as_deref(),
                 ),
-                kind: Kind::Points(points.style),
+                kind: Kind::Points {
+                    style: points.style,
+                    opacity: points.opacity.unwrap_or(1.0),
+                    density: points.density,
+                },
             },
             Mark::Bars(bars) => ResolvedLayer::Bars {
                 placement: &bars.placement,

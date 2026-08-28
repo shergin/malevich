@@ -28,6 +28,8 @@ pub(crate) struct PixelCanvas {
     pixels: Vec<[u8; 4]>,
     /// Coverage multiplier for subsequent draws — a layer-scoped wash.
     opacity: f64,
+    /// Accumulating ink: coverage adds up instead of compositing over.
+    accumulate: bool,
     /// An optional drawing clip in pixel coordinates `(x0, y0, x1, y1)`, upper
     /// bounds exclusive — the same contract as the cell surface's clip.
     clip: Option<(i64, i64, i64, i64)>,
@@ -86,6 +88,7 @@ impl PixelCanvas {
             point: stroke + 1,
             pixels,
             opacity: 1.0,
+            accumulate: false,
             clip: None,
         })
     }
@@ -100,6 +103,7 @@ impl PixelCanvas {
             point: 2,
             pixels: Vec::new(),
             opacity: 1.0,
+            accumulate: false,
             clip: None,
         }
     }
@@ -275,6 +279,21 @@ impl PixelCanvas {
         let index = y as usize * self.width + x as usize;
         let [r, g, b, a_old] = self.pixels[index];
         let new = [rgb.0, rgb.1, rgb.2, a_new];
+        if self.accumulate && a_old > 0 {
+            // Density ink: coverage adds, color mixes by contribution.
+            let total = u16::from(a_old) + u16::from(a_new);
+            let mix = |source: u8, dest: u8| {
+                ((u16::from(source) * u16::from(a_new) + u16::from(dest) * u16::from(a_old))
+                    / total) as u8
+            };
+            self.pixels[index] = [
+                mix(rgb.0, r),
+                mix(rgb.1, g),
+                mix(rgb.2, b),
+                total.min(255) as u8,
+            ];
+            return;
+        }
         self.pixels[index] = if a_old == 0 || a_new == 255 {
             new
         } else if (r, g, b) == rgb {
@@ -331,6 +350,10 @@ impl Canvas for PixelCanvas {
         } else {
             1.0
         };
+    }
+
+    fn set_accumulate(&mut self, on: bool) {
+        self.accumulate = on;
     }
 
     fn dot(&mut self, x: f64, y: f64, color: Color) {

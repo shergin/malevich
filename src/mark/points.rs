@@ -41,6 +41,18 @@ pub struct Points<'a> {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub(crate) color_by: Option<Categories>,
+    /// Absent means opaque; wire documents omit it then.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub(crate) opacity: Option<f64>,
+    /// Off by default; wire documents omit it then.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "core::ops::Not::not")
+    )]
+    pub(crate) density: bool,
 }
 
 impl<'a> Points<'a> {
@@ -53,6 +65,8 @@ impl<'a> Points<'a> {
             label: None,
             style: PointStyle::Dot,
             color_by: None,
+            opacity: None,
+            density: false,
         }
     }
 
@@ -71,6 +85,8 @@ impl<'a> Points<'a> {
             label: None,
             style: PointStyle::Dot,
             color_by: None,
+            opacity: None,
+            density: false,
         };
         points
             .validate()
@@ -89,6 +105,31 @@ impl<'a> Points<'a> {
     #[must_use]
     pub fn color(mut self, color: Color) -> Points<'a> {
         self.color = Some(color);
+        self
+    }
+
+    /// A translucent marker wash on pixel targets: `opacity` in `(0, 1]`
+    /// scales each marker's coverage. Cell targets stay solid. Pair with
+    /// [`density`](Points::density) so overplotting reads as brightness.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `opacity` is not finite or outside `(0, 1]`.
+    #[must_use]
+    pub fn opacity(mut self, opacity: f64) -> Points<'a> {
+        self.opacity = Some(opacity);
+        self.validate()
+            .expect("Points::opacity requires a value in (0, 1]");
+        self
+    }
+
+    /// Density rendering on pixel targets: overlapping markers add their
+    /// coverage instead of painting over each other, so crowded regions
+    /// literally brighten. Use with a low [`opacity`](Points::opacity) —
+    /// each marker contributes a little, and the pile-up tells the story.
+    #[must_use]
+    pub fn density(mut self) -> Points<'a> {
+        self.density = true;
         self
     }
 
@@ -128,6 +169,13 @@ impl<'a> Points<'a> {
         if let Some(categories) = &self.color_by {
             super::pair("Points: color_by and y", categories.len(), self.y.len())?;
         }
+        if let Some(opacity) = self.opacity
+            && !(opacity.is_finite() && 0.0 < opacity && opacity <= 1.0)
+        {
+            return Err(crate::Error::InvalidParameter {
+                detail: "Points opacity must be finite and in (0, 1]",
+            });
+        }
         Ok(())
     }
 
@@ -140,6 +188,8 @@ impl<'a> Points<'a> {
             label: self.label,
             style: self.style,
             color_by: self.color_by,
+            opacity: self.opacity,
+            density: self.density,
         }
     }
 }
