@@ -152,6 +152,10 @@ impl App {
         ])
         .areas(area);
         let history = &self.history;
+        // Follow the stream: pin every x axis to the full two-minute window
+        // from the first frame, so the filling rings draw into a stable axis
+        // instead of rescaling it on every sample.
+        let window = views::tail_window(CAPACITY, history.interval);
         let charts = [
             (
                 views::cpu_chart(&history.cpu.snapshot(), history.interval),
@@ -171,7 +175,10 @@ impl App {
             ),
         ];
         for (chart, chart_area) in charts {
-            frame.render_widget(chart.widget().charset(self.charset), chart_area);
+            frame.render_widget(
+                chart.viewport(&window).widget().charset(self.charset),
+                chart_area,
+            );
         }
     }
 
@@ -179,8 +186,10 @@ impl App {
     fn draw_cores(&self, frame: &mut ratatui::Frame, area: Rect) {
         let [heat_area, bars_area] =
             Layout::vertical([Constraint::Fill(2), Constraint::Length(9)]).areas(area);
+        let window = views::tail_window(CAPACITY, self.history.interval);
         frame.render_widget(
             views::cores_heatmap(&self.history)
+                .viewport(&window)
                 .widget()
                 .charset(self.charset),
             heat_area,

@@ -65,6 +65,16 @@ struct App {
     drag_in_strip: Option<bool>,
 }
 
+/// The linked-panes pattern: the x view is a value, so sharing it is
+/// assignment. Each pane keeps its own y.
+fn mirror_x(window: Option<(f64, f64)>, to: &mut PlotState) {
+    let view = to.viewport();
+    to.set_viewport(match window {
+        Some((low, high)) => view.with_x(low, high),
+        None => view.reset_x(),
+    });
+}
+
 /// Crossterm's mouse event into malevich's backend-neutral vocabulary.
 fn mouse(event: MouseEvent) -> Option<Mouse> {
     let button = |b: CtButton| match b {
@@ -154,6 +164,16 @@ fn main() -> std::io::Result<()> {
             KeyCode::Char('r') => {
                 app.series_state.reset_view();
                 app.strip_state.reset_view();
+            }
+            // h/l pan the series chart (arrows switch views); the strip
+            // follows through the same mirroring the mouse path uses.
+            KeyCode::Char('h') if app.view == View::Series => {
+                app.series_state.pan_left();
+                mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
+            }
+            KeyCode::Char('l') if app.view == View::Series => {
+                app.series_state.pan_right();
+                mirror_x(app.series_state.viewport().x(), &mut app.strip_state);
             }
             KeyCode::Tab | KeyCode::Right => app.view = app.view.next(),
             KeyCode::BackTab | KeyCode::Left => app.view = app.view.previous(),
@@ -343,14 +363,7 @@ impl App {
             Mouse::Up { .. } => self.drag_in_strip = None,
             _ => {}
         }
-        // The linked-panes pattern: the x view is a value, so sharing it is
-        // assignment. Each pane keeps its own y.
-        let window = pane.viewport().x();
-        let view = other.viewport();
-        other.set_viewport(match window {
-            Some((low, high)) => view.with_x(low, high),
-            None => view.reset_x(),
-        });
+        mirror_x(pane.viewport().x(), other);
     }
 
     /// Renders two plots side by side. `plot.widget()` is malevich's ratatui
@@ -429,7 +442,7 @@ impl App {
             ))
         };
         let keys = TextLine::from(format!(
-            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
+            " [1-5/tab] view  [jk] series  [t] transform  [c] line  [g] glyphs  [s] recessions: {}  [f] fetch  [hl] pan  [r] reset zoom  [q] quit  ·  mouse: wheel zoom, drag pan, right-drag select ",
             if self.shade_recessions { "on" } else { "off" },
         ))
         .style(Style::default().add_modifier(Modifier::DIM));

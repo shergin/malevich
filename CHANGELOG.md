@@ -38,7 +38,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   summarized with the ordinary stat vocabulary), follow-the-stream.
   `fred` wears all of it on its series view: the full gesture set, a
   year-over-year context strip linked to the main chart by mirroring the
-  x window, and a footer that describes the visible window when zoomed.
+  x window, and a footer that describes the visible window when zoomed;
+  `sysmon` pins its streaming axes with `tail`, holding a stable
+  two-minute window while the rings fill. `pan_left`/`pan_right` join the
+  keyboard sugar (h/l in fred, arrow keys in the zoom example), and
+  gestures stacked between renders compound instead of re-reading a stale
+  mapping.
 
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a

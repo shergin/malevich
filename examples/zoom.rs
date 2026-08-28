@@ -111,6 +111,12 @@ fn main() -> std::io::Result<()> {
                 KeyCode::Char('-') => {
                     state.zoom_out();
                 }
+                KeyCode::Left => {
+                    state.pan_left();
+                }
+                KeyCode::Right => {
+                    state.pan_right();
+                }
                 _ => {}
             },
             Event::Mouse(raw) => {

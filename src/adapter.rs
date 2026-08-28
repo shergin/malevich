@@ -401,6 +401,28 @@ impl PlotState {
         self.zoom_center(ZOOM_OUT)
     }
 
+    /// Pans left by a tenth of the visible x window — a keyboard binding's
+    /// pan. Returns whether the view changed; a bands axis never moves.
+    pub fn pan_left(&mut self) -> bool {
+        self.pan_step(-PAN_STEP)
+    }
+
+    /// Pans right by a tenth of the visible x window.
+    pub fn pan_right(&mut self) -> bool {
+        self.pan_step(PAN_STEP)
+    }
+
+    fn pan_step(&mut self, fraction: f64) -> bool {
+        let Some(mapping) = self.mapping.clone() else {
+            return false;
+        };
+        if mapping.x_bands().is_some() {
+            return false;
+        }
+        self.view = self.seed_x(&mapping).pan_x(fraction);
+        true
+    }
+
     /// Feeds one mouse input through the default gesture grammar. Returns
     /// whether any state changed — `false` means the host can skip a redraw.
     pub fn on_mouse(&mut self, mouse: Mouse) -> bool {
@@ -590,11 +612,16 @@ impl PlotState {
         self.view = view;
     }
 
-    /// The current view with x fixed to the mapping's window, y left exactly
-    /// as the host's view holds it — so an x gesture never silently freezes a
-    /// still-automatic y axis.
+    /// The current view with x fixed — to the view's own window when one is
+    /// already set (so gestures stacked between renders compound instead of
+    /// re-reading a stale mapping), otherwise to the mapping's rendered
+    /// window — and y left exactly as the host's view holds it, so an x
+    /// gesture never silently freezes a still-automatic y axis.
     fn seed_x(&self, mapping: &Mapping) -> Viewport {
-        let seeded = mapping.viewport();
+        let mut seeded = mapping.viewport();
+        if let Some((low, high)) = self.view.x() {
+            seeded = seeded.with_x(low, high);
+        }
         match self.view.y() {
             Some((low, high)) => seeded.with_y(low, high),
             None => seeded.reset_y(),
@@ -605,6 +632,8 @@ impl PlotState {
 /// Wheel and keyboard zoom steps: one notch in, its exact inverse out.
 const ZOOM_IN: f64 = 0.8;
 const ZOOM_OUT: f64 = 1.25;
+/// The keyboard pan step, as a fraction of the visible window.
+const PAN_STEP: f64 = 0.1;
 
 /// Clamps a terminal coordinate into a rectangle.
 fn clamp_into(rect: Rect, column: u16, row: u16) -> (u16, u16) {

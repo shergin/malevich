@@ -4,7 +4,7 @@
 //! the sampler thread keeps pushing while these run, and the same functions power
 //! the TUI and the headless `--render` mode.
 
-use malevich::{Area, Color, Line, Plot};
+use malevich::{Area, Color, Line, Plot, Viewport};
 
 use crate::data::History;
 
@@ -33,6 +33,18 @@ impl View {
             View::Cores => View::Dashboard,
         }
     }
+}
+
+/// The follow-the-stream window: the trailing `capacity` samples as a fixed x
+/// span ending at "now" (0), so a filling ring draws into a stable axis
+/// instead of rescaling it on every sample (`Viewport::tail` —
+/// docs/interaction.md, "Follow the stream").
+///
+/// malevich notes: a viewport is run state, applied by the host — the TUI pins
+/// its axes with this while the headless mode renders the same chart functions
+/// with an automatic axis, and neither function knows the difference.
+pub fn tail_window(capacity: usize, interval: f64) -> Viewport {
+    Viewport::auto().tail(0.0, capacity.saturating_sub(1) as f64 * interval)
 }
 
 /// A "seconds ago" x column for `values` sampled every `interval` seconds: the
@@ -199,6 +211,21 @@ mod tests {
             rendered.contains('M'),
             "megabyte rates get an SI prefix:\n{rendered}"
         );
+    }
+
+    #[test]
+    fn the_tail_window_holds_the_axis_while_the_ring_fills() {
+        let history = synthetic_history();
+        let frame = malevich::Frame::plain(70, 14);
+        let chart = cpu_chart(&history.cpu.snapshot(), history.interval);
+        let auto = chart.clone().render(&frame);
+        let pinned = chart
+            .viewport(&tail_window(240, history.interval))
+            .render(&frame);
+        // Sixteen half-second samples: the automatic axis spans seconds, the
+        // pinned one holds the full two-minute window from the start.
+        assert!(pinned.contains("-100"), "the axis reaches back:\n{pinned}");
+        assert!(!auto.contains("-100"), "the automatic axis stays narrow");
     }
 
     #[test]

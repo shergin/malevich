@@ -69,7 +69,7 @@ The gesture grammar, fixed on purpose:
 | wheel | x zoom anchored at the data under the cursor |
 | left drag | pan, every continuous axis |
 | right drag | rubber-band selection; zooms to it on release |
-| `reset_view()` / `zoom_in()` / `zoom_out()` | for the host's key bindings |
+| `reset_view()` / `zoom_in()` / `zoom_out()` / `pan_left()` / `pan_right()` | for the host's key bindings |
 
 Coordinates outside the plot rectangle are ignored; bands axes have no
 continuous window and stay untouched.
@@ -121,7 +121,9 @@ what is on screen, dated by `format_x`.
 
 **Follow the stream.** A live chart tails its ring buffer in one line —
 `view.tail(latest_x, width)` — and a user's zoom naturally suspends the
-follow until `reset()`.
+follow until `reset()`. sysmon pins its dashboard axes this way: the full
+two-minute window holds still from the first sample instead of rescaling
+while the rings fill.
 
 ## What stays out
 

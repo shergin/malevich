@@ -464,3 +464,30 @@ fn every_snappable_series_joins_the_readout() {
     assert!(row.contains("b:"), "the points snap: {row:?}");
     assert!(!row.contains("rule"), "a rule is not a series: {row:?}");
 }
+
+#[test]
+fn keyboard_pan_shifts_the_window_and_ignores_bands() {
+    let plot = stateful_plot();
+    let mut state = PlotState::default();
+    assert!(!state.pan_right(), "no mapping before the first render");
+    render_stateful(&plot, Rect::new(0, 0, 50, 18), &mut state);
+
+    assert!(state.pan_right());
+    let (lo, hi) = state.viewport().x().expect("panning fixed x");
+    assert!(
+        (lo - 1.0).abs() < 1e-9 && (hi - 11.0).abs() < 1e-9,
+        "a tenth right: ({lo}, {hi})"
+    );
+    assert!(state.pan_left());
+    let (lo, hi) = state.viewport().x().expect("still fixed");
+    assert!(
+        (lo - 0.0).abs() < 1e-9 && (hi - 10.0).abs() < 1e-9,
+        "and back: ({lo}, {hi})"
+    );
+    assert_eq!(state.viewport().y(), None, "y stays automatic");
+
+    let bars = crate::bar(["a", "b"], &[1.0, 2.0][..]);
+    let mut bands = PlotState::default();
+    render_stateful(&bars, Rect::new(0, 0, 40, 12), &mut bands);
+    assert!(!bands.pan_right(), "a bands axis never pans");
+}
