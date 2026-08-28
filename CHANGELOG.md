@@ -73,6 +73,17 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   their event queues before redrawing, collapsing input bursts into one
   repaint.
 
+- The hand-rolled deflate truncates every LZ77 match at 32 KiB
+  window-aligned output boundaries. Bounded blocks alone never protected a
+  streaming inflater — block output positions drift, so matches still
+  straddled the drain boundaries where Zig ≤0.15's flate (Ghostty ≤1.3.1)
+  aborts a fixed-Huffman transmission mid-match; a real chart stream
+  carried four hundred straddling matches, which is why large kitty
+  panels froze on affected terminals while small ones squeaked through.
+  Costs one shortened match per 32 KiB (+0.2% on a measured chart
+  stream); an emission-site assertion and a five-window regression test
+  pin the invariant.
+
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a
   "Spelled today" section that may rot while the argument must not — and

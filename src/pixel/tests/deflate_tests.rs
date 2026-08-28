@@ -122,3 +122,20 @@ fn adler_reference_values() {
     assert_eq!(adler32(b""), 1);
     assert_eq!(adler32(b"Wikipedia"), 0x11E6_0398);
 }
+
+#[test]
+fn no_match_crosses_a_window_aligned_boundary() {
+    // A long repetitive raster drives maximal matches through every 32 KiB
+    // output boundary — the shape that aborted Zig ≤0.15's streaming
+    // inflater (Ghostty ≤1.3.1) mid-transmission. The emission-site
+    // debug_assert enforces the invariant while this input crosses five
+    // windows; the roundtrip proves truncation still decodes exactly.
+    let raw: Vec<u8> = (0..170_000u32)
+        .flat_map(|i| [(i % 7) as u8, 0, 0, 255])
+        .collect();
+    roundtrip(&raw);
+    // And with runs offset so boundaries land mid-run at every alignment.
+    let mut shifted = vec![17u8; 13];
+    shifted.extend_from_slice(&raw);
+    roundtrip(&shifted);
+}

@@ -708,3 +708,102 @@ mod pixels {
         );
     }
 }
+
+#[cfg(feature = "pixel")]
+mod fred_flow {
+    use super::*;
+    use crate::pixel::{Graphics, Protocol};
+    use crate::{Mouse, PlotState, present_pixels};
+    use ratatui_core::widgets::StatefulWidget;
+
+    fn native() -> Graphics {
+        Graphics::new(Protocol::Kitty).cell_size(14, 28)
+    }
+
+    fn render(plot: &Plot<'_>, area: Rect, state: &mut PlotState) {
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 300, 60));
+        StatefulWidget::render(
+            plot.widget()
+                .graphics(native())
+                .charset(crate::Charset::Braille),
+            area,
+            &mut buffer,
+            state,
+        );
+    }
+
+    #[test]
+    fn two_linked_panes_zoom_and_hover_at_native_density() {
+        let n = 900;
+        let dates: Vec<f64> = (0..n)
+            .map(|i| 631_152_000.0 + i as f64 * 2_629_800.0)
+            .collect();
+        let values: Vec<f64> = (0..n)
+            .map(|i| 5.0 + (i as f64 * 0.05).sin() * 2.0)
+            .collect();
+        let main_plot = Plot::new()
+            .layer(Line::xy(&dates[..], &values[..]).label("rate"))
+            .time_x()
+            .title("main");
+        let strip_plot = Plot::new()
+            .layer(Line::xy(&dates[..], &values[..]))
+            .time_x();
+
+        let main_area = Rect::new(27, 1, 254, 32);
+        let strip_area = Rect::new(27, 33, 254, 8);
+        let mut main = PlotState::default();
+        let mut strip = PlotState::default();
+        render(&strip_plot, strip_area, &mut strip);
+        render(&main_plot, main_area, &mut main);
+
+        // The panes' hit rectangles are disjoint and inside their areas.
+        let main_rect = main.plot_area().expect("main panel");
+        let strip_rect = strip.plot_area().expect("strip panel");
+        assert!(
+            main_rect.bottom() <= strip_rect.y,
+            "no overlap: {main_rect:?} vs {strip_rect:?}"
+        );
+        assert!(main_rect.y >= main_area.y && main_rect.bottom() <= main_area.bottom());
+        assert!(strip_rect.y >= strip_area.y && strip_rect.bottom() <= strip_area.bottom());
+
+        // Both queue a first block; present them.
+        assert!(main.pixels.is_some() && strip.pixels.is_some());
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &native(), &mut [&mut main, &mut strip]).unwrap();
+
+        // Wheel over the main panel center: the zoom registers immediately.
+        let at = (
+            main_rect.x + main_rect.width / 2,
+            main_rect.y + main_rect.height / 2,
+        );
+        assert!(
+            main.on_mouse(Mouse::ScrollUp {
+                column: at.0,
+                row: at.1
+            }),
+            "the wheel lands inside the main panel"
+        );
+        let window = main.viewport().x().expect("zoom fixed x");
+
+        // The mirrored re-render bypasses the pace (view changed) and queues.
+        strip.set_viewport(strip.viewport().with_x(window.0, window.1));
+        render(&strip_plot, strip_area, &mut strip);
+        render(&main_plot, main_area, &mut main);
+        assert!(main.pixels.is_some(), "the zoomed main frame queues");
+        assert!(strip.pixels.is_some(), "the mirrored strip frame queues");
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &native(), &mut [&mut main, &mut strip]).unwrap();
+        assert!(!out.is_empty());
+
+        // Hover: past the pace window, the crosshair frame queues for main only.
+        assert!(main.on_mouse(Mouse::Moved {
+            column: at.0,
+            row: at.1
+        }));
+        std::thread::sleep(std::time::Duration::from_millis(40));
+        render(&strip_plot, strip_area, &mut strip);
+        render(&main_plot, main_area, &mut main);
+        assert!(main.pixels.is_some(), "the crosshair frame queues");
+        assert!(strip.pixels.is_none(), "the unchanged strip is suppressed");
+    }
+}

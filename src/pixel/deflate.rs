@@ -58,12 +58,12 @@ pub(crate) fn adler32(bytes: &[u8]) -> u32 {
 }
 
 const WINDOW: usize = 32 * 1024;
-/// Input bytes per deflate block. A streaming decoder is only guaranteed
-/// 32 KiB of free output between drains, and Zig ≤0.15's inflater
-/// (Ghostty) aborts when a fixed-Huffman block crosses that boundary
-/// mid-match — so no block may decode past it. Conventional zlib flushes
-/// blocks around this cadence anyway; a boundary match can overrun the
-/// span by up to `MAX_MATCH`, so the cap sits well under 32 KiB.
+/// Input bytes per deflate block, the conventional zlib flush cadence.
+/// Bounded blocks alone do NOT protect a streaming inflater: block output
+/// positions drift, so their spans still straddle window-aligned drain
+/// boundaries — a real fred stream carried four hundred straddling matches
+/// under the old assumption. The actual protection is at match emission
+/// (`compress_span` truncates every match at 32 KiB output boundaries).
 const BLOCK_SPAN: usize = 16 * 1024;
 const MIN_MATCH: usize = 4;
 /// Matches longer than this index only their fringes (see `compress_span`).
@@ -96,6 +96,14 @@ fn compress_span(
     let mut position = start;
     while position < target {
         let (mut best_len, mut best_dist) = (0usize, 0usize);
+        // A streaming inflater drains its window-sized output buffer at
+        // 32 KiB boundaries, and Zig ≤0.15's flate (Ghostty ≤1.3.1) cannot
+        // suspend a fixed-Huffman match across that drain — the whole
+        // transmission aborts. So no match may cross a window-aligned output
+        // position: truncate at the boundary (one shortened match per
+        // 32 KiB), and a remainder too short to stand as a match falls
+        // through to literals, which suspend fine.
+        let room = WINDOW - (position & (WINDOW - 1));
         if position + MIN_MATCH <= raw.len() {
             let mut candidate = head[hash(raw, position)];
             let mut tries = MAX_CHAIN;
@@ -116,7 +124,12 @@ fn compress_span(
                 tries -= 1;
             }
         }
+        let best_len = best_len.min(room);
         if best_len >= MIN_MATCH {
+            debug_assert!(
+                (position & (WINDOW - 1)) + best_len <= WINDOW,
+                "a match may never cross a window-aligned output boundary"
+            );
             put_match(writer, best_len, best_dist);
             // Index covered positions so later matches can reach into this
             // run — but only the fringes of a long match (zlib's
