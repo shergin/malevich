@@ -112,7 +112,8 @@ fn mouse(event: MouseEvent) -> Option<Mouse> {
         },
         MouseEventKind::ScrollUp => Mouse::ScrollUp { column, row },
         MouseEventKind::ScrollDown => Mouse::ScrollDown { column, row },
-        _ => return None,
+        MouseEventKind::ScrollLeft => Mouse::ScrollLeft { column, row },
+        MouseEventKind::ScrollRight => Mouse::ScrollRight { column, row },
     })
 }
 
@@ -186,9 +187,8 @@ fn main() -> std::io::Result<()> {
         if let Some(graphics) = &app.graphics {
             if app.view == View::Series && app.pixels_on {
                 if emit_needed {
-                    malevich::present_pixels(
+                    graphics.present(
                         &mut std::io::stdout(),
-                        graphics,
                         &mut [&mut app.series_state, &mut app.strip_state],
                     )?;
                     emit_needed = false;
@@ -198,9 +198,8 @@ fn main() -> std::io::Result<()> {
                 // cover them. Retiring them also resets both states, so a
                 // return to the series view starts from fresh ground and a
                 // fresh emission.
-                malevich::clear_pixels(
+                graphics.retire(
                     &mut std::io::stdout(),
-                    graphics,
                     &mut [&mut app.series_state, &mut app.strip_state],
                 )?;
                 emit_needed = true;
@@ -247,9 +246,8 @@ fn main() -> std::io::Result<()> {
                             if !app.pixels_on
                                 && let Some(graphics) = &app.graphics
                             {
-                                let _ = malevich::clear_pixels(
+                                let _ = graphics.retire(
                                     &mut std::io::stdout(),
-                                    graphics,
                                     &mut [&mut app.series_state, &mut app.strip_state],
                                 );
                             }
@@ -443,9 +441,14 @@ impl App {
             Mouse::Moved { column, row }
             | Mouse::ScrollUp { column, row }
             | Mouse::ScrollDown { column, row }
+            | Mouse::ScrollLeft { column, row }
+            | Mouse::ScrollRight { column, row }
             | Mouse::Down { column, row, .. }
             | Mouse::Drag { column, row, .. }
             | Mouse::Up { column, row, .. } => (column, row),
+            // The vocabulary is non-exhaustive; inputs this app cannot
+            // position are not routed.
+            _ => return false,
         };
         let positional = self.strip_shown
             && self

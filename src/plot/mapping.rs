@@ -41,6 +41,22 @@ pub struct Mapping {
     y_categories: Option<Vec<String>>,
 }
 
+/// The plot panel's cell rectangle within its frame: where the data draws,
+/// chrome excluded. What [`Mapping::plot_area`] answers with — a named shape
+/// instead of an anonymous tuple, because four `usize`s in a row invite
+/// transposition bugs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Panel {
+    /// Leftmost cell column of the panel, in frame coordinates.
+    pub column: usize,
+    /// Topmost cell row of the panel, in frame coordinates.
+    pub row: usize,
+    /// Width in cells.
+    pub width: usize,
+    /// Height in cells.
+    pub height: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AxisKind {
     Linear,
@@ -103,16 +119,15 @@ impl Mapping {
         }
     }
 
-    /// The plot rectangle as `(column, row, width, height)` in frame cells —
-    /// the data panel only, chrome excluded — or `None` when the frame was too
-    /// small to draw one.
-    pub fn plot_area(&self) -> Option<(usize, usize, usize, usize)> {
-        (self.columns > 0 && self.rows > 0).then_some((
-            self.left,
-            self.top,
-            self.columns,
-            self.rows,
-        ))
+    /// The plot panel in frame cells — the data rectangle only, chrome
+    /// excluded — or `None` when the frame was too small to draw one.
+    pub fn plot_area(&self) -> Option<Panel> {
+        (self.columns > 0 && self.rows > 0).then_some(Panel {
+            column: self.left,
+            row: self.top,
+            width: self.columns,
+            height: self.rows,
+        })
     }
 
     /// The data coordinates at the center of the frame cell `(column, row)`,
@@ -162,6 +177,17 @@ impl Mapping {
         Some((a.min(b), a.max(b)))
     }
 
+    /// The data interval one plot row covers — [`Mapping::x_span_at`]'s
+    /// vertical counterpart.
+    pub fn y_span_at(&self, row: usize) -> Option<(f64, f64)> {
+        if self.rows == 0 || !(self.top..self.top + self.rows).contains(&row) {
+            return None;
+        }
+        let start = ((row - self.top) * self.py) as f64 - 0.5;
+        let (a, b) = (self.y.unmap(start), self.y.unmap(start + self.py as f64));
+        Some((a.min(b), a.max(b)))
+    }
+
     /// The resolved x window: the manual domain if one was set, otherwise the
     /// automatic domain grown to its ticks. A bands axis answers in band-index
     /// space: `(0, count - 1)`.
@@ -174,22 +200,25 @@ impl Mapping {
         self.y_domain
     }
 
-    /// The number of x bands when the x axis is categorical.
-    pub fn x_bands(&self) -> Option<usize> {
-        matches!(self.x_kind, AxisKind::Bands).then(|| {
-            self.x_categories
-                .as_ref()
-                .map_or_else(|| self.x_domain.1 as usize + 1, Vec::len)
-        })
+    /// The x axis's categories, in band order, when it is categorical —
+    /// `None` on a continuous axis. The labels themselves, not a bare count:
+    /// a host hit-testing a bands axis wants to name what it hit.
+    pub fn x_categories(&self) -> Option<&[String]> {
+        if matches!(self.x_kind, AxisKind::Bands) {
+            self.x_categories.as_deref()
+        } else {
+            None
+        }
     }
 
-    /// The number of y bands when the y axis is categorical.
-    pub fn y_bands(&self) -> Option<usize> {
-        matches!(self.y_kind, AxisKind::Bands).then(|| {
-            self.y_categories
-                .as_ref()
-                .map_or_else(|| self.y_domain.1 as usize + 1, Vec::len)
-        })
+    /// The y axis's categories, in band order (band 0 is the top row), when
+    /// it is categorical.
+    pub fn y_categories(&self) -> Option<&[String]> {
+        if matches!(self.y_kind, AxisKind::Bands) {
+            self.y_categories.as_deref()
+        } else {
+            None
+        }
     }
 
     /// Formats an x value the way the x axis would: exact decimals at the

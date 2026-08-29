@@ -531,7 +531,7 @@ fn keyboard_pan_shifts_the_window_and_ignores_bands() {
 mod pixels {
     use super::*;
     use crate::pixel::{Graphics, Protocol};
-    use crate::{Mouse, PlotState, clear_pixels, present_pixels};
+    use crate::{Mouse, PlotState};
     use ratatui_core::buffer::CellDiffOption;
     use ratatui_core::widgets::StatefulWidget;
 
@@ -619,7 +619,7 @@ mod pixels {
         render_pixel_frame(&mut state, area);
         assert!(state.pixels.is_some(), "the first render always encodes");
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
 
         // A hover flood within the window: nothing new to encode or present —
         // the image already on screen stays, and the frames cost nothing.
@@ -641,7 +641,7 @@ mod pixels {
 
         // Past the window, a cursor move renders again.
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(40));
         state.on_mouse(Mouse::Moved {
             column: panel.x + 3,
@@ -687,7 +687,7 @@ mod pixels {
 
         // A drag pan under the same cursor moves the rendered window too.
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
         state.on_mouse(Mouse::Down {
             button: crate::MouseButton::Left,
             column: at.0,
@@ -713,7 +713,7 @@ mod pixels {
         let mut state = PlotState::default();
         render_pixel_frame(&mut state, Rect::new(2, 1, 50, 18));
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
         let text = String::from_utf8_lossy(&out);
         assert!(text.starts_with("\x1b[?2026h"), "synchronized begin");
         assert!(text.ends_with("\x1b[?2026l"), "synchronized end");
@@ -737,7 +737,7 @@ mod pixels {
         });
         render_pixel_frame(&mut state, Rect::new(2, 1, 50, 18));
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
         let text = String::from_utf8_lossy(&out);
         assert!(text.contains(",p=2,"), "the alternate placement: {text:?}");
         let place = text.find("a=p").expect("a placement");
@@ -749,7 +749,7 @@ mod pixels {
         );
 
         let mut quiet: Vec<u8> = Vec::new();
-        present_pixels(&mut quiet, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut quiet, &mut [&mut state]).unwrap();
         assert!(quiet.is_empty(), "nothing pending, nothing written");
     }
 
@@ -759,28 +759,22 @@ mod pixels {
         let mut presented = PlotState::default();
         render_pixel_frame(&mut presented, area);
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut presented]).unwrap();
+        kitty().present(&mut out, &mut [&mut presented]).unwrap();
 
         let mut goodbye: Vec<u8> = Vec::new();
         let mut untouched = PlotState::default();
-        clear_pixels(
-            &mut goodbye,
-            &kitty(),
-            &mut [&mut presented, &mut untouched],
-        )
-        .unwrap();
+        kitty()
+            .retire(&mut goodbye, &mut [&mut presented, &mut untouched])
+            .unwrap();
         let text = String::from_utf8_lossy(&goodbye);
         assert!(text.contains("a=d,d=I,i="), "delete by our id: {text:?}");
         assert_eq!(text.matches("a=d").count(), 1, "only the presented panel");
         assert!(presented.pixel_sent.is_none(), "presentation memory reset");
 
         let mut sixel: Vec<u8> = Vec::new();
-        clear_pixels(
-            &mut sixel,
-            &Graphics::new(Protocol::Sixel),
-            &mut [&mut presented],
-        )
-        .unwrap();
+        Graphics::new(Protocol::Sixel)
+            .retire(&mut sixel, &mut [&mut presented])
+            .unwrap();
         assert!(sixel.is_empty(), "cells cover themselves");
     }
 
@@ -790,7 +784,7 @@ mod pixels {
         let mut state = PlotState::default();
         render_pixel_frame(&mut state, area);
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        kitty().present(&mut out, &mut [&mut state]).unwrap();
 
         // Past the pace window with nothing changed: the encode runs, matches
         // what is on screen, and queues nothing.
@@ -829,7 +823,7 @@ mod pixels {
 mod fred_flow {
     use super::*;
     use crate::pixel::{Graphics, Protocol};
-    use crate::{Mouse, PlotState, present_pixels};
+    use crate::{Mouse, PlotState};
     use ratatui_core::widgets::StatefulWidget;
 
     fn native() -> Graphics {
@@ -885,7 +879,9 @@ mod fred_flow {
         // Both queue a first block; present them.
         assert!(main.pixels.is_some() && strip.pixels.is_some());
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &native(), &mut [&mut main, &mut strip]).unwrap();
+        native()
+            .present(&mut out, &mut [&mut main, &mut strip])
+            .unwrap();
 
         // Wheel over the main panel center: the zoom registers immediately.
         let at = (
@@ -908,7 +904,9 @@ mod fred_flow {
         assert!(main.pixels.is_some(), "the zoomed main frame queues");
         assert!(strip.pixels.is_some(), "the mirrored strip frame queues");
         let mut out: Vec<u8> = Vec::new();
-        present_pixels(&mut out, &native(), &mut [&mut main, &mut strip]).unwrap();
+        native()
+            .present(&mut out, &mut [&mut main, &mut strip])
+            .unwrap();
         assert!(!out.is_empty());
 
         // Hover: past the pace window, the crosshair frame queues for main only.

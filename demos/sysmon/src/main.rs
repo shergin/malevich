@@ -176,7 +176,7 @@ impl App {
         ];
         for (chart, chart_area) in charts {
             frame.render_widget(
-                chart.viewport(&window).widget().charset(self.charset),
+                chart.viewport(window).widget().charset(self.charset),
                 chart_area,
             );
         }
@@ -189,7 +189,7 @@ impl App {
         let window = views::tail_window(CAPACITY, self.history.interval);
         frame.render_widget(
             views::cores_heatmap(&self.history)
-                .viewport(&window)
+                .viewport(window)
                 .widget()
                 .charset(self.charset),
             heat_area,

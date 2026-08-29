@@ -135,8 +135,10 @@ in cells, the resolved axis windows, and the cell ↔ data mapping both ways —
 the `invert` half of the scale contract, reachable at plot level. Obtained
 purely from `Plot::mapping(&frame)`; the ratatui stateful widget caches one
 per render. Queries answer in the coordinate conventions marks use (band
-indices, unix seconds), disclose cell quantization (`x_span_at`), and format
-values the way the axis formats its own labels (`format_x`/`format_y`).
+indices, unix seconds), name the plot panel as a `Panel` value rather than a
+bare tuple, expose a categorical axis's labels (`x_categories`), disclose
+cell quantization (`x_span_at`/`y_span_at`), and format values the way the
+axis formats its own labels (`format_x`/`format_y`).
 Derived state, deliberately not serializable. This is the physics interactive
 hosts build on: malevich never handles input — a host maps its events to
 questions a `Mapping` can answer. Maps to `plot::Mapping`.
@@ -174,8 +176,9 @@ band, readout) draws into the buffer only; the plot value renders
 byte-identically with or without it. With the `pixel` feature,
 `widget().graphics(g)` renders the panel as a real image: the buffer holds
 skip-reserved ground, the `PlotState` carries the encoded block, and the host
-emits it after `terminal.draw` with `present_pixels` (one synchronized
-write; `clear_pixels` retires kitty placements on view switches).
+emits it after `terminal.draw` with `Graphics::present` (one synchronized
+write, new placements created before old ones are retired;
+`Graphics::retire` deletes a view's images on the way out).
 Interaction chrome then becomes annotation marks drawn into the image, and
 hit-testing is unchanged — the mapping answers in cells regardless of what
 fills them. The pixel render paces itself (~30 full encodes per second):

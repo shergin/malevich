@@ -220,7 +220,7 @@ mod tests {
         let chart = cpu_chart(&history.cpu.snapshot(), history.interval);
         let auto = chart.clone().render(&frame);
         let pinned = chart
-            .viewport(&tail_window(240, history.interval))
+            .viewport(tail_window(240, history.interval))
             .render(&frame);
         // Sixteen half-second samples: the automatic axis spans seconds, the
         // pinned one holds the full two-minute window from the start.

@@ -44,7 +44,8 @@ fn mouse(event: MouseEvent) -> Option<Mouse> {
         },
         Kind::ScrollUp => Mouse::ScrollUp { column, row },
         Kind::ScrollDown => Mouse::ScrollDown { column, row },
-        _ => return None,
+        Kind::ScrollLeft => Mouse::ScrollLeft { column, row },
+        Kind::ScrollRight => Mouse::ScrollRight { column, row },
     })
 }
 

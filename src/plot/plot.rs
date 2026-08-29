@@ -246,7 +246,7 @@ impl<'a> Plot<'a> {
     /// [`Plot::x_domain`]/[`Plot::y_domain`], which is the point: an
     /// interactive view is a scale option, not a render mode.
     #[must_use]
-    pub fn viewport(mut self, viewport: &crate::plot::Viewport) -> Plot<'a> {
+    pub fn viewport(mut self, viewport: crate::plot::Viewport) -> Plot<'a> {
         if let Some(window) = viewport.x() {
             self.x_domain = Some(window);
         }

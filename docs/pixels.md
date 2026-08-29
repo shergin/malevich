@@ -70,8 +70,8 @@ With both `pixel` and `ratatui` enabled, the same panels render inside a
 TUI: `chart.widget().graphics(g)` on a stateful widget reserves its area
 in the buffer (spaces, skipped so ratatui's diff leaves the image alone)
 and stores the encoded block in the `PlotState`; the host emits it after
-`terminal.draw` with `present_pixels` — one synchronized write, kitty
-placements replaced atomically. Probe capabilities *before*
+`terminal.draw` with `Graphics::present` — one synchronized write, new
+kitty placements created before the old are retired. Probe capabilities *before*
 `ratatui::init()`: the query reads terminal replies a raw-mode event loop
 would swallow. Interaction — zoom, pan, crosshair, snap — keeps working
 over the image; the chrome becomes anti-aliased marks drawn into the

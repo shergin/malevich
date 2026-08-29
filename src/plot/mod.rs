@@ -13,7 +13,7 @@ mod viewport;
 
 pub use frame::Frame;
 pub use grid::Grid;
-pub use mapping::Mapping;
+pub use mapping::{Mapping, Panel};
 pub use plot::Plot;
 pub use viewport::Viewport;
 

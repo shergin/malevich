@@ -13,7 +13,8 @@ fn cells_and_data_round_trip_inside_the_plot_rectangle() {
     let plot = fixed_plot();
     let frame = Frame::plain(60, 20);
     let mapping = plot.mapping(&frame);
-    let (left, top, columns, rows) = mapping.plot_area().expect("a 60x20 frame draws a panel");
+    let panel = mapping.plot_area().expect("a 60x20 frame draws a panel");
+    let (left, top, columns, rows) = (panel.column, panel.row, panel.width, panel.height);
     assert!(
         columns > 10 && rows > 5,
         "panel too small: {columns}x{rows}"
@@ -41,7 +42,8 @@ fn queries_outside_the_plot_rectangle_are_none() {
     let plot = fixed_plot();
     let frame = Frame::plain(60, 20);
     let mapping = plot.mapping(&frame);
-    let (left, top, columns, rows) = mapping.plot_area().unwrap();
+    let panel = mapping.plot_area().unwrap();
+    let (left, top, columns, rows) = (panel.column, panel.row, panel.width, panel.height);
     assert_eq!(mapping.data_at(left.saturating_sub(1), top), None);
     assert_eq!(mapping.data_at(left, top + rows), None);
     assert_eq!(mapping.data_at(left + columns, top), None);
@@ -55,8 +57,8 @@ fn a_degenerate_frame_yields_an_empty_mapping() {
     let plot = fixed_plot();
     for frame in [Frame::plain(0, 0), Frame::plain(1, 1), Frame::plain(0, 10)] {
         let mapping = plot.mapping(&frame);
-        if let Some((_, _, columns, rows)) = mapping.plot_area() {
-            assert!(columns > 0 && rows > 0);
+        if let Some(panel) = mapping.plot_area() {
+            assert!(panel.width > 0 && panel.height > 0);
         } else {
             assert_eq!(mapping.data_at(0, 0), None);
             assert_eq!(mapping.cell_at(5.0, 5.0), None);
@@ -76,14 +78,25 @@ fn the_resolved_domains_cover_the_manual_ones_exactly() {
 fn band_axes_answer_in_band_index_space_and_format_labels() {
     let plot = Plot::new().layer(Bars::new(["mon", "tue", "wed"], &[1.0, 3.0, 2.0][..]));
     let mapping = plot.mapping(&Frame::plain(50, 15));
-    assert_eq!(mapping.x_bands(), Some(3));
-    assert_eq!(mapping.y_bands(), None);
+    assert_eq!(
+        mapping.x_categories().map(<[String]>::len),
+        Some(3),
+        "three named bands"
+    );
+    assert_eq!(
+        mapping.x_categories().map(|c| c[0].as_str()),
+        Some("mon"),
+        "the labels themselves are exposed"
+    );
+    assert_eq!(mapping.y_categories(), None);
     assert_eq!(mapping.format_x(0.0), "mon");
     assert_eq!(mapping.format_x(1.4), "tue", "rounds to the nearest band");
     assert_eq!(mapping.format_x(9.0), "wed", "clamps to the last band");
     let (x, _) = {
-        let (left, top, columns, _) = mapping.plot_area().unwrap();
-        mapping.data_at(left + columns / 2, top).unwrap()
+        let panel = mapping.plot_area().unwrap();
+        mapping
+            .data_at(panel.column + panel.width / 2, panel.row)
+            .unwrap()
     };
     assert!((0.0..=2.0).contains(&x), "band index in range, got {x}");
 }
@@ -133,7 +146,8 @@ fn log_axes_map_and_format_in_value_space() {
         .log_y()
         .y_domain(1.0, 1000.0);
     let mapping = plot.mapping(&Frame::plain(60, 24));
-    let (left, top, columns, rows) = mapping.plot_area().unwrap();
+    let panel = mapping.plot_area().unwrap();
+    let (left, top, columns, rows) = (panel.column, panel.row, panel.width, panel.height);
     let (_, y_top) = mapping.data_at(left + columns / 2, top).unwrap();
     let (_, y_bottom) = mapping.data_at(left + columns / 2, top + rows - 1).unwrap();
     assert!(y_top > y_bottom, "y grows upward: {y_top} vs {y_bottom}");

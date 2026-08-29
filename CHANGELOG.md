@@ -88,6 +88,15 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   match per 32 KiB (+0.2% on a measured chart stream); an emission-site
   assertion and a five-window regression test pin the invariant.
 
+- The interaction API, reviewed whole: `Mapping::plot_area` answers with
+  a named `Panel` value instead of a four-tuple; `x_categories` /
+  `y_categories` expose a bands axis's labels (not a bare count);
+  `y_span_at` joins `x_span_at`; `Plot::viewport` takes its `Copy` value
+  by value; the pixel presenters became `Graphics::present` and
+  `Graphics::retire`, because the value that names the protocol owns its
+  choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
+  (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
+
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a
   "Spelled today" section that may rot while the argument must not — and

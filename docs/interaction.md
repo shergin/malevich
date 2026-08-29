@@ -37,7 +37,7 @@ and returns where everything landed, as a plain value:
 `Viewport` is the view as a value: `zoom_x(factor, anchor)` (decade space on
 log axes, so equal gestures cover equal factors), `pan_x(fraction)`,
 `clamp_x(extent)`, `tail(latest, width)`, `reset()`. Applied with
-`Plot::viewport(&view)` — pure sugar over `x_domain`/`y_domain`, which is
+`Plot::viewport(view)` — pure sugar over `x_domain`/`y_domain`, which is
 the load-bearing trick: **a zoom is a scale option, not a render mode**, so
 M4 re-aggregates to the visible window on the next render and drilling into
 ten million points is just rendering (`cargo run --release --example zoom
@@ -136,30 +136,31 @@ let graphics = malevich::pixel::Capabilities::detect_for(&std::io::stdout()).bes
 // Render: same stateful widget, plus the protocol.
 frame.render_stateful_widget(plot.widget().graphics(g), area, &mut chart);
 // After terminal.draw: emit the pending image blocks in one synchronized swap.
-malevich::present_pixels(&mut std::io::stdout(), &g, &mut [&mut chart])?;
+g.present(&mut std::io::stdout(), &mut [&mut chart])?;
 ```
 
 The widget reserves its rectangle in the buffer — spaces, skip-marked so
 ratatui's diff never writes under the image, with one fresh-ground frame
 whenever the rectangle changes — and stores the encoded block in the
-`PlotState`. Repaints never flicker, because nothing is ever cleared:
-each panel's kitty image travels under a stable id, and the terminal
-swaps old for new atomically when the retransmission lands — there is no
-deleted-but-not-yet-drawn gap for the eye to catch, however large the
-payload. A panel whose content already matches the screen is not
-transmitted at all. `present_pixels` writes exactly what it is told to
+`PlotState`. Repaints never flicker: image data travels transmit-only
+under a stable per-panel id, and the presenter creates a fresh placement
+under an alternating placement id *before* retiring the one on screen —
+there is no deleted-but-not-yet-drawn gap for the eye to catch, and no
+reliance on any terminal's replacement semantics. A panel whose content
+already matches the screen is not transmitted at all. `Graphics::present` writes exactly what it is told to
 the handle it is given (the `stream::Live` precedent): emit on state
 changes, not on a timer, and the previous transmission stays on screen
-through quiet frames. `clear_pixels` retires the panels' own images —
+through quiet frames. `Graphics::retire` deletes the panels' own images —
 by id, never touching other applications' — when a view switch leaves
 the charts, and resets their states so the return paints fresh ground.
 
 Hit-testing, zoom, pan, and snapping are unchanged — the mapping answers
 in cells regardless of what fills them. The interaction chrome upgrades:
 crosshair rules, snap markers, and the readout render *into the image* as
-annotation marks — anti-aliased, never palette-consuming — with the
-domains pinned to the last frame so hovering cannot jitter an automatic
-axis. fred does all of this when its terminal speaks a protocol
+annotation marks — anti-aliased, never palette-consuming — with
+automatic axes pinned to the last frame so hovering cannot jitter them
+(a viewport-fixed axis is never pinned: the window a gesture just set
+always renders). fred does all of this when its terminal speaks a protocol
 (`--cells` opts out).
 
 Two rates keep it smooth. **The widget paces itself**: encoding and

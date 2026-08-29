@@ -114,13 +114,13 @@ fn applying_a_viewport_equals_setting_the_domains() {
     let plot = Plot::new().layer(Line::y(&data[..]));
     let frame = Frame::plain(60, 18);
     let view = Viewport::auto().with_x(20.0, 60.0).with_y(-0.5, 0.5);
-    let via_viewport = plot.clone().viewport(&view).render(&frame);
+    let via_viewport = plot.clone().viewport(view).render(&frame);
     let via_domains = plot
         .clone()
         .x_domain(20.0, 60.0)
         .y_domain(-0.5, 0.5)
         .render(&frame);
     assert_eq!(via_viewport, via_domains, "viewport is domain sugar");
-    let untouched = plot.clone().viewport(&Viewport::auto()).render(&frame);
+    let untouched = plot.clone().viewport(Viewport::auto()).render(&frame);
     assert_eq!(untouched, plot.render(&frame), "auto leaves the plot alone");
 }

@@ -136,7 +136,7 @@ impl PlotWidget<'_> {
     /// names. Requires a stateful render — the widget reserves its area in
     /// the buffer (spaces, skipped so ratatui's diff leaves the image alone)
     /// and stores the encoded block in the [`PlotState`]; the host emits it
-    /// after `terminal.draw` with [`present_pixels`]. Interaction chrome
+    /// after `terminal.draw` with [`Graphics::present`](crate::pixel::Graphics::present). Interaction chrome
     /// becomes annotation marks rendered into the image itself: anti-aliased
     /// crosshair rules, snap markers, and the readout as in-panel text.
     ///
@@ -186,7 +186,7 @@ impl PlotWidget<'_> {
         {
             return;
         }
-        let plot = self.plot.clone().viewport(&state.view);
+        let plot = self.plot.clone().viewport(state.view);
         let (surface, mapping) = plot.rasterize_mapped(&self.frame(area));
         blit(&surface, area, buffer);
         state.area = area;
@@ -233,7 +233,7 @@ impl PlotWidget<'_> {
             state.area = area;
             return true;
         }
-        let mut plot = self.plot.clone().viewport(&state.view);
+        let mut plot = self.plot.clone().viewport(state.view);
         if let Some((cursor_x, cursor_y)) = state.cursor_data()
             && cursor_x.is_finite()
             && cursor_y.is_finite()
@@ -248,10 +248,10 @@ impl PlotWidget<'_> {
             // gesture that just changed the view — a zoom or pan under a
             // hovering cursor (which is how every mouse gesture arrives)
             // would re-render the old window forever.
-            if mapping.x_bands().is_none() && state.view.x().is_none() {
+            if mapping.x_categories().is_none() && state.view.x().is_none() {
                 plot = plot.x_domain(x_low, x_high);
             }
-            if mapping.y_bands().is_none() && state.view.y().is_none() {
+            if mapping.y_categories().is_none() && state.view.y().is_none() {
                 plot = plot.y_domain(y_low, y_high);
             }
             if self.crosshair {
@@ -286,9 +286,9 @@ impl PlotWidget<'_> {
                 }
             }
             if self.readout
-                && let Some((_, _, columns, _)) = mapping.plot_area()
+                && let Some(panel) = mapping.plot_area()
                 && let Some(line) =
-                    self.readout_line(state, &snapped, columns.saturating_sub(2) as u16)
+                    self.readout_line(state, &snapped, panel.width.saturating_sub(2) as u16)
             {
                 let line = line.replace(['·', '—'], "-");
                 let x = x_low + (x_high - x_low) * 0.02;
@@ -420,11 +420,14 @@ fn blit(surface: &crate::render::Surface, area: Rect, buffer: &mut Buffer) {
 ///         Kind::Up(b) => Mouse::Up { button: button(b), column, row },
 ///         Kind::ScrollUp => Mouse::ScrollUp { column, row },
 ///         Kind::ScrollDown => Mouse::ScrollDown { column, row },
+///         Kind::ScrollLeft => Mouse::ScrollLeft { column, row },
+///         Kind::ScrollRight => Mouse::ScrollRight { column, row },
 ///         _ => return None,
 ///     })
 /// }
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Mouse {
     /// The cursor moved with no button held.
     Moved {
@@ -474,10 +477,25 @@ pub enum Mouse {
         /// Terminal row.
         row: u16,
     },
+    /// The wheel scrolled left — a trackpad's horizontal swipe.
+    ScrollLeft {
+        /// Terminal column.
+        column: u16,
+        /// Terminal row.
+        row: u16,
+    },
+    /// The wheel scrolled right.
+    ScrollRight {
+        /// Terminal column.
+        column: u16,
+        /// Terminal row.
+        row: u16,
+    },
 }
 
 /// A mouse button, in the vocabulary of [`Mouse`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum MouseButton {
     /// The primary button: drags pan the view.
     Left,
@@ -572,12 +590,12 @@ impl PlotState {
     /// The plot rectangle of the last stateful render, in terminal
     /// coordinates — where overlays and tooltips can anchor.
     pub fn plot_area(&self) -> Option<Rect> {
-        let (left, top, columns, rows) = self.mapping.as_ref()?.plot_area()?;
+        let panel = self.mapping.as_ref()?.plot_area()?;
         Some(Rect::new(
-            self.area.x.saturating_add(left as u16),
-            self.area.y.saturating_add(top as u16),
-            columns.min(u16::MAX as usize) as u16,
-            rows.min(u16::MAX as usize) as u16,
+            self.area.x.saturating_add(panel.column as u16),
+            self.area.y.saturating_add(panel.row as u16),
+            panel.width.min(u16::MAX as usize) as u16,
+            panel.height.min(u16::MAX as usize) as u16,
         ))
     }
 
@@ -610,7 +628,7 @@ impl PlotState {
     }
 
     /// Forgets pixel-presentation state: the next pixel render paints fresh
-    /// ground and the next [`present_pixels`] re-emits. Call when something
+    /// ground and the next [`Graphics::present`](crate::pixel::Graphics::present) re-emits. Call when something
     /// outside the widget disturbed the screen — a view switch away and back,
     /// an overlay that covered the panel.
     #[cfg(feature = "pixel")]
@@ -653,7 +671,7 @@ impl PlotState {
         let Some(mapping) = self.mapping.clone() else {
             return false;
         };
-        if mapping.x_bands().is_some() {
+        if mapping.x_categories().is_some() {
             return false;
         }
         self.view = self.seed_x(&mapping).pan_x(fraction);
@@ -748,7 +766,10 @@ impl PlotState {
             }
             Mouse::ScrollUp { column, row } => self.wheel(ZOOM_IN, column, row),
             Mouse::ScrollDown { column, row } => self.wheel(ZOOM_OUT, column, row),
-            Mouse::Down { .. } | Mouse::Drag { .. } | Mouse::Up { .. } => false,
+            // A horizontal swipe pans: the trackpad's native "move along x".
+            Mouse::ScrollLeft { column, row } => self.scroll_pan(-SCROLL_PAN, column, row),
+            Mouse::ScrollRight { column, row } => self.scroll_pan(SCROLL_PAN, column, row),
+            _ => false,
         }
     }
 
@@ -777,10 +798,25 @@ impl PlotState {
         let Some(mapping) = &self.mapping else {
             return false;
         };
-        if mapping.x_bands().is_some() {
+        if mapping.x_categories().is_some() {
             return false;
         }
         self.view = self.seed_x(mapping).zoom_x(factor, anchor);
+        true
+    }
+
+    /// A horizontal scroll notch: a small x pan, only over the panel.
+    fn scroll_pan(&mut self, fraction: f64, column: u16, row: u16) -> bool {
+        if !self.inside(column, row) {
+            return false;
+        }
+        let Some(mapping) = self.mapping.clone() else {
+            return false;
+        };
+        if mapping.x_categories().is_some() {
+            return false;
+        }
+        self.view = self.seed_x(&mapping).pan_x(fraction);
         true
     }
 
@@ -788,13 +824,15 @@ impl PlotState {
         let Some(mapping) = self.mapping.clone() else {
             return false;
         };
-        let Some((left, top, columns, rows)) = mapping.plot_area() else {
+        let Some(panel) = mapping.plot_area() else {
             return false;
         };
-        if mapping.x_bands().is_some() {
+        if mapping.x_categories().is_some() {
             return false;
         }
-        let Some((anchor, _)) = mapping.data_at(left + columns / 2, top + rows / 2) else {
+        let Some((anchor, _)) =
+            mapping.data_at(panel.column + panel.width / 2, panel.row + panel.height / 2)
+        else {
             return false;
         };
         self.view = self.seed_x(&mapping).zoom_x(factor, anchor);
@@ -806,9 +844,10 @@ impl PlotState {
         let Some(mapping) = &self.mapping else {
             return false;
         };
-        let Some((_, _, columns, rows)) = mapping.plot_area() else {
+        let Some(panel) = mapping.plot_area() else {
             return false;
         };
+        let (columns, rows) = (panel.width, panel.height);
         let dx = f64::from(to.0) - f64::from(from.0);
         let dy = f64::from(to.1) - f64::from(from.1);
         if dx == 0.0 && dy == 0.0 {
@@ -857,10 +896,10 @@ impl PlotState {
             return;
         };
         let mut view = mapping.viewport();
-        if mapping.x_bands().is_none() {
+        if mapping.x_categories().is_none() {
             view = view.with_x(ax, cx);
         }
-        if mapping.y_bands().is_none() {
+        if mapping.y_categories().is_none() {
             view = view.with_y(ay, cy);
         }
         self.view = view;
@@ -888,6 +927,8 @@ const ZOOM_IN: f64 = 0.8;
 const ZOOM_OUT: f64 = 1.25;
 /// The keyboard pan step, as a fraction of the visible window.
 const PAN_STEP: f64 = 0.1;
+/// One horizontal scroll notch's pan, small because trackpads emit many.
+const SCROLL_PAN: f64 = 0.03;
 /// The pixel render's self-pacing window (~30 full renders per second):
 /// within it, an unchanged-view render reuses the image already on screen.
 #[cfg(feature = "pixel")]
@@ -908,91 +949,110 @@ const PIXEL_PACE: std::time::Duration = std::time::Duration::from_millis(33);
 /// arrived, resize), not on a timer, and the previous transmission stays on
 /// screen through quiet frames.
 #[cfg(feature = "pixel")]
-pub fn present_pixels(
-    out: &mut impl std::io::Write,
-    graphics: &crate::pixel::Graphics,
-    states: &mut [&mut PlotState],
-) -> std::io::Result<()> {
-    use std::fmt::Write as _;
-    let kitty = graphics.protocol == crate::pixel::Protocol::Kitty;
-    let mut blocks = String::new();
-    for state in states.iter_mut() {
-        if let Some((rect, block, hash)) = state.pixels.take() {
-            let _ = write!(blocks, "\x1b[{};{}H", rect.y + 1, rect.x + 1);
-            blocks.push_str(&block);
-            // Kitty: the block only transmitted the data (`a=t`). Place it
-            // under the alternate placement id, then retire the placement
-            // previously on screen — create before delete, so the swap never
-            // shows a gap, and no same-placement replacement semantics are
-            // ever relied on.
-            if kitty
-                && let Some(id) = state.pixel_id
-                && let Some(mapping) = state.mapping()
-                && let Some((left, top, columns, rows)) = mapping.plot_area()
-            {
-                let placement = if state.pixel_placement == 1 { 2 } else { 1 };
-                let _ = write!(
-                    blocks,
-                    "\x1b[{};{}H\x1b_Ga=p,i={id},p={placement},c={columns},r={rows},C=1,q=2\x1b\\",
-                    rect.y as usize + top + 1,
-                    rect.x as usize + left + 1,
-                );
-                if state.pixel_placement != 0 {
+impl crate::pixel::Graphics {
+    /// Presents the pending pixel blocks of a frame — call after
+    /// `terminal.draw` with every pixel-rendered [`PlotState`] of the current
+    /// view. The blocks land in one synchronized write (DEC 2026): each
+    /// panel's data is already transmitted inside its block, and this method
+    /// places it under an alternating placement id before retiring the
+    /// placement previously on screen — create before delete, so the swap
+    /// never shows a gap on any terminal. Each block is consumed: a state
+    /// presents once per render, and a panel whose content is already on
+    /// screen queued nothing at all.
+    ///
+    /// This method writes exactly what it is told to the handle it is given —
+    /// like [`stream::Live`](crate::stream::Live), it never owns the
+    /// terminal. The host decides *when*: emit on state changes (input
+    /// handled, data arrived, resize), not on a timer, and the previous
+    /// presentation stays on screen through quiet frames.
+    pub fn present(
+        &self,
+        out: &mut impl std::io::Write,
+        panels: &mut [&mut PlotState],
+    ) -> std::io::Result<()> {
+        use std::fmt::Write as _;
+        let kitty = self.protocol == crate::pixel::Protocol::Kitty;
+        let states = panels;
+        let mut blocks = String::new();
+        for state in states.iter_mut() {
+            if let Some((rect, block, hash)) = state.pixels.take() {
+                let _ = write!(blocks, "\x1b[{};{}H", rect.y + 1, rect.x + 1);
+                blocks.push_str(&block);
+                // Kitty: the block only transmitted the data (`a=t`). Place it
+                // under the alternate placement id, then retire the placement
+                // previously on screen — create before delete, so the swap never
+                // shows a gap, and no same-placement replacement semantics are
+                // ever relied on.
+                if kitty
+                    && let Some(id) = state.pixel_id
+                    && let Some(mapping) = state.mapping()
+                    && let Some(panel) = mapping.plot_area()
+                {
+                    let placement = if state.pixel_placement == 1 { 2 } else { 1 };
                     let _ = write!(
                         blocks,
-                        "\x1b_Ga=d,d=i,i={id},p={},q=2\x1b\\",
-                        state.pixel_placement
+                        "\x1b[{};{}H\x1b_Ga=p,i={id},p={placement},c={},r={},C=1,q=2\x1b\\",
+                        rect.y as usize + panel.row + 1,
+                        rect.x as usize + panel.column + 1,
+                        panel.width,
+                        panel.height,
                     );
+                    if state.pixel_placement != 0 {
+                        let _ = write!(
+                            blocks,
+                            "\x1b_Ga=d,d=i,i={id},p={},q=2\x1b\\",
+                            state.pixel_placement
+                        );
+                    }
+                    state.pixel_placement = placement;
                 }
-                state.pixel_placement = placement;
+                state.pixel_sent = Some((rect, hash));
             }
-            state.pixel_sent = Some((rect, hash));
         }
+        if blocks.is_empty() {
+            return Ok(());
+        }
+        let mut swap = String::with_capacity(blocks.len() + 32);
+        swap.push_str("\x1b[?2026h");
+        swap.push_str(&blocks);
+        swap.push_str("\x1b[?2026l");
+        out.write_all(swap.as_bytes())?;
+        out.flush()
     }
-    if blocks.is_empty() {
-        return Ok(());
-    }
-    let mut swap = String::with_capacity(blocks.len() + 32);
-    swap.push_str("\x1b[?2026h");
-    swap.push_str(&blocks);
-    swap.push_str("\x1b[?2026l");
-    out.write_all(swap.as_bytes())?;
-    out.flush()
-}
 
-/// Retires these panels' kitty images — call when leaving a view whose
-/// charts were pixel-rendered: kitty images live on their own layer, and the
-/// next view's cell repaints cannot cover them. Deletion is by each panel's
-/// own id, so images other applications put on the terminal are never
-/// touched. Other protocols paint into cells and need nothing; every state's
-/// presentation memory is reset either way, so a return to the view starts
-/// from fresh ground and a fresh emission.
-#[cfg(feature = "pixel")]
-pub fn clear_pixels(
-    out: &mut impl std::io::Write,
-    graphics: &crate::pixel::Graphics,
-    states: &mut [&mut PlotState],
-) -> std::io::Result<()> {
-    use std::fmt::Write as _;
-    let mut goodbye = String::new();
-    if graphics.protocol == crate::pixel::Protocol::Kitty {
-        for state in states.iter() {
-            if let Some(id) = state.pixel_id
-                && state.pixel_placement != 0
-            {
-                let _ = write!(goodbye, "\x1b_Ga=d,d=I,i={id},q=2\x1b\\");
+    /// Retires these panels' images — call when leaving a view whose charts
+    /// were pixel-rendered: kitty images live on their own layer, and the
+    /// next view's cell repaints cannot cover them. Deletion is by each
+    /// panel's own id, so images other applications put on the terminal are
+    /// never touched. Other protocols paint into cells and need nothing;
+    /// every state's presentation memory is reset either way, so a return to
+    /// the view starts from fresh ground and a fresh emission.
+    pub fn retire(
+        &self,
+        out: &mut impl std::io::Write,
+        panels: &mut [&mut PlotState],
+    ) -> std::io::Result<()> {
+        use std::fmt::Write as _;
+        let mut goodbye = String::new();
+        if self.protocol == crate::pixel::Protocol::Kitty {
+            for state in panels.iter() {
+                if let Some(id) = state.pixel_id
+                    && state.pixel_placement != 0
+                {
+                    let _ = write!(goodbye, "\x1b_Ga=d,d=I,i={id},q=2\x1b\\");
+                }
             }
         }
+        for state in panels.iter_mut() {
+            state.invalidate_pixels();
+            state.pixel_placement = 0;
+        }
+        if goodbye.is_empty() {
+            return Ok(());
+        }
+        out.write_all(goodbye.as_bytes())?;
+        out.flush()
     }
-    for state in states.iter_mut() {
-        state.invalidate_pixels();
-        state.pixel_placement = 0;
-    }
-    if goodbye.is_empty() {
-        return Ok(());
-    }
-    out.write_all(goodbye.as_bytes())?;
-    out.flush()
 }
 
 /// A content fingerprint for already-on-screen suppression.
