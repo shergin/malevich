@@ -52,8 +52,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   atomic kitty replacement, `clear_pixels`/`invalidate_pixels` handle
   view switches. Interaction chrome upgrades to annotation marks drawn
   into the image — anti-aliased crosshair rules, snap markers, in-panel
-  readout — with domains pinned to the last frame so hovering never
-  jitters an automatic axis. The pixel render paces itself: within a
+  readout — with automatic axes pinned to the last frame so hovering
+  never jitters them (viewport-fixed axes are never pinned: the window a
+  gesture just set always renders). The pixel render paces itself: within a
   ~33 ms window an unchanged-view render reuses the image already on
   screen, so hover floods and tick redraws cost nearly nothing and even
   a one-event-per-frame host loop stops falling behind (a changed

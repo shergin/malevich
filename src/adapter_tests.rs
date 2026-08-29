@@ -652,6 +652,63 @@ mod pixels {
     }
 
     #[test]
+    fn gestures_under_a_hovering_cursor_render_the_new_window() {
+        // Every real mouse gesture arrives with the cursor already over the
+        // panel (it had to travel there), so the interaction chrome's domain
+        // pinning must never clobber the window the gesture just set.
+        let area = Rect::new(0, 0, 50, 18);
+        let mut state = PlotState::default();
+        render_pixel_frame(&mut state, area);
+        let panel = state.plot_area().unwrap();
+        let at = (panel.x + panel.width / 2, panel.y + panel.height / 2);
+        state.on_mouse(Mouse::Moved {
+            column: at.0,
+            row: at.1,
+        });
+        render_pixel_frame(&mut state, area);
+        assert_eq!(
+            state.mapping().unwrap().x_domain(),
+            (0.0, 10.0),
+            "hovering alone keeps the fitted window"
+        );
+
+        state.on_mouse(Mouse::ScrollUp {
+            column: at.0,
+            row: at.1,
+        });
+        let window = state.viewport().x().expect("the wheel fixed x");
+        render_pixel_frame(&mut state, area);
+        assert_eq!(
+            state.mapping().unwrap().x_domain(),
+            window,
+            "the zoomed frame renders the zoomed window, cursor or no cursor"
+        );
+        assert!(state.pixels.is_some(), "and it queues for presentation");
+
+        // A drag pan under the same cursor moves the rendered window too.
+        let mut out: Vec<u8> = Vec::new();
+        present_pixels(&mut out, &kitty(), &mut [&mut state]).unwrap();
+        state.on_mouse(Mouse::Down {
+            button: crate::MouseButton::Left,
+            column: at.0,
+            row: at.1,
+        });
+        state.on_mouse(Mouse::Drag {
+            button: crate::MouseButton::Left,
+            column: at.0 + 4,
+            row: at.1,
+        });
+        let panned = state.viewport().x().expect("panning fixed x");
+        assert_ne!(panned, window, "the drag moved the window");
+        render_pixel_frame(&mut state, area);
+        assert_eq!(
+            state.mapping().unwrap().x_domain(),
+            panned,
+            "the panned frame renders the panned window"
+        );
+    }
+
+    #[test]
     fn present_consumes_the_blocks_in_one_synchronized_swap() {
         let mut state = PlotState::default();
         render_pixel_frame(&mut state, Rect::new(2, 1, 50, 18));

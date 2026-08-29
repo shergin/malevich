@@ -241,10 +241,17 @@ impl PlotWidget<'_> {
         {
             let (x_low, x_high) = mapping.x_domain();
             let (y_low, y_high) = mapping.y_domain();
-            if mapping.x_bands().is_none() {
+            // Pin ONLY axes the viewport has not fixed: the pin exists so the
+            // crosshair marks cannot jitter an automatically fitted domain,
+            // and a viewport-fixed axis is already immune (manual domains are
+            // honored exactly). Pinning unconditionally would overwrite the
+            // gesture that just changed the view — a zoom or pan under a
+            // hovering cursor (which is how every mouse gesture arrives)
+            // would re-render the old window forever.
+            if mapping.x_bands().is_none() && state.view.x().is_none() {
                 plot = plot.x_domain(x_low, x_high);
             }
-            if mapping.y_bands().is_none() {
+            if mapping.y_bands().is_none() && state.view.y().is_none() {
                 plot = plot.y_domain(y_low, y_high);
             }
             if self.crosshair {
