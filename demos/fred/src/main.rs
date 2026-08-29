@@ -201,21 +201,14 @@ fn main() -> std::io::Result<()> {
     // Native density by default: one transmitted pixel maps onto one device
     // pixel, which is what crisp means — and the widget's pacing plus
     // unchanged-panel suppression keep it interactive (a fred-sized kitty
-    // frame measures ~22 ms at Retina density in release). `--fast` halves
-    // the density for slow links — the placement rectangle scales the image
-    // back over the panel, trading sharpness for a quarter of the bytes —
-    // with a heavier stroke so the ink weight survives the upscale. Sixel
-    // has no placement scaling and always stays native.
+    // frame measures ~22 ms at Retina density in release). `--fast` trades
+    // sharpness for a quarter of the bytes on slow links:
+    // `Graphics::economical` halves Retina density and keeps the ink weight;
+    // sixel and ordinary densities stay native.
     if args.iter().any(|argument| argument == "--fast")
         && let Some(graphics) = &mut app.graphics
-        && graphics.protocol != malevich::pixel::Protocol::Sixel
     {
-        let (w, h) = graphics.cell_size;
-        if w > 10 && h > 20 {
-            graphics.cell_size = (w / 2, h / 2);
-            let derived = (usize::from(graphics.cell_size.1) + 8) / 16;
-            graphics.stroke = Some((derived + 1).min(4) as u8);
-        }
+        *graphics = graphics.economical();
     }
 
     let mut terminal = ratatui::init();

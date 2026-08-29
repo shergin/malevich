@@ -47,9 +47,9 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   collapsed to a single step. And with the `pixel` feature, the interactive widget draws
   real images: `widget().graphics(g)` reserves the area in the buffer
   (skip cells, fresh ground on layout change) and stores the hybrid
-  chrome-plus-image block in the `PlotState`; `present_pixels` emits the
-  pending blocks after `terminal.draw` in one synchronized write with
-  atomic kitty replacement, `clear_pixels`/`invalidate_pixels` handle
+  chrome-plus-image block in the `PlotState`; `Graphics::present` emits
+  the pending blocks after `terminal.draw` in one synchronized write with
+  atomic kitty replacement, `Graphics::retire`/`invalidate_pixels` handle
   view switches. Interaction chrome upgrades to annotation marks drawn
   into the image — anti-aliased crosshair rules, snap markers, in-panel
   readout — with automatic axes pinned to the last frame so hovering
@@ -67,7 +67,7 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   any terminal, including those whose same-placement replacement
   misbehaves; a panel whose content already matches the screen is not
   transmitted at all;
-  `clear_pixels` retires images by id, never touching other
+  `Graphics::retire` deletes images by id, never touching other
   applications'. fred
   renders its series view this way wherever the terminal speaks sixel,
   kitty, or iTerm2 — at native device-pixel density, so the image is
@@ -111,6 +111,11 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   `Graphics::retire`, because the value that names the protocol owns its
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
+
+- `Graphics::economical()` lifts the slow-link density trick pixel hosts
+  carried by hand: halve a Retina cell size, keep the ink weight through a
+  stroke override, a quarter of the bytes — sixel, with no placement
+  scaling, stays native. fred's `--fast` is now one call.
 
 - Docs say the quiet parts. `hist2d` documents its equal-length panic, and
   the convenience presets that can panic on data (`trend`, `hist2d`,

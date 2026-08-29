@@ -221,8 +221,10 @@ monomorphized per target. Crate-private; maps to `render::Canvas`.
 How to draw the plot panel as a real image (feature `pixel`): which protocol,
 at what cell size in device pixels. Render state like `Frame`, and a plain
 value like everything else. `None` means the caller falls back to cells.
-Output stays hybrid: chrome as text, only the plot rectangle as pixels. Maps
-to `pixel::Graphics`. See [the pixels guide](pixels.md).
+Output stays hybrid: chrome as text, only the plot rectangle as pixels.
+`economical()` is the slow-link trade: halve a Retina density, keep the ink
+weight, a quarter of the bytes — sixel, with no placement scaling, stays
+native. Maps to `pixel::Graphics`. See [the pixels guide](pixels.md).
 
 ## Capabilities
 

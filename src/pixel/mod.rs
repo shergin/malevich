@@ -100,4 +100,29 @@ impl Graphics {
         self.stroke = Some(width);
         self
     }
+
+    /// The slow-link economy: halves the transmitted density when the cell
+    /// size is Retina-dense (above 10×20 device pixels per cell), keeping the
+    /// drawn ink weight by overriding the stroke one step above what the
+    /// halved cells would derive. The placement rectangle scales the image
+    /// back over the panel, so the trade is sharpness for a quarter of the
+    /// bytes. Sixel has no placement scaling and protocols at ordinary
+    /// density have nothing to give back: both come back unchanged.
+    #[must_use]
+    pub fn economical(mut self) -> Graphics {
+        if self.protocol == Protocol::Sixel {
+            return self;
+        }
+        let (width, height) = self.cell_size;
+        if width > 10 && height > 20 {
+            self.cell_size = (width / 2, height / 2);
+            let derived = (usize::from(self.cell_size.1) + 8) / 16;
+            self.stroke = Some((derived + 1).min(4) as u8);
+        }
+        self
+    }
 }
+
+#[cfg(test)]
+#[path = "tests/graphics_tests.rs"]
+mod graphics_tests;
