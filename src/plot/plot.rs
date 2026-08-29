@@ -133,7 +133,9 @@ impl<'a> Plot<'a> {
     }
 
     /// Fixes the x axis to `[min, max]` instead of fitting the data — matplotlib's
-    /// `xlim`. Data outside clips honestly. Ignored on a bands axis.
+    /// `xlim`. Data outside clips honestly. Ignored on a bands axis. The bounds
+    /// may arrive in either order; the axis always ascends — a descending
+    /// (reversed) axis is not in the grammar.
     ///
     /// # Panics
     ///
@@ -149,7 +151,9 @@ impl<'a> Plot<'a> {
     }
 
     /// Fixes the y axis to `[min, max]` instead of fitting the data — matplotlib's
-    /// `ylim`. Data outside clips honestly.
+    /// `ylim`. Data outside clips honestly. The bounds may arrive in either
+    /// order; the axis always ascends — a descending (reversed) axis is not in
+    /// the grammar.
     ///
     /// # Panics
     ///

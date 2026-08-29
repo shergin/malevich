@@ -119,6 +119,28 @@ if let Some((lo, hi)) = chart.viewport().x() {
 fred's footer shows this: zoom into any span and the stats line describes
 what is on screen, dated by `format_x`.
 
+**Modifier gestures.** The default grammar is modifier-free on purpose — the
+`Mouse` vocabulary carries no modifier keys, because terminals report them
+unevenly (xterm reserves shift for selection; not every backend forwards
+alt) and a fixed grammar must not half-work per terminal. A host that wants
+shift-wheel to zoom y — or any modifier binding — reads the modifier from
+its own backend event (it had the raw event in hand to build the `Mouse`
+value at all) and drives the physics directly:
+
+```rust
+if shift_held && let Some((_, anchor_y)) = chart.data_at(column, row) {
+    let mut view = chart.mapping().map(|m| m.viewport()).unwrap_or_default();
+    if let Some((lo, hi)) = chart.viewport().x() { view = view.with_x(lo, hi); }
+    if let Some((lo, hi)) = chart.viewport().y() { view = view.with_y(lo, hi); }
+    chart.set_viewport(view.zoom_y(0.8, anchor_y));
+}
+```
+
+The seeding rule — the mapping's rendered windows, overlaid with any window
+the view has already fixed — is the same one the built-in gestures use, so
+modifier gestures compound correctly with wheel zooms and drags between
+renders.
+
 **Follow the stream.** A live chart tails its ring buffer in one line —
 `view.tail(latest_x, width)` — and a user's zoom naturally suspends the
 follow until `reset()`. sysmon pins its dashboard axes this way: the full

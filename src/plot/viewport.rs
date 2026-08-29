@@ -18,6 +18,14 @@
 /// factors), time axes in seconds, linear axes in value space. All windows are
 /// finite by construction.
 ///
+/// The wire form carries only the windows: which space an axis transforms in
+/// (decade or value) is derived from the plot's scale at seeding time, not
+/// spec — persisting it would let a stored flag disagree with a plot whose
+/// scale has since changed. A restored viewport is therefore complete for
+/// [`Plot::viewport`](crate::Plot::viewport) (which reads only the windows);
+/// to transform it, render once and re-seed from the mapping first, which is
+/// the gesture lifecycle anyway.
+///
 /// ```
 /// use malevich::Viewport;
 ///
@@ -33,9 +41,11 @@ pub struct Viewport {
     x: Option<(f64, f64)>,
     #[cfg_attr(feature = "serde", serde(default))]
     y: Option<(f64, f64)>,
-    #[cfg_attr(feature = "serde", serde(default))]
+    /// Derived from the plot's scale when seeded; never on the wire.
+    #[cfg_attr(feature = "serde", serde(skip))]
     log_x: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
+    /// Derived from the plot's scale when seeded; never on the wire.
+    #[cfg_attr(feature = "serde", serde(skip))]
     log_y: bool,
 }
 

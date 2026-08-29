@@ -458,3 +458,25 @@ fn positioned_and_based_bars_round_trip_and_stay_off_the_old_wire() {
         "a ragged base must fail validation"
     );
 }
+
+#[test]
+fn a_viewport_persists_its_windows_and_nothing_derived() {
+    // Which space an axis transforms in is derived from the plot's scale at
+    // seeding time; a stored flag could disagree with an evolved spec, so the
+    // wire carries windows only.
+    let stamps = [1.0, 10.0, 100.0, 1000.0];
+    let plot = Plot::new()
+        .layer(Line::xy(&stamps[..], &stamps[..]))
+        .x_scale(Scale::Log);
+    let seeded = plot.mapping(&frame()).viewport();
+    assert!(seeded.x().is_some(), "a log axis seeds a window");
+
+    let encoded = serde_json::to_string(&seeded).expect("serializes");
+    assert!(
+        !encoded.contains("log"),
+        "derived state on the wire: {encoded}"
+    );
+    let decoded: crate::Viewport = serde_json::from_str(&encoded).expect("deserializes");
+    assert_eq!(decoded.x(), seeded.x());
+    assert_eq!(decoded.y(), seeded.y());
+}

@@ -112,6 +112,19 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
 
+- The viewport's wire form carries only its windows: which space an axis
+  transforms in (decade or value) is derived when a viewport is seeded from
+  a `Mapping`, never persisted — a stored flag could disagree with a plot
+  whose scale has since changed. A restored viewport is complete for
+  `Plot::viewport`, which reads only the windows; transform after
+  re-seeding, which is the gesture lifecycle anyway. The interaction guide
+  gains the modifier-gesture pattern — the `Mouse` vocabulary stays
+  modifier-free by decision (terminals report modifiers unevenly, and a
+  default grammar must not half-work per terminal), and a shift-wheel y
+  zoom is a five-line drive of the public physics. `x_domain`/`y_domain`
+  now say what they always did: bounds in either order, the axis always
+  ascends.
+
 - Bars complete the catalog: a `base` channel (`Bars::base`) starts each bar
   at a per-bar base instead of zero — bar `i` spans `base[i] .. base[i] +
   value[i]`, so the value keeps encoding the segment's length — and
