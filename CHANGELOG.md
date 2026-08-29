@@ -88,6 +88,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   match per 32 KiB (+0.2% on a measured chart stream); an emission-site
   assertion and a five-window regression test pin the invariant.
 
+- fred goes fully graphical: every view — the six-pane overview, the
+  linked series pair, distributions, the seasonality heatmap, relations —
+  renders as pixel panels through per-pane `PlotState`s, presented and
+  retired as a unit on view switches, and every pane answers the mouse
+  (hover, wheel zoom, drags) through one generic router. The ink came
+  along: glowing lines over translucent washes filled from each series'
+  own floor (never a zero baseline that would crush GDP's axis),
+  accumulated-ink Phillips scatters, a dashed inversion rule, and the
+  seasonality heatmap gone bilinear.
+
 - The interaction API, reviewed whole: `Mapping::plot_area` answers with
   a named `Panel` value instead of a four-tuple; `x_categories` /
   `y_categories` expose a bands axis's labels (not a bare count);

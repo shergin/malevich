@@ -98,18 +98,48 @@ impl Transform {
 /// would auto-reduce it (M4) to the raster with no visual change — chart building
 /// stays size-oblivious.
 pub fn overview_charts(catalog: &Catalog) -> Vec<Plot<'static>> {
+    // One ink per series, held across renders: the overview reads as a set.
+    const INKS: [Color; 6] = [
+        Color::Cyan,
+        Color::Green,
+        Color::Magenta,
+        Color::Yellow,
+        Color::BrightBlue,
+        Color::BrightCyan,
+    ];
     catalog
         .series
         .iter()
-        .map(|series| {
+        .enumerate()
+        .map(|(index, series)| {
+            let ink = INKS[index % INKS.len()];
             let latest = series
                 .latest()
                 .map(|v| format!("{v:.1}"))
                 .unwrap_or_default();
-            Plot::new()
-                .layer(Line::xy(series.dates.clone(), series.values.clone()).color(Color::Cyan))
-                .title(format!("{}  {latest}", series.id))
-                .time_x()
+            let mut plot = Plot::new();
+            // A translucent wash from the data's own floor (not zero — a
+            // zero-baseline area would drag GDP's axis down to nothing),
+            // under a glowing edge. Cells ignore the ink and stay honest.
+            let (low, high) = extent(&series.values);
+            if low.is_finite() && high > low {
+                plot = plot.layer(
+                    Area::between(
+                        series.dates.clone(),
+                        vec![low; series.values.len()],
+                        series.values.clone(),
+                    )
+                    .color(ink)
+                    .opacity(0.35),
+                );
+            }
+            plot.layer(
+                Line::xy(series.dates.clone(), series.values.clone())
+                    .color(ink)
+                    .glow(),
+            )
+            .title(format!("{}  {latest}", series.id))
+            .time_x()
         })
         .collect()
 }
@@ -177,7 +207,17 @@ pub fn series_chart(
     // dots (`Pixels`, the default) or whole-cell `╭╮╰╯` elbows (`Corners`, the
     // classic asciichart look) — the data and scales are identical either way.
     // `.glow()` marks the primary series with a soft halo on pixel targets;
-    // glyph rendering ignores it, so the cell view is unchanged.
+    // glyph rendering ignores it, so the cell view is unchanged. The wash
+    // below fills from the data floor (never zero), so it coexists with the
+    // recession strip carved beneath it.
+    let (low, high) = extent(&y);
+    if low.is_finite() && high > low && transform != Transform::Log {
+        plot = plot.layer(
+            Area::between(x.clone(), vec![low; y.len()], y.clone())
+                .color(Color::Cyan)
+                .opacity(0.2),
+        );
+    }
     plot = plot.layer(Line::xy(x, y).style(style).color(Color::Cyan).glow());
     if transform == Transform::Log {
         plot = plot.log_y();
@@ -229,7 +269,11 @@ fn recession_ribbon(
 pub fn context_strip(series: &Series) -> Plot<'static> {
     Plot::new()
         .layer(Rule::h(0.0).color(Color::BrightBlack).dash(Dash::Dotted))
-        .layer(Line::xy(series.dates.clone(), series.year_over_year()).color(Color::Magenta))
+        .layer(
+            Line::xy(series.dates.clone(), series.year_over_year())
+                .color(Color::Magenta)
+                .glow(),
+        )
         .time_x()
         .y_label(match series.kind {
             Kind::Index => "1y %",
@@ -288,7 +332,7 @@ pub fn seasonality_chart(series: &Series, rows: usize) -> Plot<'static> {
         return Plot::new().title(format!("{}: no data", series.id));
     }
     Plot::new()
-        .layer(Cells::matrix(columns, grid).extents(
+        .layer(Cells::matrix(columns, grid).smooth().extents(
             (0.0, columns as f64),
             (first_year as f64, last_year as f64 + 1.0),
         ))
@@ -334,7 +378,7 @@ pub fn relations_charts(
             .filter(|(date, _)| (**date < cutoff) == keep)
             .map(|(_, (&u, &i))| (u, i))
             .unzip();
-        phillips = phillips.layer(Points::xy(u, i).label(label));
+        phillips = phillips.layer(Points::xy(u, i).label(label).opacity(0.6));
     }
 
     // The spread between the 10-year yield and the policy rate: inversions (below
@@ -350,11 +394,17 @@ pub fn relations_charts(
         spread_plot = recession_ribbon(spread_plot, recessions, &dates, &spread);
     }
     spread_plot = spread_plot
-        .layer(Rule::h(0.0).label("inversion").color(Color::Red))
+        .layer(
+            Rule::h(0.0)
+                .label("inversion")
+                .color(Color::Red)
+                .dash(Dash::Dashed),
+        )
         .layer(
             Line::xy(dates, spread)
                 .label("10y - fed funds")
-                .color(Color::Cyan),
+                .color(Color::Cyan)
+                .glow(),
         );
     (phillips, spread_plot)
 }

@@ -7,10 +7,13 @@
 //! TUI, in headless `--render` mode, and under test.
 //!
 //! Run with `cargo run -p fred` — add `--release` in a pixel-capable
-//! terminal (sixel, kitty, iTerm2): the series view renders as real images
-//! at native device-pixel density. `p` toggles pixel drawing live (the
-//! glyph/image comparison switch), `--fast` halves the image density for
-//! slow links, `--cells` forces glyphs from the start. Headless:
+//! terminal (sixel, kitty, iTerm2): every view renders as real images at
+//! native device-pixel density — glowing lines over translucent washes,
+//! accumulated-ink scatters, a bilinear heatmap — and every pane answers
+//! the mouse: hover crosshairs with snapped readouts, wheel zoom, drag
+//! pan, rubber-band zoom. `p` toggles pixel drawing live (the glyph/image
+//! comparison switch), `--fast` halves the image density for slow links,
+//! `--cells` forces glyphs from the start. Headless:
 //! `cargo run -p fred -- --render [view] [SERIES]`.
 
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
@@ -73,6 +76,49 @@ struct App {
     /// The live opt-out: `p` flips between pixel panels and glyph charts
     /// without restarting — the comparison switch.
     pixels_on: bool,
+    /// One interaction state per pane, per view: every chart in the app
+    /// renders stateful, so every view gets pixel panels, hover, and zoom.
+    overview_states: [PlotState; 6],
+    distribution_states: [PlotState; 2],
+    seasonality_state: PlotState,
+    relations_states: [PlotState; 2],
+    /// Which pane of the current (non-series) view a drag started in.
+    drag_pane: Option<usize>,
+}
+
+/// The widget dressing every pane shares: the chosen charset and — when the
+/// terminal speaks a protocol and pixels are on — the image renderer.
+fn dress(
+    widget: malevich::PlotWidget<'_>,
+    charset: Charset,
+    graphics: Option<malevich::pixel::Graphics>,
+) -> malevich::PlotWidget<'_> {
+    let widget = widget.charset(charset);
+    match graphics {
+        Some(graphics) => widget.graphics(graphics),
+        None => widget,
+    }
+}
+
+/// Whether a terminal cell lies inside a pane's plot rectangle.
+fn contains(rect: Rect, column: u16, row: u16) -> bool {
+    column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
+}
+
+/// The cell position an input names, or `None` for vocabulary this app
+/// cannot route (the `Mouse` enum is non-exhaustive).
+fn position(input: Mouse) -> Option<(u16, u16)> {
+    match input {
+        Mouse::Moved { column, row }
+        | Mouse::ScrollUp { column, row }
+        | Mouse::ScrollDown { column, row }
+        | Mouse::ScrollLeft { column, row }
+        | Mouse::ScrollRight { column, row }
+        | Mouse::Down { column, row, .. }
+        | Mouse::Drag { column, row, .. }
+        | Mouse::Up { column, row, .. } => Some((column, row)),
+        _ => None,
+    }
 }
 
 /// The linked-panes pattern: the x view is a value, so sharing it is
@@ -134,6 +180,11 @@ fn main() -> std::io::Result<()> {
         drag_in_strip: None,
         graphics: None,
         pixels_on: true,
+        overview_states: std::array::from_fn(|_| PlotState::default()),
+        distribution_states: std::array::from_fn(|_| PlotState::default()),
+        seasonality_state: PlotState::default(),
+        relations_states: std::array::from_fn(|_| PlotState::default()),
+        drag_pane: None,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -176,7 +227,7 @@ fn main() -> std::io::Result<()> {
     // changed, the previous transmission stays on screen through the
     // 250 ms poll frames.
     let mut emit_needed = true;
-    let mut was_series = false;
+    let mut was_view = app.view;
     let result = 'ui: loop {
         if app.poll_fetch() {
             emit_needed = true;
@@ -184,28 +235,22 @@ fn main() -> std::io::Result<()> {
         list_state.select(Some(app.selected));
         terminal.draw(|frame| app.draw(frame, &mut list_state))?;
 
-        if let Some(graphics) = &app.graphics {
-            if app.view == View::Series && app.pixels_on {
-                if emit_needed {
-                    graphics.present(
-                        &mut std::io::stdout(),
-                        &mut [&mut app.series_state, &mut app.strip_state],
-                    )?;
-                    emit_needed = false;
-                }
-            } else if was_series {
-                // Kitty images live on their own layer; cell repaints cannot
-                // cover them. Retiring them also resets both states, so a
-                // return to the series view starts from fresh ground and a
-                // fresh emission.
-                graphics.retire(
-                    &mut std::io::stdout(),
-                    &mut [&mut app.series_state, &mut app.strip_state],
-                )?;
+        if let Some(graphics) = app.graphics {
+            if app.view != was_view {
+                // Kitty images live on their own layer; the new view's cell
+                // repaints cannot cover them. Retiring also resets the
+                // states, so a return starts from fresh ground.
+                let mut previous = app.pixel_states(was_view);
+                graphics.retire(&mut std::io::stdout(), &mut previous[..])?;
                 emit_needed = true;
             }
+            if app.pixels_on && emit_needed {
+                let mut panes = app.pixel_states(app.view);
+                graphics.present(&mut std::io::stdout(), &mut panes[..])?;
+                emit_needed = false;
+            }
         }
-        was_series = app.view == View::Series;
+        was_view = app.view;
 
         if !event::poll(Duration::from_millis(250))? {
             continue;
@@ -222,11 +267,15 @@ fn main() -> std::io::Result<()> {
                 // routes them to the pane they landed on and keeps the two
                 // panes' x windows mirrored (docs/interaction.md).
                 Event::Mouse(raw) => {
-                    if app.view == View::Series
-                        && let Some(input) = mouse(raw)
-                        && app.route_mouse(input)
-                    {
-                        emit_needed = true;
+                    if let Some(input) = mouse(raw) {
+                        let changed = if app.view == View::Series {
+                            app.route_mouse(input)
+                        } else {
+                            app.route_view(input)
+                        };
+                        if changed {
+                            emit_needed = true;
+                        }
                     }
                 }
                 Event::Resize(..) => emit_needed = true,
@@ -235,8 +284,9 @@ fn main() -> std::io::Result<()> {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => break 'ui Ok(()),
                         KeyCode::Char('r') => {
-                            app.series_state.reset_view();
-                            app.strip_state.reset_view();
+                            for state in app.pixel_states(app.view) {
+                                state.reset_view();
+                            }
                         }
                         // The pixel/glyph switch: retiring the images lets the
                         // next cell frame actually show (kitty images sit on
@@ -244,12 +294,10 @@ fn main() -> std::io::Result<()> {
                         KeyCode::Char('p') => {
                             app.pixels_on = !app.pixels_on;
                             if !app.pixels_on
-                                && let Some(graphics) = &app.graphics
+                                && let Some(graphics) = app.graphics
                             {
-                                let _ = graphics.retire(
-                                    &mut std::io::stdout(),
-                                    &mut [&mut app.series_state, &mut app.strip_state],
-                                );
+                                let mut panes = app.pixel_states(app.view);
+                                let _ = graphics.retire(&mut std::io::stdout(), &mut panes[..]);
                             }
                         }
                         // h/l pan the series chart (arrows switch views); the
@@ -325,12 +373,18 @@ impl App {
             View::Overview => self.draw_overview(frame, body),
             View::Series => self.draw_series(frame, body, list_state),
             View::Distribution => {
-                self.draw_split(frame, body, views::distribution_charts(self.series()))
+                let charts = views::distribution_charts(self.series());
+                self.draw_split(frame, body, charts, View::Distribution);
             }
             View::Seasonality => {
                 let chart =
                     views::seasonality_chart(self.series(), body.height.saturating_sub(4) as usize);
-                frame.render_widget(chart.widget().charset(self.charset), body);
+                let (charset, ink) = (self.charset, self.ink());
+                frame.render_stateful_widget(
+                    dress(chart.widget(), charset, ink),
+                    body,
+                    &mut self.seasonality_state,
+                );
             }
             View::Relations => {
                 let charts = views::relations_charts(
@@ -338,7 +392,7 @@ impl App {
                     self.shade_recessions
                         .then_some(self.catalog.recessions.as_slice()),
                 );
-                self.draw_split(frame, body, charts);
+                self.draw_split(frame, body, charts, View::Relations);
             }
         }
 
@@ -348,19 +402,28 @@ impl App {
         );
     }
 
-    fn draw_overview(&self, frame: &mut ratatui::Frame, area: Rect) {
+    fn draw_overview(&mut self, frame: &mut ratatui::Frame, area: Rect) {
         let charts = views::overview_charts(&self.catalog);
+        let (charset, ink) = (self.charset, self.ink());
         let row_areas = Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).split(area);
-        for (row_area, row_charts) in row_areas.iter().zip(charts.chunks(3)) {
-            let cells = Layout::horizontal([
-                Constraint::Fill(1),
-                Constraint::Fill(1),
-                Constraint::Fill(1),
-            ])
-            .split(*row_area);
-            for (cell, chart) in cells.iter().zip(row_charts) {
-                frame.render_widget(chart.widget().charset(self.charset), *cell);
-            }
+        let cells: Vec<Rect> = row_areas
+            .iter()
+            .flat_map(|row| {
+                Layout::horizontal([
+                    Constraint::Fill(1),
+                    Constraint::Fill(1),
+                    Constraint::Fill(1),
+                ])
+                .split(*row)
+                .to_vec()
+            })
+            .collect();
+        for ((chart, cell), state) in charts
+            .iter()
+            .zip(cells)
+            .zip(self.overview_states.iter_mut())
+        {
+            frame.render_stateful_widget(dress(chart.widget(), charset, ink), cell, state);
         }
     }
 
@@ -402,8 +465,9 @@ impl App {
             let [main_area, strip_area] =
                 Layout::vertical([Constraint::Fill(1), Constraint::Length(8)]).areas(chart_area);
             let strip = views::context_strip(self.series());
+            let (charset, ink) = (self.charset, self.ink());
             frame.render_stateful_widget(
-                self.styled(strip.widget()),
+                dress(strip.widget(), charset, ink),
                 strip_area,
                 &mut self.strip_state,
             );
@@ -411,21 +475,67 @@ impl App {
         } else {
             chart_area
         };
+        let (charset, ink) = (self.charset, self.ink());
         frame.render_stateful_widget(
-            self.styled(chart.widget()),
+            dress(chart.widget(), charset, ink),
             main_area,
             &mut self.series_state,
         );
     }
 
-    /// The app's widget dressing: the chosen charset, and — where the
-    /// terminal speaks a pixel protocol — the plot panel as a real image.
-    fn styled<'a>(&self, widget: malevich::PlotWidget<'a>) -> malevich::PlotWidget<'a> {
-        let widget = widget.charset(self.charset);
-        match self.graphics {
-            Some(graphics) if self.pixels_on => widget.graphics(graphics),
-            _ => widget,
+    /// The image renderer to dress widgets with, when pixels are on.
+    fn ink(&self) -> Option<malevich::pixel::Graphics> {
+        self.graphics.filter(|_| self.pixels_on)
+    }
+
+    /// Every pane state of one view, in layout order — what presents,
+    /// retires, and routes as a unit.
+    fn pixel_states(&mut self, view: View) -> Vec<&mut PlotState> {
+        match view {
+            View::Overview => self.overview_states.iter_mut().collect(),
+            View::Series => vec![&mut self.series_state, &mut self.strip_state],
+            View::Distribution => self.distribution_states.iter_mut().collect(),
+            View::Seasonality => vec![&mut self.seasonality_state],
+            View::Relations => self.relations_states.iter_mut().collect(),
         }
+    }
+
+    /// Routes an input to the pane of the current view it belongs to — the
+    /// generic single-pane routing every non-series view uses (hover, wheel
+    /// zoom, drags; each pane's state machine is independent). Drags stay
+    /// with the pane they started in.
+    fn route_view(&mut self, input: Mouse) -> bool {
+        let Some((column, row)) = position(input) else {
+            return false;
+        };
+        let dragging = self.drag_pane;
+        let mut states = self.pixel_states(self.view);
+        let hit = states
+            .iter()
+            .position(|state| state.plot_area().is_some_and(|r| contains(r, column, row)));
+        let target = match input {
+            Mouse::Drag { .. } | Mouse::Up { .. } => dragging.or(hit),
+            _ => hit,
+        };
+        let mut changed = false;
+        if let Some(index) = target {
+            changed = states[index].on_mouse(input);
+        }
+        if matches!(input, Mouse::Moved { .. }) {
+            // A hover belongs to one pane; every other pane's cursor clears.
+            for (index, state) in states.iter_mut().enumerate() {
+                if Some(index) != target {
+                    changed |= state.on_mouse(Mouse::Moved { column: 0, row: 0 });
+                }
+            }
+        }
+        drop(states);
+        match input {
+            Mouse::Down { .. } => self.drag_pane = target,
+            Mouse::Up { .. } => self.drag_pane = None,
+            _ => {}
+        }
+        changed
     }
 
     /// Routes one mouse input to the pane it belongs to and mirrors the x
@@ -484,15 +594,29 @@ impl App {
     /// no ANSI round-trip — so the same `Plot` value works at any pane size, and
     /// `.charset(...)` picks the glyph tier per widget.
     fn draw_split(
-        &self,
+        &mut self,
         frame: &mut ratatui::Frame,
         area: Rect,
         (left, right): (malevich::Plot<'static>, malevich::Plot<'static>),
+        view: View,
     ) {
         let [left_area, right_area] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area);
-        frame.render_widget(left.widget().charset(self.charset), left_area);
-        frame.render_widget(right.widget().charset(self.charset), right_area);
+        let (charset, ink) = (self.charset, self.ink());
+        let states = match view {
+            View::Relations => &mut self.relations_states,
+            _ => &mut self.distribution_states,
+        };
+        frame.render_stateful_widget(
+            dress(left.widget(), charset, ink),
+            left_area,
+            &mut states[0],
+        );
+        frame.render_stateful_widget(
+            dress(right.widget(), charset, ink),
+            right_area,
+            &mut states[1],
+        );
     }
 
     fn series(&self) -> &fred::data::Series {
