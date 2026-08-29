@@ -238,8 +238,9 @@ pub(crate) enum ResolvedLayer<'p> {
         kind: Kind,
     },
     Bars {
-        placement: &'p Placement,
+        placement: &'p Placement<'p>,
         values: Cow<'p, [f64]>,
+        base: Option<&'p [f64]>,
         color: ColorChannel<'p>,
     },
     Area {
@@ -295,6 +296,10 @@ impl ResolvedLayer<'_> {
                 values,
                 ..
             } => Some((*start, width.mul_add(values.len() as f64, *start))),
+            ResolvedLayer::Bars {
+                placement: Placement::At { x, width },
+                ..
+            } => extent(x.as_slice()).map(|(lo, hi)| (lo - width / 2.0, hi + width / 2.0)),
             ResolvedLayer::Bars { .. } => None,
             ResolvedLayer::Area {
                 x,
@@ -335,6 +340,12 @@ impl ResolvedLayer<'_> {
     pub(crate) fn y_extent(&self) -> Option<(f64, f64)> {
         match self {
             ResolvedLayer::Series { y, .. } => extent(y),
+            // A based bar covers base..base+value, so both edge sets bound it.
+            ResolvedLayer::Bars {
+                values,
+                base: Some(base),
+                ..
+            } => union([extent(base), shifted_extent(base, values, false)].into_iter()),
             ResolvedLayer::Bars { values, .. } => extent(values),
             ResolvedLayer::Area {
                 x,
@@ -432,6 +443,11 @@ impl ResolvedLayer<'_> {
     pub(crate) fn y_extent_positive(&self) -> Option<(f64, f64)> {
         match self {
             ResolvedLayer::Series { y, .. } => extent_positive(y),
+            ResolvedLayer::Bars {
+                values,
+                base: Some(base),
+                ..
+            } => union([extent_positive(base), shifted_extent(base, values, true)].into_iter()),
             ResolvedLayer::Bars { values, .. } => extent_positive(values),
             ResolvedLayer::Area {
                 x,
@@ -717,6 +733,7 @@ pub(crate) fn resolve<'p>(
             Mark::Bars(bars) => ResolvedLayer::Bars {
                 placement: &bars.placement,
                 values: Cow::Borrowed(bars.values.as_slice()),
+                base: bars.base.as_ref().map(crate::data::Series::as_slice),
                 color: colors.channel(bars.color_by.as_ref(), bars.color, bars.label.as_deref()),
             },
             Mark::Area(area) => ResolvedLayer::Area {
@@ -977,6 +994,23 @@ pub(crate) fn coordinates<'p>(
         Some(series) => Coordinates::Values(Cow::Borrowed(series.as_slice())),
         None => Coordinates::Indices(len),
     }
+}
+
+/// The finite `(min, max)` over `base[i] + value[i]` — the far edges of based
+/// bars; `positive` restricts to strictly positive edges (log axes).
+fn shifted_extent(base: &[f64], values: &[f64], positive: bool) -> Option<(f64, f64)> {
+    let mut extent: Option<(f64, f64)> = None;
+    for (&base, &value) in base.iter().zip(values) {
+        let edge = base + value;
+        if !edge.is_finite() || (positive && edge <= 0.0) {
+            continue;
+        }
+        extent = match extent {
+            None => Some((edge, edge)),
+            Some((min, max)) => Some((min.min(edge), max.max(edge))),
+        };
+    }
+    extent
 }
 
 /// The finite `(min, max)` over strictly positive values, or `None` without any.

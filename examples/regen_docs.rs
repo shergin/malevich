@@ -240,6 +240,12 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
         "Small multiples, fixed axes, and the glyph ladder.",
         &[
             (
+                "segments",
+                "Stacked and grouped bars, composed — never a preset: a base channel \
+                 stacks each layer on the running total (the low half of stat::stack), \
+                 and positioned bars sit side by side within their bands.",
+            ),
+            (
                 "multiples",
                 "Small multiples: a Grid of independent plots, axes shared by fixing \
                  domains explicitly.",
@@ -273,6 +279,7 @@ const EXEMPT: &[&str] = &[
     "showcase",
     "live",
     "tui",
+    "zoom",
     "readme_sample",
     "readme_bars",
     "witness_packaging",

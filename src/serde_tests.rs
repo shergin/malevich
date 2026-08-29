@@ -423,3 +423,38 @@ fn a_function_line_refuses_to_serialize() {
     let error = serde_json::to_string(&document).expect_err("the envelope cannot encode a closure");
     assert!(error.to_string().contains("sample it into points"));
 }
+
+#[test]
+fn positioned_and_based_bars_round_trip_and_stay_off_the_old_wire() {
+    let stacked = Plot::new()
+        .layer(Bars::new(["a", "b"], &[1.0, 2.0][..]))
+        .layer(Bars::new(["a", "b"], &[2.0, 1.0][..]).base(&[1.0, 2.0][..]));
+    let grouped = Plot::new()
+        .x_scale(Scale::bands(["a", "b"]))
+        .layer(Bars::at(&[-0.2, 0.8][..], 0.35, &[1.0, 2.0][..]))
+        .layer(Bars::at(&[0.2, 1.2][..], 0.35, &[2.0, 1.0][..]));
+    for plot in [stacked, grouped] {
+        assert!(plot.validate().is_ok());
+        let encoded = serde_json::to_string(&plot).expect("serializes");
+        let decoded: Plot = serde_json::from_str(&encoded).expect("deserializes");
+        assert!(decoded.validate().is_ok());
+        assert_eq!(plot.render(&frame()), decoded.render(&frame()));
+    }
+
+    // Zero-based band bars encode exactly as before the base channel existed.
+    let plain = Plot::new().layer(Bars::new(["a"], &[1.0][..]));
+    let encoded = serde_json::to_string(&plain).expect("serializes");
+    assert!(!encoded.contains("base"), "spurious field: {encoded}");
+
+    // A ragged decoded base fails validation instead of failing at render.
+    let based = Plot::new().layer(Bars::new(["a", "b"], &[1.0, 2.0][..]).base(&[0.0, 1.0][..]));
+    let mut raw: serde_json::Value =
+        serde_json::from_str(&serde_json::to_string(&based).unwrap()).unwrap();
+    *raw.pointer_mut("/layers/0/Bars/base")
+        .expect("the base field is on the wire") = serde_json::json!([0.0]);
+    let decoded: Plot = serde_json::from_value(raw).expect("decodes structurally");
+    assert!(
+        decoded.validate().is_err(),
+        "a ragged base must fail validation"
+    );
+}

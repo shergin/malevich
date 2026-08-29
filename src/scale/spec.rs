@@ -17,6 +17,7 @@
 /// | Line, Points, Area, numeric Range, Rule, Text | yes | yes; non-positive values are gaps | yes; positions are band indices |
 /// | `Bars::new`, `Range::over` | no | no | yes |
 /// | `Bars::spans` | yes | yes | no |
+/// | `Bars::at` | yes | yes | yes; positions are band indices (grouped bars) |
 /// | Cells | yes | yes, with positive extents | yes; grid indices map to bands, no extents |
 ///
 /// On y, Bands positions continuous marks against band indices exactly like x,

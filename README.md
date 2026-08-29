@@ -151,8 +151,9 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   cells, range, rule, text) × a stats layer × shared scales compose into the
   whole basic chart catalog. Every preset — `line`, `hist`, `box_plot`,
   `violin`, `trend`, … — is proven byte-identical to its grammar expansion in
-  tests; grouped scatters, volcano plots, Manhattan plots, and candlesticks are
-  a few grammar lines each, never presets ([EXAMPLES.md](EXAMPLES.md)).
+  tests; grouped scatters, stacked and grouped bars, volcano plots, Manhattan
+  plots, and candlesticks are a few grammar lines each, never presets
+  ([EXAMPLES.md](EXAMPLES.md)).
 - **The statistical set no terminal library has.** Box plots with type-7
   quartiles and Tukey whiskers, violins from a real KDE, streaming
   least-squares trend lines with R² and a confidence band, ECDFs with an

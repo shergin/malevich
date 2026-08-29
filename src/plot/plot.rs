@@ -433,7 +433,7 @@ impl<'a> Plot<'a> {
                 Mark::Bars(bars) => {
                     if matches!(self.y, Scale::Log) {
                         return Err(crate::Error::IncompatibleScale {
-                            detail: "Bars has a zero baseline and cannot use a log y axis",
+                            detail: "Bars encode a length and cannot use a log y axis",
                         });
                     }
                     if matches!(self.y, Scale::Bands(_)) {

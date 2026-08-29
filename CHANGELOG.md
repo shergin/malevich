@@ -112,6 +112,20 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
 
+- Bars complete the catalog: a `base` channel (`Bars::base`) starts each bar
+  at a per-bar base instead of zero — bar `i` spans `base[i] .. base[i] +
+  value[i]`, so the value keeps encoding the segment's length — and
+  `Bars::at(x, width, values)` centers bars at free numeric positions, on a
+  continuous axis or in band-index space on a bands axis. Stacked bars are
+  now a composition (each layer based on the running total; the low half of
+  `stat::stack` is exactly that, and the stacked render is asserted
+  cell-identical to a single layer of the totals), grouped bars are two
+  positioned layers offset around the band centers, and waterfalls fall out
+  of the same channel. A gap (`NaN`) in a base or a position skips that bar;
+  zero stays pinned into the y domain only while some bars layer still rises
+  from the zero baseline; the wire format is byte-stable for existing specs.
+  The gallery gains `segments`, both compositions in one chart pair.
+
 - `Plot::mapping` costs a layout, not a render: the geometry pass now stops
   after the extent probe and the layout it yields, instead of also running
   the mapped M4 aggregation for a raster nobody draws. A ten-million-point

@@ -1269,3 +1269,113 @@ fn hostile_labels_never_leak_control_bytes() {
         }
     }
 }
+
+#[test]
+fn stacked_bars_tile_the_total_bar_exactly() {
+    // A based layer per segment must ink exactly the cells one layer of the
+    // running totals does — the full-draw oracle for the base channel, with
+    // seams landing mid-cell on purpose.
+    use crate::mark::Bars;
+    let lower = [1.0, 3.0, 2.0];
+    let upper = [2.0, 1.0, 2.5];
+    let totals: Vec<f64> = lower.iter().zip(&upper).map(|(a, b)| a + b).collect();
+    let categories = ["a", "b", "c"];
+    let frame = Frame::plain(30, 12);
+    let stacked = Plot::new()
+        .layer(Bars::new(categories, &lower[..]))
+        .layer(Bars::new(categories, &upper[..]).base(&lower[..]));
+    let single = Plot::new().layer(Bars::new(categories, &totals[..]));
+    assert!(stacked.validate().is_ok());
+    assert_eq!(
+        stacked.render(&frame),
+        single.render(&frame),
+        "stacked segments must tile the total bar exactly"
+    );
+}
+
+#[test]
+fn a_gap_in_the_base_skips_the_bar() {
+    use crate::mark::Bars;
+    let frame = Frame::plain(30, 10);
+    let with_gap = Plot::new()
+        .layer(Bars::new(["a", "b", "c"], &[1.0; 3][..]))
+        .layer(Bars::new(["a", "b", "c"], &[2.0, 2.0, 2.0][..]).base(&[1.0, f64::NAN, 1.0][..]))
+        .y_domain(0.0, 3.0);
+    let without_middle = Plot::new()
+        .layer(Bars::new(["a", "b", "c"], &[1.0; 3][..]))
+        .layer(Bars::new(["a", "b", "c"], &[2.0, f64::NAN, 2.0][..]).base(&[1.0, 1.0, 1.0][..]))
+        .y_domain(0.0, 3.0);
+    assert_eq!(
+        with_gap.render(&frame),
+        without_middle.render(&frame),
+        "a NaN base must be a gap, exactly like a NaN value"
+    );
+}
+
+#[test]
+fn based_bars_do_not_pin_zero_and_extend_to_their_far_edge() {
+    use crate::mark::Bars;
+    // Every layer based: the y domain fits base..base+value, no zero pinned.
+    let floating =
+        Plot::new().layer(Bars::new(["a", "b"], &[2.0, 3.0][..]).base(&[10.0, 12.0][..]));
+    let mapping = floating.mapping(&Frame::plain(30, 12));
+    let (low, high) = mapping.y_domain();
+    assert!(
+        low >= 5.0,
+        "zero was pinned into a floating-bar domain: {low}"
+    );
+    assert!(high >= 15.0, "the far edge base+value must fit: {high}");
+
+    // A zero-based layer beside it still pins zero.
+    let mixed = Plot::new()
+        .layer(Bars::new(["a", "b"], &[2.0, 3.0][..]))
+        .layer(Bars::new(["a", "b"], &[2.0, 3.0][..]).base(&[10.0, 12.0][..]));
+    let (low, _) = mixed.mapping(&Frame::plain(30, 12)).y_domain();
+    assert!(
+        low <= 0.0,
+        "a zero-based layer must keep zero in view: {low}"
+    );
+}
+
+#[test]
+fn positioned_bars_cover_their_half_widths_on_a_continuous_axis() {
+    use crate::mark::Bars;
+    let plot = Plot::new().layer(Bars::at(&[1.0, 4.0][..], 1.0, &[2.0, 3.0][..]));
+    let mapping = plot.mapping(&Frame::plain(40, 10));
+    let (low, high) = mapping.x_domain();
+    assert!(low <= 0.5, "the left bar edge must fit the domain: {low}");
+    assert!(
+        high >= 4.5,
+        "the right bar edge must fit the domain: {high}"
+    );
+}
+
+#[test]
+fn grouped_bars_compose_on_a_bands_axis() {
+    use crate::mark::Bars;
+    use crate::scale::Scale;
+    // Two positioned layers offset around the band indices: the grouped-bars
+    // composition. Each band must show two separate bars.
+    let a = [3.0, 7.0, 5.0];
+    let b = [5.0, 4.0, 6.0];
+    let left: Vec<f64> = (0..3).map(|i| i as f64 - 0.2).collect();
+    let right: Vec<f64> = (0..3).map(|i| i as f64 + 0.2).collect();
+    let plot = Plot::new()
+        .x_scale(Scale::bands(["mon", "tue", "wed"]))
+        .layer(Bars::at(&left[..], 0.35, &a[..]))
+        .layer(Bars::at(&right[..], 0.35, &b[..]));
+    assert!(plot.validate().is_ok());
+    let rendered = plot.render(&Frame::plain(44, 14));
+    assert!(rendered.contains("mon"), "band labels survive: {rendered}");
+    // The bottom plot row (above the axis) carries six distinct bar runs.
+    let bottom = rendered
+        .lines()
+        .rev()
+        .find(|line| line.contains('\u{2588}'))
+        .expect("full-height cells exist");
+    let runs = bottom
+        .split(|c: char| c != '\u{2588}')
+        .filter(|run| !run.is_empty())
+        .count();
+    assert_eq!(runs, 6, "two bars per band: {rendered}");
+}

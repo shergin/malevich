@@ -28,8 +28,11 @@ A family of geometric primitives that draw data. The word follows Observable
 Plot and Vega-Lite ("mark"), chosen over matplotlib's "artist" (too broad)
 and "geom" (ggplot jargon). Eight marks, joined under the closed `mark::Mark`
 enum: `Line` (points, paired series, or a sampled function), `Points`,
-`Bars` (bands or numeric spans, zero-baseline), `Area` (baseline fills and
-bands), `Cells` (value grids, rgb images, or categorical class regions),
+`Bars` (bands, contiguous numeric spans, or free positions; rising from the
+zero baseline, or from a per-bar `base` — the y2-style channel that makes
+stacked bars, grouped bars, and waterfalls plain compositions), `Area`
+(baseline fills and bands), `Cells` (value grids, rgb images, or categorical
+class regions),
 `Range` (intervals with optional body and marker channels), `Rule`
 (reference lines), and `Text` (annotations at data coordinates). Chart types
 are compositions of marks, never peers of them. The family is complete. See

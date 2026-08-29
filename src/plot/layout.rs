@@ -161,9 +161,11 @@ impl<'p> Layout<'p> {
             }),
             _ => None,
         };
-        let has_bars = layers
+        // Only bars rising from the zero baseline pin zero into the y domain;
+        // a based bar encodes its length from its own base, not from zero.
+        let has_zero_based_bars = layers
             .iter()
-            .any(|layer| matches!(layer, ResolvedLayer::Bars { .. }));
+            .any(|layer| matches!(layer, ResolvedLayer::Bars { base: None, .. }));
         // The y axis takes bands only explicitly — no mark implies them, because
         // no bar-family mark places itself on y. Band 0 is the top band, so a
         // Cells matrix reads like the printed matrix.
@@ -200,7 +202,7 @@ impl<'p> Layout<'p> {
         } else {
             union(layers.iter().map(ResolvedLayer::y_extent)).unwrap_or((0.0, 1.0))
         };
-        if has_bars && !log_y && domains.1.is_none() {
+        if has_zero_based_bars && !log_y && domains.1.is_none() {
             // Bar length is the encoding, so the baseline must be in view.
             y_data = (y_data.0.min(0.0), y_data.1.max(0.0));
         }

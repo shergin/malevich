@@ -955,6 +955,45 @@ Source: [examples/attention_full.rs](examples/attention_full.rs)
 
 Small multiples, fixed axes, and the glyph ladder.
 
+### segments
+
+Stacked and grouped bars, composed — never a preset: a base channel stacks each layer on the running total (the low half of stat::stack), and positioned bars sit side by side within their bands.
+Source: [examples/segments.rs](examples/segments.rs)
+
+```text
+      revenue by segment, stacked ($B, synthetic)
+         ██ platform  ██ services  ██ hardware
+10 ┤                                       █████████
+   │                           ▇▇▇▇▇▇▇▇▇   █████████
+ 8 ┤   ▂▂▂▂▂▂▂▂▂   █████████   █████████   █████████
+   │   █████████   █████████   █████████   █████████
+ 6 ┤   █████████   █████████   █████████   █████████
+   │   █████████   █████████   █████████   █████████
+   │   █████████   █████████   █████████   █████████
+ 4 ┤   █████████   █████████   █████████   █████████
+   │   █████████   █████████   █████████   █████████
+ 2 ┤   █████████   █████████   █████████   █████████
+   │   █████████   █████████   █████████   █████████
+ 0 ┤   █████████   █████████   █████████   █████████
+   └────────────────────────────────────────────────────
+           Q1          Q2          Q3          Q4
+
+      platform revenue, year over year ($B, synthetic)
+                      ██ 2025  ██ 2026
+6 ┤                                                 ▇▇▇▇
+5 ┤                                   ▄▄▄▄▄   ▃▃▃▃▃ ████
+  │         ▁▁▁▁         ████    ▃▃▃▃ █████   █████ ████
+4 ┤    ▁▁▁▁ ████    ▇▇▇▇ ████    ████ █████   █████ ████
+  │    ████ ████    ████ ████    ████ █████   █████ ████
+3 ┤    ████ ████    ████ ████    ████ █████   █████ ████
+2 ┤    ████ ████    ████ ████    ████ █████   █████ ████
+  │    ████ ████    ████ ████    ████ █████   █████ ████
+1 ┤    ████ ████    ████ ████    ████ █████   █████ ████
+0 ┤    ████ ████    ████ ████    ████ █████   █████ ████
+  └─────────────────────────────────────────────────────────
+          Q1            Q2           Q3           Q4
+```
+
 ### multiples
 
 Small multiples: a Grid of independent plots, axes shared by fixing domains explicitly.

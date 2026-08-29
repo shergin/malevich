@@ -197,8 +197,8 @@ pub(crate) fn layers<C: Canvas>(
             ResolvedLayer::Bars {
                 placement,
                 values,
+                base,
                 color,
-                ..
             } => match placement {
                 Placement::Bands(_) => {
                     if let Some(band) = &band {
@@ -212,6 +212,7 @@ pub(crate) fn layers<C: Canvas>(
                             },
                             y_scale,
                             values,
+                            *base,
                             color,
                             rect,
                         );
@@ -227,6 +228,23 @@ pub(crate) fn layers<C: Canvas>(
                         },
                         y_scale,
                         values,
+                        *base,
+                        color,
+                        rect,
+                    );
+                }
+                Placement::At { x, width } => {
+                    let positions = x.as_slice();
+                    let half = width / 2.0;
+                    draw_bars(
+                        surface,
+                        &|index| {
+                            let center = positions.get(index).copied().unwrap_or(f64::NAN);
+                            (x_scale.map(center - half), x_scale.map(center + half))
+                        },
+                        y_scale,
+                        values,
+                        *base,
                         color,
                         rect,
                     );
@@ -504,29 +522,43 @@ fn draw_corners<C: Canvas>(
     }
 }
 
-/// Draws one bars layer: per bar, the canvas fills the span from the zero baseline
-/// to the value end at its own precision (eighth-block ramps on cells, exact
-/// rectangles on pixels).
+/// Draws one bars layer: per bar, the canvas fills the span from the baseline —
+/// zero, or the bar's own base — to the value end at its own precision
+/// (eighth-block ramps on cells, exact rectangles on pixels).
 fn draw_bars<C: Canvas>(
     surface: &mut C,
     span: &dyn Fn(usize) -> (f64, f64),
     y_scale: &Map,
     values: &[f64],
+    base: Option<&[f64]>,
     color: &ColorChannel<'_>,
     rect: PlotRect,
 ) {
-    let baseline = y_scale.map(0.0);
+    let zero = y_scale.map(0.0);
     for (index, &value) in values.iter().enumerate() {
         if !value.is_finite() || value == 0.0 {
             continue;
         }
+        // A gap (`NaN`) in the base skips the bar, like a gap in the values.
+        let start = match base {
+            Some(base) => match base.get(index) {
+                Some(&start) if start.is_finite() => start,
+                _ => continue,
+            },
+            None => 0.0,
+        };
         let (left_sub, right_sub) = span(index);
         if !left_sub.is_finite() || !right_sub.is_finite() {
             continue;
         }
+        let baseline = if start == 0.0 {
+            zero
+        } else {
+            y_scale.map(start)
+        };
         surface.bar(
             (left_sub, right_sub),
-            y_scale.map(value),
+            y_scale.map(start + value),
             baseline,
             value > 0.0,
             rect,
