@@ -234,11 +234,15 @@ impl PlotWidget<'_> {
             return true;
         }
         let mut plot = self.plot.clone().viewport(state.view);
-        if let Some((cursor_x, cursor_y)) = state.cursor_data()
+        if let Some(cursor_x) = state.hover_data_x()
             && cursor_x.is_finite()
-            && cursor_y.is_finite()
             && let Some(mapping) = state.mapping().cloned()
         {
+            // A mirrored x-only hover has no y: no horizontal rule to draw.
+            let cursor_y = state
+                .cursor_data()
+                .map(|(_, y)| y)
+                .filter(|y| y.is_finite());
             let (x_low, x_high) = mapping.x_domain();
             let (y_low, y_high) = mapping.y_domain();
             // Pin ONLY axes the viewport has not fixed: the pin exists so the
@@ -255,17 +259,18 @@ impl PlotWidget<'_> {
                 plot = plot.y_domain(y_low, y_high);
             }
             if self.crosshair {
-                plot = plot
-                    .layer(
-                        crate::Rule::v(cursor_x)
-                            .color(Color::BrightBlack)
-                            .dash(crate::Dash::Dotted),
-                    )
-                    .layer(
+                plot = plot.layer(
+                    crate::Rule::v(cursor_x)
+                        .color(Color::BrightBlack)
+                        .dash(crate::Dash::Dotted),
+                );
+                if let Some(cursor_y) = cursor_y {
+                    plot = plot.layer(
                         crate::Rule::h(cursor_y)
                             .color(Color::BrightBlack)
                             .dash(crate::Dash::Dotted),
                     );
+                }
             }
             let snapped = if self.snap {
                 self.snapped(state)
@@ -517,6 +522,15 @@ enum Drag {
     },
 }
 
+/// The hover, in terminal coordinates: a full cell under a real cursor, or a
+/// column only — a linked pane's cursor mirrored in through
+/// [`PlotState::hover_x`], which has an x but no honest row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Hover {
+    Cell { column: u16, row: u16 },
+    Column { column: u16 },
+}
+
 /// The interaction state of one plot pane, threaded through
 /// `render_stateful_widget` — the ratatui idiom for widget state the host
 /// queries and feeds (`ListState`, `TableState`, …).
@@ -539,7 +553,7 @@ pub struct PlotState {
     area: Rect,
     mapping: Option<Mapping>,
     view: Viewport,
-    cursor: Option<(u16, u16)>,
+    hover: Option<Hover>,
     drag: Option<Drag>,
     /// The pending image block of the last pixel render — rectangle, encoded
     /// block, content hash — consumed by [`present_pixels`].
@@ -605,15 +619,55 @@ impl PlotState {
     }
 
     /// The hover cursor, in terminal coordinates, when it is over the plot
-    /// rectangle.
+    /// rectangle. A mirrored x-only hover ([`PlotState::hover_x`]) answers
+    /// `None` — it has no honest row.
     pub fn cursor(&self) -> Option<(u16, u16)> {
-        self.cursor
+        match self.hover? {
+            Hover::Cell { column, row } => Some((column, row)),
+            Hover::Column { .. } => None,
+        }
     }
 
     /// The data coordinates under the hover cursor.
     pub fn cursor_data(&self) -> Option<(f64, f64)> {
-        let (column, row) = self.cursor?;
+        let (column, row) = self.cursor()?;
         self.data_at(column, row)
+    }
+
+    /// Places an x-only hover from a data x — the mirrored crosshair of a
+    /// linked pane. The next stateful render draws a vertical-only crosshair
+    /// at that column; snapping and the readout work exactly as under a real
+    /// cursor, while [`PlotState::cursor`] stays `None` (there is no row). A
+    /// non-finite x, or one outside the visible window, clears the mirrored
+    /// hover; a real cursor fed later through [`PlotState::on_mouse`] simply
+    /// replaces it. Returns whether anything changed.
+    ///
+    /// The linked-panes pattern: after routing an event to the pane it landed
+    /// on, mirror `active.cursor_data()`'s x into the passive pane —
+    /// `passive.hover_x(x)` — and both panes read the same instant, whatever
+    /// their gutters.
+    pub fn hover_x(&mut self, x: f64) -> bool {
+        let hover = self
+            .mapping
+            .as_ref()
+            .and_then(|mapping| mapping.column_at(x))
+            .map(|column| Hover::Column {
+                column: self
+                    .area
+                    .x
+                    .saturating_add(column.min(u16::MAX as usize) as u16),
+            });
+        let changed = hover != self.hover;
+        self.hover = hover;
+        changed
+    }
+
+    /// The data x under the hover — a real cursor's or a mirrored one's — at
+    /// its column's center.
+    fn hover_data_x(&self) -> Option<f64> {
+        let rect = self.plot_area()?;
+        let (Hover::Cell { column, .. } | Hover::Column { column }) = self.hover?;
+        self.data_at(column, rect.y).map(|(x, _)| x)
     }
 
     /// The viewport the next stateful render applies.
@@ -773,11 +827,14 @@ impl PlotState {
         }
     }
 
-    /// Updates the hover cursor; the cursor exists only over the plot rectangle.
+    /// Updates the hover cursor; the cursor exists only over the plot
+    /// rectangle. A real cursor always replaces a mirrored x-only hover.
     fn hover(&mut self, column: u16, row: u16) -> bool {
-        let cursor = self.inside(column, row).then_some((column, row));
-        let changed = cursor != self.cursor;
-        self.cursor = cursor;
+        let hover = self
+            .inside(column, row)
+            .then_some(Hover::Cell { column, row });
+        let changed = hover != self.hover;
+        self.hover = hover;
         changed
     }
 
@@ -1107,16 +1164,31 @@ impl PlotWidget<'_> {
                 }
             }
         }
-        let cursor = state.cursor().filter(|&(column, row)| {
-            column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
-        });
+        // A real cursor tints its row and column; a mirrored x-only hover
+        // draws the vertical line alone — it has no honest row to claim.
+        let hover = match state.hover {
+            Some(Hover::Cell { column, row })
+                if column >= rect.x
+                    && column < rect.right()
+                    && row >= rect.y
+                    && row < rect.bottom() =>
+            {
+                Some((column, Some(row)))
+            }
+            Some(Hover::Column { column }) if column >= rect.x && column < rect.right() => {
+                Some((column, None))
+            }
+            _ => None,
+        };
         if self.crosshair
-            && let Some((column, row)) = cursor
+            && let Some((column, row)) = hover
         {
-            for x in rect.x..rect.right() {
-                let cell = &mut buffer[(x, row)];
-                if cell.bg == RatColor::Reset {
-                    cell.set_bg(tint);
+            if let Some(row) = row {
+                for x in rect.x..rect.right() {
+                    let cell = &mut buffer[(x, row)];
+                    if cell.bg == RatColor::Reset {
+                        cell.set_bg(tint);
+                    }
                 }
             }
             for y in rect.y..rect.bottom() {
@@ -1126,7 +1198,7 @@ impl PlotWidget<'_> {
                 }
             }
         }
-        if cursor.is_none() {
+        if hover.is_none() {
             return;
         }
         let snapped = if self.snap {
@@ -1168,19 +1240,21 @@ impl PlotWidget<'_> {
 
     /// The readout text, shed to `budget` cells: the x position, then one
     /// `label: value` entry per snapped series (or the plain cursor
-    /// coordinates when nothing snapped). One snapped series speaks for the x
-    /// part with its own datum's position; several share the cursor's.
-    /// Trailing series drop until the line fits; `None` when even the
-    /// two-part minimum cannot.
+    /// coordinates when nothing snapped — the x alone under a mirrored
+    /// hover, which has no y). One snapped series speaks for the x part with
+    /// its own datum's position; several share the cursor's. Trailing series
+    /// drop until the line fits; `None` when even the minimum cannot.
     fn readout_line(&self, state: &PlotState, snapped: &[Snapped], budget: u16) -> Option<String> {
-        let (cursor_x, cursor_y) = state.cursor_data()?;
+        let cursor_x = state.hover_data_x()?;
         let mapping = state.mapping()?;
         let x_part = match snapped {
             [only] => mapping.format_x(only.x),
             [] | [..] => mapping.format_x(cursor_x),
         };
         let mut parts = vec![x_part];
-        if snapped.is_empty() {
+        if snapped.is_empty()
+            && let Some((_, cursor_y)) = state.cursor_data()
+        {
             parts.push(mapping.format_y(cursor_y));
         }
         for snap in snapped {
@@ -1207,7 +1281,7 @@ impl PlotWidget<'_> {
     /// The datum nearest the cursor's x on every point-backed Line and Points
     /// layer, restricted to the visible x window — the snap targets.
     fn snapped(&self, state: &PlotState) -> Vec<Snapped> {
-        let Some((cursor_x, _)) = state.cursor_data() else {
+        let Some(cursor_x) = state.hover_data_x() else {
             return Vec::new();
         };
         let Some(mapping) = state.mapping() else {

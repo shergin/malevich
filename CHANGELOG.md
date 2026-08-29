@@ -112,6 +112,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
 
+- Linked panes share a crosshair, not just a window. `Mapping::column_at(x)`
+  is the x-only half of `cell_at`, and `PlotState::hover_x(x)` places a
+  mirrored hover from a data x: the widget draws a vertical-only crosshair
+  at that pane's own column — an x but no honest row to claim — while
+  snapping and the readout work exactly as under a real cursor, in cells
+  and in pixel panels alike; a non-finite or off-window x clears the
+  mirror, and a real cursor placed later simply replaces it. fred mirrors
+  the cursor both ways on its series pair and sweeps one date crosshair
+  across all six overview panes.
+
 - `Graphics::economical()` lifts the slow-link density trick pixel hosts
   carried by hand: halve a Retina cell size, keep the ink weight through a
   stroke override, a quarter of the bytes — sixel, with no placement

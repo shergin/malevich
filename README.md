@@ -190,7 +190,7 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   a real image. [docs/notebooks.md](docs/notebooks.md).
 
   ```rust
-  :dep malevich = { version = "1.18", features = ["evcxr"] }
+  :dep malevich = { version = "1.19", features = ["evcxr"] }
   use malevich::{Line, Plot};
 
   let values = [1.0, 5.0, 2.0, 8.0];
@@ -206,7 +206,11 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   mouse gestures — a crosshair that snaps to the nearest datum and reads out
   its value axis-formatted (gaps as `—`, never interpolated), wheel zoom
   under the cursor, drag pan, rubber-band zoom — from coordinates the host
-  feeds it. Zooming is just a domain window, so M4 re-aggregates per frame:
+  feeds it. Panes link by assignment, not by feature: a view is a value you
+  share, a hover is a data x you mirror (`hover_x` draws it as a
+  vertical-only crosshair at the other pane's own column) — fred's overview
+  sweeps one date crosshair across six panes this way. Zooming is just a
+  domain window, so M4 re-aggregates per frame:
   a zoomed ten-million-point frame renders in under 19 ms on the
   [recorded baseline](BENCHMARKS.md) — past 50 fps — and
   `cargo run --release --example zoom --features ratatui` is that claim,

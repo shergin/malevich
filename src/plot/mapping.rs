@@ -150,6 +150,23 @@ impl Mapping {
         Some((self.x.unmap(sub_x), self.y.unmap(sub_y)))
     }
 
+    /// The frame column where the data value `x` draws — the x-only half of
+    /// [`Mapping::cell_at`] — or `None` when it falls outside the plot
+    /// rectangle (or is not finite). This is what lets a passive pane mirror
+    /// another pane's cursor exactly, whatever their gutters: share the data
+    /// x, let each mapping place it. Band axes answer in band-index space.
+    pub fn column_at(&self, x: f64) -> Option<usize> {
+        if self.columns == 0 || self.rows == 0 {
+            return None;
+        }
+        let sub_x = self.x.map(x).round();
+        if !sub_x.is_finite() || sub_x < 0.0 {
+            return None;
+        }
+        let column = self.left + sub_x as usize / self.px;
+        (column < self.left + self.columns).then_some(column)
+    }
+
     /// The frame cell `(column, row)` where the data point `(x, y)` draws, or
     /// `None` when it falls outside the plot rectangle (or is not finite).
     pub fn cell_at(&self, x: f64, y: f64) -> Option<(usize, usize)> {

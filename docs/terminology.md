@@ -140,8 +140,10 @@ purely from `Plot::mapping(&frame)`; the ratatui stateful widget caches one
 per render. Queries answer in the coordinate conventions marks use (band
 indices, unix seconds), name the plot panel as a `Panel` value rather than a
 bare tuple, expose a categorical axis's labels (`x_categories`), disclose
-cell quantization (`x_span_at`/`y_span_at`), and format values the way the
-axis formats its own labels (`format_x`/`format_y`).
+cell quantization (`x_span_at`/`y_span_at`), format values the way the
+axis formats its own labels (`format_x`/`format_y`), and answer the x-only
+half of the invert (`column_at`) — what lets linked panes mirror one cursor
+whatever their gutters.
 Derived state, deliberately not serializable. This is the physics interactive
 hosts build on: malevich never handles input — a host maps its events to
 questions a `Mapping` can answer. Maps to `plot::Mapping`.
@@ -171,7 +173,10 @@ the host feeds it. The cursor snaps to the data: for every point-backed line
 and points layer, the readout lists the value of the datum nearest the
 cursor's x inside the visible window — axis-formatted, its cell highlighted,
 a gap shown as `—` rather than an interpolation (`snap(false)` returns to
-plain cursor coordinates). The widget never reads the terminal: event loops,
+plain cursor coordinates). A linked pane mirrors another pane's cursor by
+data x (`PlotState::hover_x`): a vertical-only crosshair at its own column —
+an x but no honest row — with snapping and the readout working as under a
+real cursor. The widget never reads the terminal: event loops,
 mouse capture, and key policy stay in the host, and the gestures are a preset
 over the public physics — a host with different policy drives `Viewport` and
 `Mapping` directly. Interaction chrome (crosshair, snap highlights, selection

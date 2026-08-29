@@ -921,3 +921,62 @@ mod fred_flow {
         assert!(strip.pixels.is_none(), "the unchanged strip is suppressed");
     }
 }
+
+#[test]
+fn a_mirrored_hover_draws_a_vertical_only_crosshair_and_snaps() {
+    let plot = Plot::new()
+        .layer(Line::xy(&[0.0, 10.0][..], &[0.0, 10.0][..]).label("linked"))
+        .x_domain(0.0, 10.0)
+        .y_domain(0.0, 10.0);
+    let area = Rect::new(0, 0, 50, 18);
+    let mut state = PlotState::default();
+    render_stateful(&plot, area, &mut state);
+    let rect = state.plot_area().unwrap();
+
+    assert!(state.hover_x(5.0), "a mirrored hover is a change");
+    assert_eq!(state.cursor(), None, "an x-only hover has no cell");
+
+    let mut buffer = Buffer::empty(Rect::new(0, 0, 80, 30));
+    StatefulWidget::render(plot.widget(), area, &mut buffer, &mut state);
+    let column = state.mapping().unwrap().column_at(5.0).unwrap() as u16 + area.x;
+    assert_ne!(
+        buffer[(column, rect.y)].bg,
+        ratatui_core::style::Color::Reset,
+        "the mirrored column is tinted"
+    );
+    // No horizontal line: rows outside the column stay untinted, except the
+    // snapped datum's own highlighted cell.
+    let (snap_column, snap_row) = state.mapping().unwrap().cell_at(5.0, 5.0).unwrap();
+    let (snap_column, snap_row) = (snap_column as u16 + area.x, snap_row as u16 + area.y);
+    for row in rect.y..rect.bottom() {
+        for probe in [rect.x, rect.right() - 1] {
+            if probe == column || (probe == snap_column && row == snap_row) || row == rect.y {
+                continue; // the vertical line, the snap highlight, the readout row
+            }
+            assert_eq!(
+                buffer[(probe, row)].bg,
+                ratatui_core::style::Color::Reset,
+                "no horizontal line at ({probe}, {row})"
+            );
+        }
+    }
+    // The readout snaps for a mirrored hover exactly like a real one.
+    let top: String = (rect.x..rect.right())
+        .map(|x| buffer[(x, rect.y)].symbol().to_string())
+        .collect();
+    assert!(top.contains("linked"), "snapped readout: {top:?}");
+
+    // Clearing: a non-finite or off-window x removes the mirrored hover.
+    assert!(state.hover_x(f64::NAN), "clearing is a change");
+    assert!(!state.hover_x(f64::NAN), "already clear");
+    assert!(!state.hover_x(50.0), "off-window mirrors nothing");
+
+    // A real cursor placed later simply replaces a mirrored hover.
+    assert!(state.hover_x(5.0));
+    let at = (rect.x + rect.width / 2, rect.y + rect.height / 2);
+    state.on_mouse(Mouse::Moved {
+        column: at.0,
+        row: at.1,
+    });
+    assert_eq!(state.cursor(), Some(at), "the real cursor wins");
+}

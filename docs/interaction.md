@@ -25,7 +25,8 @@ and returns where everything landed, as a plain value:
 
 - `data_at(column, row)` / `cell_at(x, y)` — the scale contract's `invert`,
   reachable at plot level. Band axes answer in band-index space, time axes
-  in unix seconds.
+  in unix seconds. `column_at(x)` is the x-only half of `cell_at` — the
+  linked-crosshair primitive.
 - `x_span_at(column)` — the data interval one column covers; a cell-level
   cursor's honest resolution.
 - `format_x` / `format_y` — a value written the way the axis writes its own
@@ -100,6 +101,22 @@ Zoom and pan in either pane and both move; each pane keeps its own y. fred's
 series view does exactly this — a year-over-year context strip under the
 main chart, linked on x. The absence of a "linking" feature is the design:
 a view is a value, so sharing it is assignment.
+
+The crosshair links the same way — a hover is a data x, so sharing it is a
+call. After routing a `Moved` to the pane it landed on, mirror the active
+pane's cursor into the passive one:
+
+```rust
+let x = active.cursor_data().map_or(f64::NAN, |(x, _)| x);
+passive.hover_x(x);   // NaN — or an off-window x — clears the mirror
+```
+
+The passive pane draws a vertical-only crosshair at its *own* column for
+that x (`Mapping::column_at` is the physics underneath, so differing gutters
+cannot misalign it), snaps its own series, and reads out the same instant.
+There is no horizontal line and no y readout — a mirrored hover has an x
+but no honest row to claim. fred mirrors both ways on its series view, and
+across all six panes of its overview: one calendar, one crosshair.
 
 **Selection → statistics.** A rubber-band zoom *is* a selection: after it,
 `viewport().x()` is the chosen window, and the visible data summarizes with

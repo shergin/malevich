@@ -502,6 +502,7 @@ impl App {
             return false;
         };
         let dragging = self.drag_pane;
+        let mirror = matches!(self.view, View::Overview);
         let mut states = self.pixel_states(self.view);
         let hit = states
             .iter()
@@ -515,10 +516,19 @@ impl App {
             changed = states[index].on_mouse(input);
         }
         if matches!(input, Mouse::Moved { .. }) {
-            // A hover belongs to one pane; every other pane's cursor clears.
+            // A hover belongs to one pane. On the overview — six series on
+            // one calendar — the other panes mirror it as a date crosshair;
+            // views whose panes share no x axis clear instead (`NaN` clears).
+            let x = if mirror {
+                target
+                    .and_then(|index| states[index].cursor_data())
+                    .map_or(f64::NAN, |(x, _)| x)
+            } else {
+                f64::NAN
+            };
             for (index, state) in states.iter_mut().enumerate() {
                 if Some(index) != target {
-                    changed |= state.on_mouse(Mouse::Moved { column: 0, row: 0 });
+                    changed |= state.hover_x(x);
                 }
             }
         }
@@ -534,8 +544,9 @@ impl App {
     /// Routes one mouse input to the pane it belongs to and mirrors the x
     /// window onto the other pane — the linked-panes pattern from
     /// docs/interaction.md. Drags stay with the pane they started in; a hover
-    /// entering one pane clears the other's cursor. True when any pane's
-    /// state changed.
+    /// in one pane mirrors into the other as a vertical date crosshair
+    /// (`hover_x`), and clears when the cursor leaves both. True when any
+    /// pane's state changed.
     fn route_mouse(&mut self, input: Mouse) -> bool {
         fn contains(rect: Rect, column: u16, row: u16) -> bool {
             column >= rect.x && column < rect.right() && row >= rect.y && row < rect.bottom()
@@ -569,8 +580,10 @@ impl App {
         };
         let mut changed = pane.on_mouse(input);
         if let Mouse::Moved { .. } = input {
-            // (0, 0) is the tab row — outside any plot — so this clears.
-            changed |= other.on_mouse(Mouse::Moved { column: 0, row: 0 });
+            // Mirror the cursor into the passive pane: the same data x, its
+            // own column — the linked crosshair. Off both panes, it clears.
+            let x = pane.cursor_data().map_or(f64::NAN, |(x, _)| x);
+            changed |= other.hover_x(x);
         }
         match input {
             Mouse::Down { .. } => self.drag_in_strip = Some(in_strip),

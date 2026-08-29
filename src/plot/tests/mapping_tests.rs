@@ -188,3 +188,16 @@ fn log_axes_map_and_format_in_value_space() {
     assert!((y.log10() - 2.0).abs() < 0.2, "decade-space roundtrip: {y}");
     let _ = column;
 }
+
+#[test]
+fn column_at_is_the_x_only_half_of_cell_at() {
+    let plot = fixed_plot();
+    let mapping = plot.mapping(&Frame::plain(60, 20));
+    for value in [0.0, 2.5, 5.0, 9.9] {
+        let (column, _) = mapping.cell_at(value, value).expect("in-domain point");
+        assert_eq!(mapping.column_at(value), Some(column), "at {value}");
+    }
+    assert_eq!(mapping.column_at(11.0), None, "beyond the domain");
+    assert_eq!(mapping.column_at(f64::NAN), None);
+    assert_eq!(crate::plot::Mapping::empty().column_at(5.0), None);
+}
