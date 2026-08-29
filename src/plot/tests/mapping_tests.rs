@@ -124,6 +124,37 @@ fn linear_formatting_is_exact_decimal_at_cell_resolution() {
 }
 
 #[test]
+fn the_layout_pass_alone_answers_like_the_render_pass() {
+    // Large enough that the render pass aggregates (M4); the mapping must come
+    // from the same layout without paying for that aggregation.
+    let y: Vec<f64> = (0..50_000)
+        .map(|i| (i as f64 * 0.001).sin() * (i as f64).sqrt())
+        .collect();
+    let plot = Plot::new().layer(Line::y(&y[..])).title("parity");
+    let frame = Frame::plain(60, 18);
+
+    let mapped = plot.mapping(&frame);
+    let (_, rendered) = plot
+        .try_rasterize_with(&frame, true)
+        .expect("a 60x18 frame renders");
+
+    assert_eq!(mapped.plot_area(), rendered.plot_area());
+    assert_eq!(mapped.x_domain(), rendered.x_domain());
+    assert_eq!(mapped.y_domain(), rendered.y_domain());
+    let panel = mapped.plot_area().expect("a panel exists");
+    for column in [panel.column, panel.column + panel.width / 2] {
+        for row in [panel.row, panel.row + panel.height - 1] {
+            assert_eq!(mapped.data_at(column, row), rendered.data_at(column, row));
+            assert_eq!(mapped.x_span_at(column), rendered.x_span_at(column));
+            assert_eq!(mapped.y_span_at(row), rendered.y_span_at(row));
+        }
+    }
+    let (x, y) = mapped.data_at(panel.column + 1, panel.row + 1).unwrap();
+    assert_eq!(mapped.format_x(x), rendered.format_x(x));
+    assert_eq!(mapped.format_y(y), rendered.format_y(y));
+}
+
+#[test]
 fn time_formatting_reads_as_a_calendar_instant() {
     // Ten days in June 2024: day resolution, so the label carries the year.
     let start = 1_717_200_000.0;

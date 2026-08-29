@@ -112,6 +112,13 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
 
+- `Plot::mapping` costs a layout, not a render: the geometry pass now stops
+  after the extent probe and the layout it yields, instead of also running
+  the mapped M4 aggregation for a raster nobody draws. A ten-million-point
+  mapping drops from 30.4 ms to 2.1 ms on the BENCHMARKS.md baseline (new
+  `plot/mapping_10m_80x20` row), and a parity test pins the layout-pass
+  mapping to the render pass's, query for query.
+
 - The design argument is public. `docs/` now carries the vision and its five
   rules, seven principle files — each arguing one constraint and ending in a
   "Spelled today" section that may rot while the argument must not — and

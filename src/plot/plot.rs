@@ -94,6 +94,19 @@ struct PreparedRender<'p> {
     layers: Vec<ResolvedLayer<'p>>,
 }
 
+/// The frame width in subpixels, or the bounded-geometry error when the
+/// multiplication cannot be represented.
+fn sample_width(frame: &Frame, policy: TargetPolicy) -> crate::Result<usize> {
+    frame
+        .width
+        .checked_mul(policy.density.0)
+        .ok_or(crate::Error::DimensionTooLarge {
+            what: policy.sample_width_name,
+            requested: usize::MAX,
+            limit: crate::render::MAX_DEVICE_PIXELS,
+        })
+}
+
 impl<'a> Plot<'a> {
     /// An empty plot with no layers and no furniture.
     pub fn new() -> Plot<'a> {
@@ -268,8 +281,8 @@ impl<'a> Plot<'a> {
         if frame.width == 0 || frame.height == 0 {
             return Mapping::empty();
         }
-        match self.prepare_render(frame, TargetPolicy::cells(frame, true)) {
-            Ok(prepared) => Mapping::new(&prepared.layout, &self.x, &self.y),
+        match self.prepare_layout(frame, TargetPolicy::cells(frame, true)) {
+            Ok(layout) => Mapping::new(&layout, &self.x, &self.y),
             Err(_) => Mapping::empty(),
         }
     }
@@ -652,6 +665,41 @@ impl<'a> Plot<'a> {
         crate::pixel::try_render(self, frame, graphics, column)
     }
 
+    /// The geometry pass alone: the extent-probe resolve and the layout it
+    /// yields — exactly the layout rendering retains. [`Plot::mapping`] stops
+    /// here: aggregation exists to fill pixels, and a mapping needs none.
+    fn prepare_layout<'p>(
+        &'p self,
+        frame: &Frame,
+        policy: TargetPolicy,
+    ) -> crate::Result<Layout<'p>> {
+        let sample_width = sample_width(frame, policy)?;
+        let extent = Reduce::Extent {
+            x_positive: matches!(&self.x, Scale::Log),
+            y_positive: matches!(&self.y, Scale::Log),
+        };
+        let probe = super::resolve::resolve(
+            &self.layers,
+            sample_width,
+            &frame.theme.palette,
+            self.palette
+                .as_ref()
+                .unwrap_or(&DEFAULT_CATEGORICAL_PALETTE),
+            policy.cycle_markers,
+            extent,
+        );
+        Ok(Layout::compute(
+            frame,
+            policy.density,
+            &probe,
+            self.title.is_some(),
+            (&self.x, &self.y),
+            (self.x_label.as_deref(), self.y_label.as_deref()),
+            (self.x_domain, self.y_domain),
+            self.colorbar,
+        ))
+    }
+
     /// Runs the target-independent render orchestration once. The returned
     /// layers still borrow the retained plot; layout borrows only retained band
     /// labels, never the temporary probe or final layer vector.
@@ -660,15 +708,7 @@ impl<'a> Plot<'a> {
         frame: &Frame,
         policy: TargetPolicy,
     ) -> crate::Result<PreparedRender<'p>> {
-        let sample_width =
-            frame
-                .width
-                .checked_mul(policy.density.0)
-                .ok_or(crate::Error::DimensionTooLarge {
-                    what: policy.sample_width_name,
-                    requested: usize::MAX,
-                    limit: crate::render::MAX_DEVICE_PIXELS,
-                })?;
+        let sample_width = sample_width(frame, policy)?;
         let title = self.title.is_some();
         let scales = (&self.x, &self.y);
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
@@ -682,32 +722,11 @@ impl<'a> Plot<'a> {
         // M4 must bucket by the rendered column, but that column mapping comes
         // from layout. Probe with independent channel extents, retain its layout,
         // then resolve the final scene in exactly that raster space.
-        let extent = Reduce::Extent {
-            x_positive: matches!(&self.x, Scale::Log),
-            y_positive: matches!(&self.y, Scale::Log),
+        let probed_layout = if policy.downsample {
+            Some(self.prepare_layout(frame, policy)?)
+        } else {
+            None
         };
-        let probe = policy.downsample.then(|| {
-            super::resolve::resolve(
-                &self.layers,
-                sample_width,
-                layer_palette,
-                categorical,
-                policy.cycle_markers,
-                extent,
-            )
-        });
-        let probed_layout = probe.as_ref().map(|probe| {
-            Layout::compute(
-                frame,
-                policy.density,
-                probe,
-                title,
-                scales,
-                labels,
-                domains,
-                self.colorbar,
-            )
-        });
         let reduce = match &probed_layout {
             Some(layout) => Reduce::Mapped {
                 map: layout.x_scale,
@@ -837,7 +856,7 @@ impl<'a> Plot<'a> {
             .unwrap_or_else(|_| Surface::new(0, 0, frame.charset))
     }
 
-    fn try_rasterize_with(
+    pub(crate) fn try_rasterize_with(
         &self,
         frame: &Frame,
         downsample: bool,

@@ -79,6 +79,20 @@ fn ten_million_points(c: &mut Criterion) {
     });
 }
 
+fn mapping_geometry(c: &mut Criterion) {
+    // The physics primitive interactive hosts call between renders: geometry
+    // must cost a layout, not a render — no aggregation for a discarded raster.
+    let n = 10_000_000;
+    let y: Vec<f64> = (0..n)
+        .map(|i| (i as f64 * 0.0002).sin() * (i as f64 * 0.000013).cos() * 8.0)
+        .collect();
+    let plot = malevich::line(&y[..]);
+    let frame = Frame::plain(80, 20);
+    c.bench_function("plot/mapping_10m_80x20", |b| {
+        b.iter(|| black_box(plot.mapping(black_box(&frame))));
+    });
+}
+
 fn histogram_binning(c: &mut Criterion) {
     let values: Vec<f64> = (0..1_000_000)
         .map(|i| {
@@ -199,6 +213,7 @@ criterion_group!(
     categorical_render,
     ansi_encoding,
     ten_million_points,
+    mapping_geometry,
     histogram_binning,
     least_squares_fit,
     heatmap_render,

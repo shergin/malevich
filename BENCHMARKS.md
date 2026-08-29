@@ -5,6 +5,31 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
+## 2026-08-28 addition — the mapping pass (unreleased)
+
+- Revision: the commit introducing `Plot::mapping`'s layout-only pass (the
+  widget-mapping series)
+- Machine, OS, profile: as in the 2026-08-07 baseline below
+- Compiler: `rustc 1.100.0-nightly (787af2b8c 2026-08-25)`, as in the
+  addition below
+
+| Measurement | Estimate | 95% interval |
+| --- | ---: | ---: |
+| `plot/mapping_10m_80x20` | 2.1059 ms | 2.0819–2.1389 ms |
+| same row, previous full-preparation path | 30.425 ms | 30.394–30.457 ms |
+
+```sh
+cargo bench --bench render -- plot/mapping_10m_80x20
+```
+
+`Plot::mapping` is the physics primitive interactive hosts call between
+renders. It now runs only the extent-probe resolve and the layout pass; the
+mapped M4 aggregation it previously ran was computed for a raster nobody
+drew. The before row was measured on the same tree with `mapping`
+temporarily routed back through the full render preparation — it matches the
+full-view render anchor below within noise, confirming the discarded work
+was the aggregation itself.
+
 ## 2026-08-28 addition (unreleased)
 
 - Revision: `a6f03ec` (the interactive-widget series)
