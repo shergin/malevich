@@ -5,6 +5,16 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.20.0 (Dynamic Suprematism) — 2026-08-28
+
+The interaction release. A chart becomes an instrument without malevich ever
+touching input: the core gains the physics — a queryable `Mapping`, a
+`Viewport` that is pure domain arithmetic — and the ratatui widget grows the
+controller: gestures, a crosshair that snaps to the data, linked panes that
+share a window and mirror a cursor, pixel panels that answer the mouse with
+atomic, self-pacing repaints. Bars finish the basic catalog on the way:
+stacked, grouped, and floating bars are now plain compositions.
+
 - The widget becomes interactive — without malevich handling input. The
   core gains the physics: `Plot::mapping(&frame)` exposes the resolved
   geometry of a render as a queryable value (plot rectangle, cell ↔ data

@@ -7,8 +7,8 @@ background load. This file is the authoritative dated record behind the README's
 
 ## 2026-08-28 addition — the mapping pass (unreleased)
 
-- Revision: the commit introducing `Plot::mapping`'s layout-only pass (the
-  widget-mapping series)
+- Revision: `3e2f63a` (the commit introducing `Plot::mapping`'s layout-only
+  pass)
 - Machine, OS, profile: as in the 2026-08-07 baseline below
 - Compiler: `rustc 1.100.0-nightly (787af2b8c 2026-08-25)`, as in the
   addition below
