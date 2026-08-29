@@ -15,6 +15,30 @@ use malevich::{Area, Cells, Color, Dash, Line, LineStyle, Plot, Points, Rule};
 
 use crate::data::{Catalog, Kind, Series, align, extent, step_series};
 
+/// fred's ink: the dark-mode steps of a validated categorical palette —
+/// muted, luminance-balanced (OKLCH L ≈ 0.48–0.67), ≥3:1 against a dark
+/// surface, and CVD-checked as an ordered set — instead of the terminal's
+/// screaming ANSI primaries. RGB quantizes honestly down the color ladder
+/// in glyph mode.
+mod ink {
+    use malevich::Color;
+
+    pub const BLUE: Color = Color::Rgb(0x39, 0x87, 0xE5);
+    pub const ORANGE: Color = Color::Rgb(0xD9, 0x59, 0x26);
+    pub const AQUA: Color = Color::Rgb(0x19, 0x9E, 0x70);
+    pub const AMBER: Color = Color::Rgb(0xC9, 0x85, 0x00);
+    pub const MAGENTA: Color = Color::Rgb(0xD5, 0x51, 0x81);
+    pub const GREEN: Color = Color::Rgb(0x00, 0x83, 0x00);
+    /// A soft lavender for secondary panes — quiet next to [`BLUE`].
+    pub const VIOLET: Color = Color::Rgb(0x90, 0x85, 0xE9);
+    /// The muted "serious" red: recessions, inversion — never a data series.
+    pub const ROSE: Color = Color::Rgb(0xE6, 0x67, 0x67);
+
+    /// The overview's fixed series order — the validated palette order,
+    /// never re-assigned when panes come and go.
+    pub const SERIES: [Color; 6] = [BLUE, ORANGE, AQUA, AMBER, MAGENTA, GREEN];
+}
+
 /// The app's screens, in tab order.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum View {
@@ -99,14 +123,7 @@ impl Transform {
 /// stays size-oblivious.
 pub fn overview_charts(catalog: &Catalog) -> Vec<Plot<'static>> {
     // One ink per series, held across renders: the overview reads as a set.
-    const INKS: [Color; 6] = [
-        Color::Cyan,
-        Color::Green,
-        Color::Magenta,
-        Color::Yellow,
-        Color::BrightBlue,
-        Color::BrightCyan,
-    ];
+    const INKS: [Color; 6] = ink::SERIES;
     catalog
         .series
         .iter()
@@ -130,7 +147,7 @@ pub fn overview_charts(catalog: &Catalog) -> Vec<Plot<'static>> {
                         series.values.clone(),
                     )
                     .color(ink)
-                    .opacity(0.35),
+                    .opacity(0.28),
                 );
             }
             plot.layer(
@@ -198,7 +215,7 @@ pub fn series_chart(
         plot = plot.layer(
             Rule::h(2.0)
                 .label("2% target")
-                .color(Color::Yellow)
+                .color(ink::AMBER)
                 .dash(Dash::Dashed),
         );
     }
@@ -214,11 +231,11 @@ pub fn series_chart(
     if low.is_finite() && high > low && transform != Transform::Log {
         plot = plot.layer(
             Area::between(x.clone(), vec![low; y.len()], y.clone())
-                .color(Color::Cyan)
-                .opacity(0.2),
+                .color(ink::BLUE)
+                .opacity(0.18),
         );
     }
-    plot = plot.layer(Line::xy(x, y).style(style).color(Color::Cyan).glow());
+    plot = plot.layer(Line::xy(x, y).style(style).color(ink::BLUE).glow());
     if transform == Transform::Log {
         plot = plot.log_y();
     }
@@ -251,7 +268,9 @@ fn recession_ribbon(
     for &(start, end) in recessions {
         if end >= first && start <= last {
             plot = plot.layer(
-                Area::between([start, end], [lo - strip, lo - strip], [lo, lo]).color(Color::Red),
+                Area::between([start, end], [lo - strip, lo - strip], [lo, lo])
+                    .color(ink::ROSE)
+                    .opacity(0.55),
             );
         }
     }
@@ -271,7 +290,7 @@ pub fn context_strip(series: &Series) -> Plot<'static> {
         .layer(Rule::h(0.0).color(Color::BrightBlack).dash(Dash::Dotted))
         .layer(
             Line::xy(series.dates.clone(), series.year_over_year())
-                .color(Color::Magenta)
+                .color(ink::VIOLET)
                 .glow(),
         )
         .time_x()
@@ -332,10 +351,15 @@ pub fn seasonality_chart(series: &Series, rows: usize) -> Plot<'static> {
         return Plot::new().title(format!("{}: no data", series.id));
     }
     Plot::new()
-        .layer(Cells::matrix(columns, grid).smooth().extents(
-            (0.0, columns as f64),
-            (first_year as f64, last_year as f64 + 1.0),
-        ))
+        .layer(
+            Cells::matrix(columns, grid)
+                .smooth()
+                .colormap(malevich::scale::Colormap::RED_BLUE.centered_at(0.0))
+                .extents(
+                    (0.0, columns as f64),
+                    (first_year as f64, last_year as f64 + 1.0),
+                ),
+        )
         .colorbar()
         .title(format!("{}: {change} by {period} and year", series.id))
         .x_label(period)
@@ -368,9 +392,9 @@ pub fn relations_charts(
         .y_label("CPI YoY %");
     let (dates, unemployment, inflation) =
         align(&unrate.dates, &unrate.values, &cpi.dates, &inflation);
-    for (label, keep) in [
-        ("1948-1999", true), // keep dates before the cutoff
-        ("2000-now", false), // keep dates at or after it
+    for (label, keep, era_ink) in [
+        ("1948-1999", true, ink::BLUE),   // keep dates before the cutoff
+        ("2000-now", false, ink::ORANGE), // keep dates at or after it
     ] {
         let (u, i): (Vec<f64>, Vec<f64>) = dates
             .iter()
@@ -378,7 +402,7 @@ pub fn relations_charts(
             .filter(|(date, _)| (**date < cutoff) == keep)
             .map(|(_, (&u, &i))| (u, i))
             .unzip();
-        phillips = phillips.layer(Points::xy(u, i).label(label).opacity(0.6));
+        phillips = phillips.layer(Points::xy(u, i).label(label).color(era_ink).opacity(0.6));
     }
 
     // The spread between the 10-year yield and the policy rate: inversions (below
@@ -397,13 +421,13 @@ pub fn relations_charts(
         .layer(
             Rule::h(0.0)
                 .label("inversion")
-                .color(Color::Red)
+                .color(ink::ROSE)
                 .dash(Dash::Dashed),
         )
         .layer(
             Line::xy(dates, spread)
                 .label("10y - fed funds")
-                .color(Color::Cyan)
+                .color(ink::BLUE)
                 .glow(),
         );
     (phillips, spread_plot)

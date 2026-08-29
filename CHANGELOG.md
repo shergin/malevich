@@ -96,7 +96,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   along: glowing lines over translucent washes filled from each series'
   own floor (never a zero baseline that would crush GDP's axis),
   accumulated-ink Phillips scatters, a dashed inversion rule, and the
-  seasonality heatmap gone bilinear.
+  seasonality heatmap gone bilinear — and the palette is designed, not
+  ANSI: a muted, luminance-balanced categorical set (validated for CVD
+  separation and 3:1 dark-surface contrast, assigned in fixed order),
+  a soft lavender for context panes, a reserved rose for recessions and
+  inversions, and the seasonality map diverging around zero, because
+  signed change is polarity, not magnitude.
 
 - The interaction API, reviewed whole: `Mapping::plot_area` answers with
   a named `Panel` value instead of a four-tuple; `x_categories` /
