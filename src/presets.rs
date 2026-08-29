@@ -479,7 +479,7 @@ pub fn ecdf_with<'a>(values: impl IntoSeries<'a>, options: EcdfOptions) -> crate
 /// [`heatmap_with`] for a checked boundary.
 pub fn heatmap<'a>(columns: usize, values: impl IntoSeries<'a>) -> Plot<'a> {
     heatmap_with(columns, values, HeatmapOptions::default())
-        .expect("default heatmap options are valid")
+        .expect("heatmap requires columns to divide the value count evenly")
 }
 
 /// A heatmap with a caller-selected color presentation — a named or custom
@@ -518,9 +518,14 @@ pub fn heatmap_with<'a>(
 /// let y = [2.0, 2.1, 8.0, 8.1, 7.9];
 /// println!("{}", malevich::hist2d(&x[..], &y[..]).render(&malevich::Frame::plain(40, 12)));
 /// ```
+///
+/// # Panics
+///
+/// Panics if the two series have different lengths. Use [`hist2d_with`] for a
+/// checked boundary.
 pub fn hist2d<'a>(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Plot<'a> {
     hist2d_with(x, y, Histogram2dOptions::default())
-        .expect("default 2D histogram options and equal channels are required")
+        .expect("hist2d requires series of equal length")
 }
 
 /// A 2D histogram with caller-selected grid geometry and color presentation.
@@ -886,7 +891,7 @@ pub fn error_bars_asymmetric<'a>(
 ///
 /// Panics if the two series have different lengths.
 pub fn trend<'a>(x: impl IntoSeries<'a>, y: impl IntoSeries<'a>) -> Plot<'a> {
-    trend_with(x, y, TrendOptions::default()).expect("default trend options are valid")
+    trend_with(x, y, TrendOptions::default()).expect("trend requires series of equal length")
 }
 
 /// A scatter with its trend line and an optional confidence band around the

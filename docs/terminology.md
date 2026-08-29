@@ -245,7 +245,12 @@ to `pixel::Protocol`.
 
 Colors and styles as a value you pass, never a global. Today: the layer
 palette, with dark and light variants and `COLORFGBG` detection. Maps to
-`Theme` (a field of `Frame`).
+`Theme` (a field of `Frame`). Deliberately distinct from the categorical
+`scale::Palette`, which lives in the spec: layer colors are presentation a
+frame adapts to its background, while category → color assignments are
+closer to an encoding — they travel with a serialized spec so its legend
+keeps meaning wherever it renders. Two palettes, two homes, one recorded
+reason.
 
 ## Grid
 

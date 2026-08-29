@@ -112,6 +112,14 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   choreography; and the `Mouse` vocabulary grew `ScrollLeft`/`ScrollRight`
   (horizontal swipes pan) behind `#[non_exhaustive]` input enums.
 
+- Docs say the quiet parts. `hist2d` documents its equal-length panic, and
+  the convenience presets that can panic on data (`trend`, `hist2d`,
+  `heatmap`) panic with the caller's mistake instead of "default options
+  are valid". `Cells::rgb` discloses that an image stretches to the plot
+  panel — shape the frame when shape matters. Terminology's Theme entry
+  records why the layer palette is theme state while the categorical
+  palette travels with the spec.
+
 - The viewport's wire form carries only its windows: which space an axis
   transforms in (decade or value) is derived when a viewport is seeded from
   a `Mapping`, never persisted — a stored flag could disagree with a plot

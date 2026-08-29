@@ -98,6 +98,11 @@ impl<'a> Cells<'a> {
     /// quantized honestly down the color ladder; plain output substitutes the
     /// pixel's luma on the shade ramp, so the image survives a pipe.
     ///
+    /// The grid stretches to the plot panel like any other mark: terminal
+    /// cells are not square and the panel takes whatever shape layout gives
+    /// it, so a square image renders wide. When shape matters, shape the
+    /// panel — the frame's proportions are the aspect control.
+    ///
     /// The buffer is raw pixels the caller already has — decoding image files
     /// is the host's job, ingestion stays a trait boundary.
     ///
