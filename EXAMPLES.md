@@ -1057,6 +1057,32 @@ Source: [examples/multiples.rs](examples/multiples.rs)
     -2.5           0.0           2.5       -5             0             5
 ```
 
+### firstlook
+
+A chart with its stat table — the same flippers as shape and as numbers, the box plot's own quartiles reappearing in the p50 column. No figure API: a plot renders to a String, so unequal panes are two renders printed in order at the same width.
+Source: [examples/firstlook.rs](examples/firstlook.rs)
+
+```text
+                     flipper length by species (mm)
+230 ┤                                                   ▀▀▜▀▀▀
+220 ┤                                                 ▄▄▄▄▟▄▄▄▄▄
+    │                                                 ━━━━━━━━━━
+210 ┤          ▄▄▄▄▄▄              ▝▀▀▜▀▀▘            ▀▀▀▀▜▀▀▀▀▀
+    │             ▌              ▗▄▄▄▄▟▄▄▄▄▖            ▄▄▟▄▄▄
+200 ┤        ▄▄▄▄▄▙▄▄▄▄          ▐━━━━━━━━━━
+190 ┤        ━━━━━━━━━━          ▝▀▀▀▀▜▀▀▀▀▘
+    │        ▀▀▀▀▀▛▀▀▀▀               ▐
+180 ┤             ▌                ▗▄▄▟▄▄▖
+170 ┤          ▀▀▀▀▀▀
+    └───────────────────────────────────────────────────────────────────
+               Adelie             Chinstrap             Gentoo
+   Adelie ┤    151   190.0  6.518    172    186    190     195    210
+Chinstrap ┤     68   195.8  7.079    178    191    196     201    212
+   Gentoo ┤    123   217.2  6.459    203    212    216     221    231
+          └─────────────────────────────────────────────────────────────
+              count  mean    sd      min    p25    p50     p75    max
+```
+
 ### corners
 
 The asciichart homage: box-drawing corners, one glyph per column — with real axes underneath.

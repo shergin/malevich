@@ -270,6 +270,13 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
                  domains explicitly.",
             ),
             (
+                "firstlook",
+                "A chart with its stat table — the same flippers as shape and as \
+                 numbers, the box plot's own quartiles reappearing in the p50 column. \
+                 No figure API: a plot renders to a String, so unequal panes are two \
+                 renders printed in order at the same width.",
+            ),
+            (
                 "corners",
                 "The asciichart homage: box-drawing corners, one glyph per column — with real axes underneath.",
             ),
