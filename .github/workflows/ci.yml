@@ -26,6 +26,13 @@ jobs:
       - run: cargo doc --no-deps --all-features
         env:
           RUSTDOCFLAGS: -D warnings
+      # Every feature alone: none/all cannot see cfg items that lean on a
+      # sibling feature (a `pixel` path calling a `ratatui`-gated method
+      # builds under --all-features and breaks under --features pixel).
+      - run: |
+          for feature in pixel ratatui evcxr serde ndarray; do
+            cargo check --all-targets --features "$feature"
+          done
 
   # The published CLI crate (`kaz`) is a workspace member kept out of the default
   # set, so every job above builds the library alone. This job is its own gate —

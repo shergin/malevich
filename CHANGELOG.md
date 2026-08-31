@@ -46,6 +46,11 @@ of see.
   lost in a pipe. The gallery's correlation matrix shows the pattern —
   every coefficient printed in its cell, ink picked from the luminance
   underneath.
+- The resolution ladder is content-aware: `render_best` and the
+  capability-context paths keep a text-only plot — a stat table — on
+  cells even when pixels are offered. For pure text the terminal's own
+  font is the best tier, and the glyphs stay selectable; an explicit
+  `render_pixels` call is still honored.
 - `scale::NumberFormat` is an axis's label discipline for any value set:
   one fraction width, one SI prefix, exact decimals, whole labels for
   whole-number sets, `—` for gaps. It formats every `table` column and is

@@ -268,3 +268,30 @@ fn table_text_centers_in_its_pixel_rows() {
         .count();
     assert_eq!(stray, 0, "no ink escapes the two row bands");
 }
+
+#[test]
+fn text_only_plots_top_out_at_cells() {
+    // For a stat table the terminal's own font is the best tier: even a
+    // pixel-capable context renders it as cells, byte-identical to render().
+    // A plot with any drawing mark keeps upgrading.
+    let frame = Frame::plain(44, 6);
+    let pixels = Capabilities {
+        protocols: vec![Protocol::Sixel],
+        cell_size: Some((4, 8)),
+        source: Source::Sniffed,
+    };
+    let table = crate::table(
+        ["loss", "val_loss"],
+        ["count", "mean"],
+        &[1200.0, 0.4821, 98500.0, 0.5174][..],
+    );
+    let best = table.render_with_capabilities(&frame, &pixels);
+    assert_eq!(best, table.render(&frame));
+    assert!(!best.contains("\x1bP"), "no image payload for pure text");
+    assert!(
+        sample()
+            .render_with_capabilities(&frame, &pixels)
+            .contains("\x1bP"),
+        "drawing marks still upgrade to pixels"
+    );
+}

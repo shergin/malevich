@@ -559,7 +559,10 @@ impl<'a> Plot<'a> {
     /// ([`Graphics::detect`](crate::pixel::Graphics::detect)), the plot panel
     /// becomes a real image; everywhere else — pipes, unknown terminals, tmux,
     /// or without the feature — exactly [`Plot::render`]. The one-call top of
-    /// the resolution ladder for CLIs that already know their frame.
+    /// the resolution ladder for CLIs that already know their frame. The ladder
+    /// is content-aware: a plot whose panel ink is text only — a stat table —
+    /// stays on cells, where the terminal's own font is the best rendering text
+    /// can get. An explicit [`Plot::render_pixels`] call is always honored.
     ///
     /// Unlike [`Plot::render`] this consults the environment, so it is not
     /// deterministic across terminals; keep `render` for tests and snapshots.
@@ -588,7 +591,10 @@ impl<'a> Plot<'a> {
     ///
     /// The first advertised pixel protocol is used at the detected cell size;
     /// when `capabilities` contains no pixel protocol this is exactly
-    /// [`Plot::render`]. Unlike [`Plot::render_best`], this method never reads the
+    /// [`Plot::render`]. A plot whose panel ink is text only — a stat table —
+    /// also stays on cells even when pixels are offered: for pure text the
+    /// terminal's own font *is* the best tier, and the glyphs stay selectable.
+    /// Unlike [`Plot::render_best`], this method never reads the
     /// process environment or touches a terminal. It is the auto-render path for
     /// stderr, tests, and applications managing more than one terminal.
     #[cfg(feature = "pixel")]
@@ -598,8 +604,8 @@ impl<'a> Plot<'a> {
         capabilities: &crate::pixel::Capabilities,
     ) -> String {
         match capabilities.best() {
-            Some(graphics) => self.render_pixels(frame, &graphics),
-            None => self.render(frame),
+            Some(graphics) if !self.panel_is_text_only() => self.render_pixels(frame, &graphics),
+            _ => self.render(frame),
         }
     }
 
@@ -611,9 +617,21 @@ impl<'a> Plot<'a> {
         capabilities: &crate::pixel::Capabilities,
     ) -> crate::Result<String> {
         match capabilities.best() {
-            Some(graphics) => self.try_render_pixels(frame, &graphics),
-            None => self.try_render(frame),
+            Some(graphics) if !self.panel_is_text_only() => {
+                self.try_render_pixels(frame, &graphics)
+            }
+            _ => self.try_render(frame),
         }
+    }
+
+    /// Whether every layer is a text annotation — a stat table. Cells are the
+    /// top of the resolution ladder for pure text: an image panel would trade
+    /// the terminal's own font for pixel-drawn glyphs and gain nothing.
+    #[cfg(feature = "pixel")]
+    fn panel_is_text_only(&self) -> bool {
+        // The field, not the `layers()` accessor: that method rides the
+        // `ratatui` feature and this predicate must build under `pixel` alone.
+        self.layers.iter().all(|mark| matches!(mark, Mark::Text(_)))
     }
 
     /// Renders with the plot panel as a real image (feature `pixel`): chrome —
