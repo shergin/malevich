@@ -176,7 +176,9 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   colormap positioned within its own column — the heatmap reading, with the
   digits still carrying the value in any pipe. `Grid` puts a table beside a
   chart, and the `align` channel on `Text` annotates heatmaps — confusion
-  matrices with counts — from the grammar, no preset.
+  matrices with counts, correlation matrices with coefficients — from the
+  grammar, no preset: an annotation keeps the cell's color as its background
+  instead of punching a hole in the field.
 - **Millions of points, measured.** Large lines reduce by M4, bucketed by the
   rendered column — pixel-identical to drawing every point. Ten million points
   render in tens of milliseconds on the dated baseline; grids denser than the

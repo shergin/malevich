@@ -94,7 +94,6 @@ impl Color {
     /// palette-relative: named colors freeze to the xterm defaults the quantizer
     /// already assumes, `Default` to a mid-gray readable on dark and light
     /// backgrounds alike.
-    #[cfg(any(feature = "pixel", feature = "evcxr"))]
     pub(crate) fn to_rgb(self) -> (u8, u8, u8) {
         match self {
             Color::Default => (128, 128, 128),

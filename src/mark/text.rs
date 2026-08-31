@@ -30,6 +30,12 @@ pub enum Align {
 /// clipping at the plot edge. The anchor extends the axis domains, so an annotation
 /// is never silently off-plot. [`Text::align`] repositions the text relative to the
 /// anchor — the channel table cells and annotated heatmaps are built from.
+///
+/// An annotation keeps the field it lands on: a glyph placed over a filled
+/// cell — a heatmap band, a bar body, a class region — takes the underlying
+/// color as its background instead of punching a hole in it (two-sample cells
+/// blend their halves). In plain output the glyph replaces the shade: the
+/// annotation is the value, so nothing is lost in a pipe.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Text {

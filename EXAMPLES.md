@@ -770,24 +770,21 @@ Dense matrices, surfaces, and vector fields.
 
 ### correlation
 
-Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.
+An annotated correlation matrix from the grammar, no preset: signed data on a diverging colormap centered at zero, every coefficient printed in its cell. Annotations keep the field they land on as their background and pick dark or light ink from the luminance underneath; in plain output the digits stand beside the shades, so the numbers survive any pipe.
 Source: [examples/correlation.rs](examples/correlation.rs)
 
 ```text
-        correlation matrix (synthetic)
-8 ┤▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓████  █ 1.0
-  │▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓█████████████  █
-6 ┤▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓█████████▓▓▓▓  █
-  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓█████████▓▓▓▓  ▓ 0.5
-  │▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░████▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓
-4 ┤▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓ 0.0
-  │▓▓▓▓▒▒▒▒▒▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▓▓  ▒
-  │▓▓▓▓▒▒▒▒▒████░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▓▓▓▓  ▒
-2 ┤█████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ░ -0.5
-  │█████████▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ░
-0 ┤█████████▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ░ -1.0
-  └┬──────────┬──────────┬──────────┬──
-  0.0        2.5        5.0        7.5
+            feature correlation (synthetic)
+ age ┤ █+1.00█+0.60▓+0.23▒-0.03▒-0.15▒-0.16▒-0.12▒-0.07
+ len ┤ █+0.60█+1.00▒-0.06▒-0.29▒-0.32▒-0.24▒-0.13▒-0.04
+ dep ┤ ▓+0.23▒-0.06█+1.00░-0.65▒-0.49▒-0.27▒-0.08▓+0.04
+mass ┤ ▒-0.03▒-0.29░-0.65█+1.00░-0.54▒-0.15▓+0.08▓+0.17
+ veg ┤ ▒-0.15▒-0.32▒-0.49░-0.54█+1.00▓+0.17▓+0.35▓+0.34
+kcal ┤ ▒-0.16▒-0.24▒-0.27▒-0.15▓+0.17█+1.00█+0.69▓+0.47
+ spd ┤ ▒-0.12▒-0.13▒-0.08▓+0.08▓+0.35█+0.69█+1.00▓+0.46
+ alt ┤ ▒-0.07▒-0.04▓+0.04▓+0.17▓+0.34▓+0.47▓+0.46█+1.00
+     └──────────────────────────────────────────────────
+         age   len   dep  mass   veg  kcal   spd   alt
 ```
 
 ### seasons

@@ -1,6 +1,6 @@
 //! The subpixel surface: the grid marks draw on, and its string encoders.
 
-use super::canvas::{Canvas, PlotRect, PointShape};
+use super::canvas::{Anchor, Canvas, PlotRect, PointShape};
 use super::charset::Charset;
 use super::color::{Color, ColorMode, Resolved};
 
@@ -211,6 +211,84 @@ impl Surface {
                 }
             }
             column += width;
+        }
+    }
+
+    /// Like [`Surface::text`], but the ink keeps what it lands on: a glyph over
+    /// a filled patch cell — a heatmap band, a bar body, a class region — takes
+    /// the underlying color as its background, so an annotation reads *on* the
+    /// field instead of punching a hole in it. Two-sample cells blend their
+    /// halves. Cells without patch ink behave exactly like [`Surface::text`].
+    fn annotate(&mut self, column: i64, row: i64, text: &str, color: Color) {
+        use unicode_width::UnicodeWidthChar;
+
+        if row < 0 || row >= self.height as i64 {
+            return;
+        }
+        let row = row as usize;
+        let mut column = column;
+        for glyph in text.chars() {
+            let width = glyph.width().unwrap_or(0) as i64;
+            if width == 0 {
+                continue;
+            }
+            let fits = column >= 0 && column + width <= self.width as i64;
+            if fits {
+                let background = self.under(row, column as usize);
+                self.place_styled(
+                    row,
+                    column as usize,
+                    Text::Glyph(glyph),
+                    color,
+                    background,
+                    u8::MAX,
+                );
+                for offset in 1..width {
+                    self.place_styled(
+                        row,
+                        (column + offset) as usize,
+                        Text::Continuation,
+                        color,
+                        background,
+                        u8::MAX,
+                    );
+                }
+            }
+            column += width;
+        }
+    }
+
+    /// The color an annotation landing on this cell should carry as its
+    /// background: filled patch glyphs promote their ink — a full block's
+    /// foreground, both halves of a two-sample cell blended — and anything
+    /// else (chrome, empty cells, subpixel marks, partial bar fills) yields
+    /// the default, exactly as plain text placement would.
+    fn under(&self, row: usize, column: usize) -> Color {
+        let Some(index) = self.cell_index(row, column) else {
+            return Color::Default;
+        };
+        let cell = self.cells[index];
+        let filled = matches!(
+            cell.text,
+            Text::Glyph(
+                '\u{2588}' | '\u{2580}' | '\u{2584}' | '\u{2591}' | '\u{2592}' | '\u{2593}'
+            )
+        );
+        if !filled {
+            return Color::Default;
+        }
+        match (cell.foreground, cell.background) {
+            (Color::Default, background) => background,
+            (foreground, Color::Default) => foreground,
+            (foreground, background) => {
+                let (fr, fg, fb) = foreground.to_rgb();
+                let (br, bg, bb) = background.to_rgb();
+                Color::Rgb(
+                    ((u16::from(fr) + u16::from(br)) / 2) as u8,
+                    ((u16::from(fg) + u16::from(bg)) / 2) as u8,
+                    ((u16::from(fb) + u16::from(bb)) / 2) as u8,
+                )
+            }
         }
     }
 
@@ -535,6 +613,28 @@ impl Canvas for Surface {
 
     fn text(&mut self, column: i64, row: i64, text: &str, color: Color) {
         Surface::text(self, column, row, text, color);
+    }
+
+    /// Annotations keep the field they land on: same cell snapping and anchor
+    /// shifts as the trait contract, placed through [`Surface::annotate`] so a
+    /// glyph over patch ink takes the underlying color as its background.
+    fn note(&mut self, x: f64, y: f64, cell: (f64, f64), anchor: Anchor, text: &str, color: Color) {
+        use unicode_width::UnicodeWidthChar;
+
+        if cell.0 <= 0.0 || cell.1 <= 0.0 {
+            return;
+        }
+        let width: i64 = text
+            .chars()
+            .map(|glyph| glyph.width().unwrap_or(0) as i64)
+            .sum();
+        let column = (x / cell.0).round() as i64;
+        let start = match anchor {
+            Anchor::Start => column,
+            Anchor::Middle => column - width / 2,
+            Anchor::End => column - width + 1,
+        };
+        self.annotate(start, (y / cell.1).round() as i64, text, color);
     }
 
     /// One bar as cell-aligned columns from the zero baseline, with eighth-block

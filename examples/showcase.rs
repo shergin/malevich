@@ -326,8 +326,11 @@ fn main() {
     }
     println!("{}\n", stacked.show(&frame));
 
-    // A heatmap and a 2D histogram.
-    let size = 8usize;
+    // An annotated heatmap and a 2D histogram. Every coefficient prints in
+    // its cell; the annotation keeps the cell's color as its background, and
+    // picks dark or light ink from the luminance underneath.
+    let features = ["age", "len", "dep", "mass", "veg", "kcal", "spd", "alt"];
+    let size = features.len();
     let grid: Vec<f64> = (0..size * size)
         .map(|i| {
             let (row, column) = ((i / size) as f64, (i % size) as f64);
@@ -338,14 +341,35 @@ fn main() {
             }
         })
         .collect();
-    let correlation_options = malevich::HeatmapOptions::new()
-        .colormap(malevich::scale::Colormap::RED_BLUE.centered_at(0.0));
+    let diverging = malevich::scale::Colormap::RED_BLUE.centered_at(0.0);
+    let mut correlation = Plot::new()
+        .layer(Cells::matrix(size, &grid[..]).colormap(diverging.clone()))
+        .x_scale(Scale::bands(features))
+        .y_scale(Scale::bands(features))
+        .title("correlation matrix, annotated (synthetic)");
+    for (index, &coefficient) in grid.iter().enumerate() {
+        let ink = match diverging.color(diverging.position_in(coefficient, -1.0, 1.0)) {
+            Color::Rgb(r, g, b) if u16::from(r) + u16::from(g) + u16::from(b) > 384 => {
+                Color::Rgb(32, 32, 32)
+            }
+            _ => Color::Rgb(235, 235, 230),
+        };
+        correlation = correlation.layer(
+            Text::at(
+                (index % size) as f64,
+                (index / size) as f64,
+                format!("{coefficient:+.2}"),
+            )
+            .align(Align::Center)
+            .color(ink),
+        );
+    }
     println!(
         "{}\n",
-        malevich::heatmap_with(size, &grid[..], correlation_options)
-            .expect("a named colormap is valid")
-            .title("correlation matrix (synthetic)")
-            .show(&frame)
+        correlation.show(&Frame {
+            height: 11,
+            ..frame
+        })
     );
     let bell = |i: f64, seed: f64| -> f64 {
         ((i * 0.97 + seed).sin() + (i * 1.31 + seed * 2.0).sin() + (i * 2.63 + seed * 3.0).sin())

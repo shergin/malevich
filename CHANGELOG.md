@@ -38,6 +38,14 @@ of see.
   vertically in its row, so a table's values sit on their labels' lines in
   the image exactly as in cells. Serialized specs omit the default
   alignment, so existing documents decode and render unchanged.
+- Annotations keep the field they land on: a `Text` glyph over filled patch
+  ink — a heatmap band, a bar body, a class region — takes the underlying
+  color as its background instead of punching a hole in it; two-sample
+  cells blend their halves. Pixel panes already composited ink over the
+  field; plain output still lets the glyph replace the shade, so nothing is
+  lost in a pipe. The gallery's correlation matrix shows the pattern —
+  every coefficient printed in its cell, ink picked from the luminance
+  underneath.
 - `scale::NumberFormat` is an axis's label discipline for any value set:
   one fraction width, one SI prefix, exact decimals, whole labels for
   whole-number sets, `—` for gaps. It formats every `table` column and is

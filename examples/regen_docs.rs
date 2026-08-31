@@ -201,7 +201,12 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
         &[
             (
                 "correlation",
-                "Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.",
+                "An annotated correlation matrix from the grammar, no preset: signed \
+                 data on a diverging colormap centered at zero, every coefficient \
+                 printed in its cell. Annotations keep the field they land on as \
+                 their background and pick dark or light ink from the luminance \
+                 underneath; in plain output the digits stand beside the shades, so \
+                 the numbers survive any pipe.",
             ),
             (
                 "seasons",

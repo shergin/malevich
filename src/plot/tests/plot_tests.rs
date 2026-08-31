@@ -1613,3 +1613,39 @@ fn centered_and_right_aligned_annotations_shift_on_continuous_axes() {
     );
     assert_eq!(left - right, 3, "right alignment ends where left begins");
 }
+
+#[test]
+fn annotations_keep_the_field_they_land_on() {
+    use crate::mark::{Align, Cells, Text};
+    use crate::scale::{Colormap, Scale};
+
+    // A uniform Cells band under a centered digit: the digit's cell promotes
+    // the patch ink to its background instead of punching a hole in the
+    // field; chrome (the row label) keeps the default background.
+    let plot = Plot::new()
+        .layer(Cells::matrix(1, &[1.0, 2.0][..]).colormap(Colormap::GREYS))
+        .x_scale(Scale::bands(["a"]))
+        .y_scale(Scale::bands(["top", "low"]))
+        .layer(Text::at(0.0, 0.0, "7").align(Align::Center));
+    let (surface, _) = plot
+        .try_rasterize_with(&Frame::plain(16, 8), true)
+        .expect("a small annotated matrix renders");
+    let digit = surface
+        .cells()
+        .find(|&(_, _, glyph, _, _)| glyph == '7')
+        .expect("the digit drew");
+    assert_ne!(
+        digit.4,
+        crate::Color::Default,
+        "the annotation keeps the field as its background"
+    );
+    let label = surface
+        .cells()
+        .find(|&(_, _, glyph, _, _)| glyph == 't')
+        .expect("the row label drew");
+    assert_eq!(
+        label.4,
+        crate::Color::Default,
+        "chrome keeps the default background"
+    );
+}
