@@ -5,6 +5,44 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+The table release: the summary that usually precedes any chart, rendered by
+the grammar that renders the charts. A table is text on band scales — not a
+ninth mark, not a widget — and a table column is an axis you read instead
+of see.
+
+- `describe(names, groups)` renders the first-look summary — `count mean sd
+  min p25 p50 p75 max`, one row per group — from `Moments` and the box
+  plot's type-7 quantiles; `table(rows, columns, values)` (and `try_table`)
+  lays out any numeric matrix the same way. Row labels ride the y band
+  axis, column headers the x band axis; each column is padded to its own
+  width so numbers meet at the decimal point and centered on its band by
+  the same rule the header uses, so a column and its header land in
+  lockstep. A table is tightest when the plot rows equal its row count
+  (frame height `rows + 2`, one more with a title). Both presets are proven
+  byte-identical to their grammar expansions, like every preset.
+- `table_with` takes a `TableOptions` colormap: each value colored at its
+  position within its own column's finite extent — the heatmap reading,
+  column by column; a diverging map centered at zero splits sign. The
+  digits still carry the value, so a colored table survives a colorless
+  pipe undamaged.
+- `Text` gains the `align` channel (`Align::Left`, the unchanged default;
+  `Center`; `Right`). On a bands x axis the band nearest the anchor is the
+  box, with chrome's own header geometry — the rounded band center, a
+  step-wide budget — and aligned text also snaps its row the way chrome
+  snaps a band label's, so cell text never drifts a line or a column from
+  its labels. Text wider than the box clips to it, ending with a truncation
+  `.` — a number is shortened visibly, never garbled by a neighbor's
+  digits. Centered text over `Cells` on band axes annotates heatmaps:
+  confusion matrices with counts, from the grammar, no preset. In pixel
+  panes the same anchors shift the ink by its own width and center it
+  vertically in its row, so a table's values sit on their labels' lines in
+  the image exactly as in cells. Serialized specs omit the default
+  alignment, so existing documents decode and render unchanged.
+- `scale::NumberFormat` is an axis's label discipline for any value set:
+  one fraction width, one SI prefix, exact decimals, whole labels for
+  whole-number sets, `—` for gaps. It formats every `table` column and is
+  public for any readout.
+
 ## 1.20.0 (Dynamic Suprematism) — 2026-08-28
 
 The interaction release. A chart becomes an instrument without malevich ever

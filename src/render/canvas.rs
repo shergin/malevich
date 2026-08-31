@@ -19,6 +19,20 @@ pub(crate) enum PointShape {
     Circle,
 }
 
+/// How a note's ink relates to its anchor — the SVG text-anchor vocabulary.
+/// Each target applies it with its own metrics: glyph targets shift whole
+/// cells, pixel targets shift by the ink's own width.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Anchor {
+    /// Ink starts at the anchor.
+    Start,
+    /// Ink centers on the anchor.
+    Middle,
+    /// Ink ends at the anchor — at the anchor's cell on glyph targets, at
+    /// the anchor itself on pixel targets.
+    End,
+}
+
 /// The plot rectangle in cell coordinates: where marks may draw, chrome excluded.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PlotRect {
@@ -64,18 +78,26 @@ pub(crate) trait Canvas {
     /// Writes text starting at the cell `(column, row)`; cells outside clip away.
     fn text(&mut self, column: i64, row: i64, text: &str, color: Color);
 
-    /// An annotation anchored at a subpixel position: `cell` is the
-    /// target's subpixels per cell. Glyph targets snap to the containing
-    /// cell; pixel targets place the ink exactly, vertically centered on
-    /// the anchor.
-    fn note(&mut self, x: f64, y: f64, cell: (f64, f64), text: &str, color: Color) {
+    /// An annotation at a subpixel position, its ink related to the anchor by
+    /// `anchor`: `cell` is the target's subpixels per cell. Glyph targets snap
+    /// to the containing cell and shift whole cells; pixel targets place the
+    /// ink exactly, vertically centered on the anchor, shifted by the ink's
+    /// own width.
+    fn note(&mut self, x: f64, y: f64, cell: (f64, f64), anchor: Anchor, text: &str, color: Color) {
+        use unicode_width::UnicodeWidthChar;
+
         if cell.0 > 0.0 && cell.1 > 0.0 {
-            self.text(
-                (x / cell.0).round() as i64,
-                (y / cell.1).round() as i64,
-                text,
-                color,
-            );
+            let width: i64 = text
+                .chars()
+                .map(|glyph| glyph.width().unwrap_or(0) as i64)
+                .sum();
+            let column = (x / cell.0).round() as i64;
+            let start = match anchor {
+                Anchor::Start => column,
+                Anchor::Middle => column - width / 2,
+                Anchor::End => column - width + 1,
+            };
+            self.text(start, (y / cell.1).round() as i64, text, color);
         }
     }
 

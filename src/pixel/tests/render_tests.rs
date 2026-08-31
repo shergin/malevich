@@ -237,3 +237,34 @@ fn smooth_cells_read_as_a_continuous_field() {
     assert!(blocky <= 4, "nearest sampling is blocky: {blocky}");
     assert!(smooth > blocky * 3, "interpolation grades: {smooth}");
 }
+
+#[test]
+fn table_text_centers_in_its_pixel_rows() {
+    // The regression a screenshot caught: aligned text once handed the pixel
+    // canvas a row-top anchor, so every value drew half a row high and the
+    // first row clipped out of the panel. Mid-row anchoring keeps each
+    // value's ink inside its own row band, aligned with its cell-pane label.
+    let plot = crate::table(["a", "b"], ["v"], &[1.0, 2.0][..]);
+    let (_, canvas, rect, _) = plot
+        .try_rasterize_hybrid(&Frame::plain(20, 4), (8, 16), None)
+        .expect("a small table rasterizes");
+    let ch = 16usize;
+    let top = rect.top * ch;
+    let ink: Vec<(usize, usize)> = (0..4 * ch)
+        .flat_map(|y| (0..20 * 8).map(move |x| (x, y)))
+        .filter(|&(x, y)| canvas.get(x, y).is_some())
+        .collect();
+    assert!(!ink.is_empty(), "the table drew");
+    for row in 0..2 {
+        let band = ink
+            .iter()
+            .filter(|&&(_, y)| y >= top + row * ch && y < top + (row + 1) * ch)
+            .count();
+        assert!(band > 0, "row {row} holds its value's ink");
+    }
+    let stray = ink
+        .iter()
+        .filter(|&&(_, y)| y < top || y >= top + 2 * ch)
+        .count();
+    assert_eq!(stray, 0, "no ink escapes the two row bands");
+}

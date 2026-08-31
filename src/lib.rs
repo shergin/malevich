@@ -105,15 +105,15 @@ pub use adapter::{Mouse, MouseButton, PlotState, PlotWidget};
 pub use document::{Document, DocumentKind};
 pub use error::{Error, Result};
 pub use mark::{
-    Area, Bars, Cells, Dash, Line, LineStyle, Mark, PointStyle, Points, Range, Rule, Text,
+    Align, Area, Bars, Cells, Dash, Line, LineStyle, Mark, PointStyle, Points, Range, Rule, Text,
 };
 pub use plot::{Frame, Grid, Mapping, Panel, Plot, Viewport};
 pub use presets::{
     ContourLevels, ContourOptions, DensityOptions, EcdfOptions, HeatmapOptions, Histogram2dOptions,
-    HistogramOptions, TrendOptions, ViolinOptions, bar, box_plot, contour, contour_with, density,
-    density_with, ecdf, ecdf_with, error_bars, error_bars_asymmetric, heatmap, heatmap_with, hist,
-    hist_with, hist2d, hist2d_with, line, quiver, scatter, stairs, trend, trend_with, violin,
-    violin_with,
+    HistogramOptions, TableOptions, TrendOptions, ViolinOptions, bar, box_plot, contour,
+    contour_with, density, density_with, describe, ecdf, ecdf_with, error_bars,
+    error_bars_asymmetric, heatmap, heatmap_with, hist, hist_with, hist2d, hist2d_with, line,
+    quiver, scatter, stairs, table, table_with, trend, trend_with, try_table, violin, violin_with,
 };
 pub use render::{Charset, Color, ColorMode};
 pub use scale::Scale;

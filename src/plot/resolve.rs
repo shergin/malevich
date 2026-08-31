@@ -3,7 +3,8 @@
 use std::borrow::Cow;
 
 use crate::mark::{
-    Categories, Dash, LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement, Source,
+    Align, Categories, Dash, LineStyle, Mark, Orientation, Placement, PointStyle, RangePlacement,
+    Source,
 };
 use crate::plot::layout::Map;
 use crate::render::Color;
@@ -282,6 +283,7 @@ pub(crate) enum ResolvedLayer<'p> {
         y: f64,
         text: &'p str,
         color: Color,
+        align: Align,
     },
 }
 
@@ -795,6 +797,7 @@ pub(crate) fn resolve<'p>(
                 y: text.y,
                 text: &text.text,
                 color: text.color.unwrap_or(Color::Default),
+                align: text.align,
             },
         })
         .collect()

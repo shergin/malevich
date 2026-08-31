@@ -1,8 +1,8 @@
 use crate::render::{Charset, Color};
 use crate::scale::Scale;
 use crate::{
-    Bars, Cells, Document, DocumentKind, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points,
-    Rule, Text,
+    Align, Bars, Cells, Document, DocumentKind, Frame, Grid, Line, LineStyle, Plot, PointStyle,
+    Points, Rule, Text,
 };
 
 const V1_PLOT: &str = include_str!("../tests/fixtures/serde/v1/plot.json");
@@ -151,6 +151,22 @@ fn point_styles_round_trip_and_old_payloads_default_to_dots() {
     let legacy = r#"{"x":null,"y":[1.0],"color":null,"label":null}"#;
     let decoded: Points<'static> = serde_json::from_str(legacy).unwrap();
     assert_eq!(decoded.style, PointStyle::Dot);
+}
+
+#[test]
+fn text_alignment_round_trips_and_old_payloads_stay_left() {
+    let text = Text::at(1.0, 2.0, "note").align(Align::Right);
+    let encoded = serde_json::to_string(&text).unwrap();
+    let decoded: Text = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(decoded.align, Align::Right);
+
+    // Default alignment stays off the wire, and a payload from before the
+    // field decodes to it — old documents render unchanged.
+    let bare = serde_json::to_string(&Text::at(1.0, 2.0, "note")).unwrap();
+    assert!(!bare.contains("align"), "{bare}");
+    let legacy = r#"{"x":1.0,"y":2.0,"text":"note","color":null}"#;
+    let decoded: Text = serde_json::from_str(legacy).unwrap();
+    assert_eq!(decoded.align, Align::Left);
 }
 
 #[test]

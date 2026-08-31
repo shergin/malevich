@@ -5,13 +5,13 @@
 //! precision-dependent — bar fills, marker crossbars, Cells patches — goes through
 //! the canvas's mid-level ops, so each target renders it at its own fidelity.
 
-use crate::mark::{Dash, LineStyle, PointStyle};
+use crate::mark::{Align, Dash, LineStyle, PointStyle};
 use crate::mark::{Orientation, Placement};
 use crate::plot::layout::{Layout, Map};
 use crate::plot::resolve::{
     ColorChannel, Coordinates, Kind, ResolvedLayer, extent, extent_positive,
 };
-use crate::render::{Canvas, Charset, Color, PlotRect, PointShape};
+use crate::render::{Anchor, Canvas, Charset, Color, PlotRect, PointShape};
 use crate::scale::{Band, Colormap};
 use crate::stat::{Reducer, ReducerState};
 
@@ -187,11 +187,56 @@ pub(crate) fn layers<C: Canvas>(
                     );
                 }
             },
-            ResolvedLayer::Text { x, y, text, color } => {
+            ResolvedLayer::Text {
+                x,
+                y,
+                text,
+                color,
+                align,
+            } => {
                 let sx = x_offset + x_scale.map(*x);
-                let sy = y_offset + y_scale.map(*y);
+                // On a bands y axis, aligned text snaps its row the way
+                // chrome snaps a band label's — subpixel rounded first, then
+                // the containing cell — and anchors mid-row, which rounds
+                // back to the same cell on glyph targets and vertically
+                // centers the ink on pixel targets. A table cell always
+                // shares its label's line, in both panes.
+                let sub = y_scale.map(*y);
+                let sy = match (align, &layout.y_band) {
+                    (Align::Left, _) | (_, None) => y_offset + sub,
+                    _ if sub.is_finite() => {
+                        let row = (sub.round() as i64).div_euclid(py as i64);
+                        (row * py as i64) as f64 + (py as f64 - 1.0) / 2.0 + y_offset
+                    }
+                    _ => sub,
+                };
                 if sx.is_finite() && sy.is_finite() {
-                    surface.note(sx, sy, (px as f64, py as f64), text, *color);
+                    // On a bands x axis the band nearest the anchor is the
+                    // alignment box — chrome's header geometry exactly (the
+                    // rounded band center, a step-wide budget), so a cell and
+                    // its column header land in lockstep. Left keeps the
+                    // classic anchor-relative run.
+                    let band_box = match align {
+                        Align::Left => None,
+                        _ => band.as_ref().and_then(|band| {
+                            let index = x.round();
+                            (index >= 0.0 && index < band.count() as f64).then(|| {
+                                let center = (x_offset / px as f64).round() as i64
+                                    + (band.center(index as usize) / px as f64).round() as i64;
+                                let budget = ((band.step() / px as f64).round() as i64).max(2) - 1;
+                                (center, budget)
+                            })
+                        }),
+                    };
+                    draw_note(
+                        surface,
+                        (sx, sy),
+                        (px as f64, py as f64),
+                        *align,
+                        band_box,
+                        text,
+                        *color,
+                    );
                 }
             }
             ResolvedLayer::Bars {
@@ -1031,6 +1076,78 @@ fn draw_area<C: Canvas>(
         }
         previous = Some((main, cross_low, cross_high));
     }
+}
+
+/// One annotation, aligned. Without a band box the alignment maps straight to
+/// a note anchor: `Left` starts at the data anchor (the classic run),
+/// `Center` centers on it, `Right` ends at it — each target applying the
+/// anchor with its own metrics. With a band box — a bands x axis with the
+/// anchor on a band — the box is chrome's header geometry, `(center cell,
+/// budget)`: centered text anchors mid-way on the center cell (which rounds
+/// back to `center - width / 2` on glyph targets — the header's own formula —
+/// and centers the ink on pixel targets), right-aligned text ends at the
+/// box's last cell. Text wider than the budget clips to it, ending with a
+/// truncation `.`: mixing a neighbor's digits into a number would be a lie, a
+/// visibly shortened one is not.
+fn draw_note<C: Canvas>(
+    surface: &mut C,
+    (sx, sy): (f64, f64),
+    (px, py): (f64, f64),
+    align: Align,
+    band_box: Option<(i64, i64)>,
+    text: &str,
+    color: Color,
+) {
+    use unicode_width::UnicodeWidthChar;
+
+    let glyph_width = |glyph: char| glyph.width().unwrap_or(0) as i64;
+    let width: i64 = text.chars().map(glyph_width).sum();
+    if width == 0 {
+        return;
+    }
+    let anchor = match align {
+        Align::Left => Anchor::Start,
+        Align::Center => Anchor::Middle,
+        Align::Right => Anchor::End,
+    };
+    // Mid-cell in continuous subpixels: rounds back to the cell on glyph
+    // targets, sits at the visual center on pixel targets.
+    let mid = |cell: i64| cell as f64 * px + (px - 1.0) / 2.0;
+    let Some((center, budget)) = band_box else {
+        surface.note(sx, sy, (px, py), anchor, text, color);
+        return;
+    };
+    if width <= budget {
+        let x = match align {
+            Align::Left => (center - budget / 2) as f64 * px,
+            Align::Center => mid(center),
+            Align::Right => mid(center - budget / 2 + budget - 1),
+        };
+        surface.note(x, sy, (px, py), anchor, text, color);
+        return;
+    }
+    let mut fitted = String::new();
+    let mut used = 0i64;
+    for glyph in text.chars() {
+        let step = glyph_width(glyph);
+        if step == 0 {
+            continue;
+        }
+        if used + step > budget - 1 {
+            break;
+        }
+        fitted.push(glyph);
+        used += step;
+    }
+    fitted.push('.');
+    surface.note(
+        (center - budget / 2) as f64 * px,
+        sy,
+        (px, py),
+        Anchor::Start,
+        &fitted,
+        color,
+    );
 }
 
 #[cfg(test)]

@@ -40,6 +40,12 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
                 "annotated",
                 "Annotations: a Rule for the target line, a Text note at data coordinates.",
             ),
+            (
+                "describe",
+                "The first look is sometimes a table: the box plot's flippers as their \
+                 five-number summary — a stat table from text on band scales, every \
+                 column formatted like a tiny axis and aligned at the decimal point.",
+            ),
         ],
     ),
     (
@@ -158,8 +164,9 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
             (
                 "confusion",
                 "A confusion matrix from the grammar, no preset: a Cells matrix on Bands \
-                 axes — class names label rows and columns, counts sit on the cells as \
-                 Text, and row 0 is the top band so the chart reads in matrix order.",
+                 axes — class names label rows and columns, counts sit centered in their \
+                 cells through the Text align channel, and row 0 is the top band so the \
+                 chart reads in matrix order.",
             ),
             (
                 "attention",
@@ -195,6 +202,13 @@ const GALLERY: &[(&str, &str, &[Entry])] = &[
             (
                 "correlation",
                 "Signed data on a diverging colormap centered at zero: correlation and anti-correlation read as opposite colors, and the colorbar spans symmetrically.",
+            ),
+            (
+                "seasons",
+                "A decade of Mauna Loa CO\u{2082} as one stat table — ninety-six numbers, \
+                 months down, years across, each year-column formatted and colored on \
+                 its own scale (the color shows in a terminal; the digits survive any \
+                 pipe).",
             ),
             (
                 "spectrogram",

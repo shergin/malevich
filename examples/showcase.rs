@@ -11,8 +11,8 @@
 use malevich::scale::{Colormap, Palette};
 use malevich::stat::{Bins, Reducer, binned, ewma};
 use malevich::{
-    Area, Cells, Color, Dash, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points, Range, Rule,
-    Scale, Text,
+    Align, Area, Cells, Color, Dash, Frame, Grid, Line, LineStyle, Plot, PointStyle, Points, Range,
+    Rule, Scale, Text,
 };
 
 /// The tour's render: one chart per row, or a cells-versus-pixels comparison
@@ -74,6 +74,42 @@ fn main() {
             .x_label("step")
             .y_label("loss")
             .show(&frame)
+    );
+
+    // The same run as numbers: a describe table is a Plot like any other —
+    // text on band scales, every column its own NumberFormat, padded so the
+    // decimals meet, centered under its header. The first look is sometimes
+    // a table.
+    println!(
+        "{}\n",
+        malevich::describe(["train", "val"], [&train[..], &val[..]])
+            .title("the loss curves, described (synthetic)")
+            .show(&Frame { height: 6, ..frame })
+    );
+
+    // A colored table: monthly returns on a diverging map centered at zero,
+    // losses cold, gains warm — each year-column positioned on its own
+    // extent. The digits carry the value; the color is a second reading.
+    let returns: Vec<f64> = (0..36)
+        .map(|i| ((i as f64 * 2.311).sin() + (i as f64 * 0.713).cos()) * 3.1)
+        .collect();
+    println!(
+        "{}\n",
+        malevich::table_with(
+            [
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+            ],
+            ["2023", "2024", "2025"],
+            &returns[..],
+            malevich::TableOptions::new()
+                .colormap(malevich::scale::Colormap::RED_BLUE.centered_at(0.0)),
+        )
+        .expect("a rectangular returns table")
+        .title("monthly returns, % (synthetic)")
+        .show(&Frame {
+            height: 15,
+            ..frame
+        })
     );
 
     // The effects corner: what the alpha canvas buys. Anti-aliased
@@ -638,7 +674,7 @@ fn main() {
     // ── The ML corner: the charts training loops actually need. ──
 
     // A confusion matrix: a Cells grid on Bands axes reading in matrix order,
-    // per-cell counts as Text.
+    // per-cell counts centered in their bands by the Text align channel.
     let labels = ["cat", "dog", "bird"];
     let counts = [38.0, 2.0, 0.0, 3.0, 33.0, 4.0, 1.0, 5.0, 34.0];
     let mut confusion = Plot::new()
@@ -649,11 +685,9 @@ fn main() {
         .y_label("true")
         .title("confusion matrix (synthetic)");
     for (i, &count) in counts.iter().enumerate() {
-        confusion = confusion.layer(Text::at(
-            (i % 3) as f64,
-            (i / 3) as f64,
-            format!("{count:.0}"),
-        ));
+        confusion = confusion.layer(
+            Text::at((i % 3) as f64, (i / 3) as f64, format!("{count:.0}")).align(Align::Center),
+        );
     }
     println!("{}\n", confusion.show(&frame));
 

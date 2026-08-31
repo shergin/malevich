@@ -9,7 +9,7 @@
 //! any background the terminal has.
 
 use super::font;
-use crate::render::{Canvas, Color, PlotRect, PointShape};
+use crate::render::{Anchor, Canvas, Color, PlotRect, PointShape};
 
 /// A device-pixel raster covering the whole frame; encoders crop the plot panel.
 pub(crate) struct PixelCanvas {
@@ -459,10 +459,18 @@ impl Canvas for PixelCanvas {
         }
     }
 
-    /// Pixel-exact annotation: glyphs advance by their own 8-pixel boxes
-    /// from the anchor, vertically centered on it — labels ride data
-    /// points, not the cell grid.
-    fn note(&mut self, x: f64, y: f64, _cell: (f64, f64), text: &str, color: Color) {
+    /// Pixel-exact annotation: glyphs advance by their own 8-pixel boxes,
+    /// vertically centered on the anchor, the pen shifted by the ink's own
+    /// width per the anchor mode — labels ride data points, not the cell grid.
+    fn note(
+        &mut self,
+        x: f64,
+        y: f64,
+        _cell: (f64, f64),
+        anchor: Anchor,
+        text: &str,
+        color: Color,
+    ) {
         use unicode_width::UnicodeWidthChar;
 
         if !(x.is_finite() && y.is_finite()) {
@@ -473,7 +481,18 @@ impl Canvas for PixelCanvas {
             return;
         }
         let scale = ((cw / 8).min(ch / 8)).max(1);
-        let mut pen = x.round() as i64;
+        let ink: i64 = text
+            .chars()
+            .map(|glyph| glyph.width().unwrap_or(0) as i64)
+            .sum::<i64>()
+            * 8
+            * scale;
+        let mut pen = x.round() as i64
+            - match anchor {
+                Anchor::Start => 0,
+                Anchor::Middle => ink / 2,
+                Anchor::End => ink,
+            };
         let top = y.round() as i64 - 4 * scale;
         for glyph in text.chars() {
             let width = glyph.width().unwrap_or(0) as i64;

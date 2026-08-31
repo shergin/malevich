@@ -47,7 +47,14 @@ constructor arguments; constant channels are builder methods. The data-bound
 color channel is `color_by(categories)` on `Line`, `Points`, `Bars`, and
 `Range`: categories take palette colors in first-appearance order, name
 themselves in the legend, and cycle marker shapes in colorless output so
-groups never vanish in a pipe.
+groups never vanish in a pipe. The alignment channel is `align(Align)` on
+`Text` — `Left` (the default: start at the anchor and extend right),
+`Center`, `Right` (end at the anchor). On a `Bands` x axis the band nearest
+the anchor becomes the box, with exactly the geometry the band's own header
+label uses — its rounded center, its step-wide budget — so aligned text and
+band labels land in lockstep; text wider than the box clips to it, ending
+with a truncation `.` — digits from a neighboring column are never mixed
+into a number. Stat tables and annotated matrices are set in this channel.
 
 ## Series
 
@@ -118,7 +125,10 @@ algorithm (Talbot, Lin, Hanrahan 2010) — scored for simplicity, coverage,
 density, and legibility. Ticks are computed, never supplied as strings, and
 carry exact-decimal labels: they parse back to their values, share one
 fraction width and one SI prefix per axis, and never show float artifacts.
-Maps to `scale::Ticks`. See
+Maps to `scale::Ticks`. `scale::NumberFormat` makes the same label decisions
+once for an arbitrary set of related values — one fraction width, one SI
+prefix, whole labels for whole-number sets, gaps as `—` — the per-column
+formatter behind `table`, usable for any readout. See
 [The axes are the product](principles/axes-are-the-product.md).
 
 ## Frame
@@ -269,8 +279,8 @@ mode. Maps to `plot::Grid` (re-exported at the root).
 ## Preset
 
 A plain function composing the grammar into a named chart type: `line()`,
-`hist()`, `scatter()`, …. Every preset is provably equal to its grammar
-expansion (asserted byte-identical in tests). Presets are the front door; the
+`hist()`, `scatter()`, `table()`, `describe()`, …. Every preset is provably
+equal to its grammar expansion (asserted byte-identical in tests). Presets are the front door; the
 grammar is discovered, not required. `_with` means "configured with an
 options value"; a `try_` prefix identifies the checked twin of an otherwise
 identical convenience. Maps to functions and option types re-exported at the

@@ -1379,3 +1379,237 @@ fn grouped_bars_compose_on_a_bands_axis() {
         .count();
     assert_eq!(runs, 6, "two bars per band: {rendered}");
 }
+
+#[test]
+fn the_table_preset_equals_its_grammar_expansion() {
+    use crate::mark::{Align, Text};
+    use crate::scale::{NumberFormat, Scale};
+
+    let values = [1200.0, 0.4821, f64::NAN, 98500.0, 0.5174, -0.211];
+    let frame = Frame::plain(44, 6);
+    let preset =
+        crate::table(["loss", "val_loss"], ["count", "mean", "sd"], &values[..]).render(&frame);
+
+    // One Text layer per cell, column by column, top to bottom: each column
+    // formatted by its own NumberFormat, padded to the column's width so the
+    // decimals align, and centered on its band like its header.
+    let mut grammar = Plot::new()
+        .x_scale(Scale::bands(["count", "mean", "sd"]))
+        .y_scale(Scale::bands(["loss", "val_loss"]));
+    for column in 0..3 {
+        let cells = [values[column], values[3 + column]];
+        let format = NumberFormat::for_values(&cells);
+        let labels = cells.map(|value| format.format(value));
+        let width = labels.iter().map(String::len).max().unwrap_or(0);
+        for (row, label) in labels.iter().enumerate() {
+            grammar = grammar.layer(
+                Text::at(column as f64, row as f64, format!("{label:>width$}"))
+                    .align(Align::Center),
+            );
+        }
+    }
+    assert_eq!(preset, grammar.render(&frame));
+}
+
+#[test]
+fn table_with_default_options_reproduces_the_plain_preset() {
+    let values = [1.0, 2.0, 3.0, 4.0];
+    let frame = Frame::plain(30, 5);
+    assert_eq!(
+        crate::table(["a", "b"], ["x", "y"], &values[..]).render(&frame),
+        crate::table_with(
+            ["a", "b"],
+            ["x", "y"],
+            &values[..],
+            crate::TableOptions::new()
+        )
+        .unwrap()
+        .render(&frame),
+    );
+}
+
+#[test]
+fn a_colored_table_equals_its_grammar_expansion() {
+    use crate::mark::{Align, Text};
+    use crate::scale::{Colormap, NumberFormat, Scale};
+
+    let values = [412.4, 418.5, 414.7, f64::NAN];
+    let frame = Frame {
+        color: crate::render::ColorMode::TrueColor,
+        ..Frame::plain(30, 6)
+    };
+    let colormap = Colormap::VIRIDIS;
+    let preset = crate::table_with(
+        ["a", "b"],
+        ["one", "two"],
+        &values[..],
+        crate::TableOptions::new().colormap(colormap.clone()),
+    )
+    .unwrap()
+    .render(&frame);
+
+    // Color is the heatmap reading, column by column: each finite value takes
+    // the colormap at its position within its own column's extent; gaps stay
+    // in the default foreground.
+    let mut grammar = Plot::new()
+        .x_scale(Scale::bands(["one", "two"]))
+        .y_scale(Scale::bands(["a", "b"]));
+    for column in 0..2 {
+        let cells = [values[column], values[2 + column]];
+        let format = NumberFormat::for_values(&cells);
+        let labels = cells.map(|value| format.format(value));
+        let width = labels.iter().map(String::len).max().unwrap_or(0);
+        let finite: Vec<f64> = cells.iter().copied().filter(|v| v.is_finite()).collect();
+        let (low, high) = (
+            finite.iter().copied().fold(f64::INFINITY, f64::min),
+            finite.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        );
+        for (row, label) in labels.iter().enumerate() {
+            let mut text = Text::at(column as f64, row as f64, format!("{label:>width$}"))
+                .align(Align::Center);
+            if cells[row].is_finite() {
+                text = text.color(colormap.color(colormap.position_in(cells[row], low, high)));
+            }
+            grammar = grammar.layer(text);
+        }
+    }
+    let rendered = grammar.render(&frame);
+    assert_eq!(preset, rendered);
+    assert!(
+        preset.contains("\x1b["),
+        "the colored table carries color escapes: {preset:?}"
+    );
+}
+
+#[test]
+fn a_table_column_centers_under_its_header() {
+    // One column, one row: the value block and the header share chrome's
+    // centering rule, so the single-glyph value lands on the header's center.
+    let rendered = crate::table(["r"], ["count"], &[7.0][..]).render(&Frame::plain(20, 4));
+    let value_line = rendered.lines().next().expect("a value row");
+    let header_line = rendered.lines().last().expect("a header row");
+    let value = value_line
+        .chars()
+        .position(|c| c == '7')
+        .expect("the value renders");
+    let header = header_line
+        .chars()
+        .position(|c| c == 'c')
+        .expect("the header renders");
+    assert_eq!(
+        value,
+        header + 2,
+        "value centers on the header's center:\n{rendered}"
+    );
+}
+
+#[test]
+fn the_describe_preset_equals_its_stats_laid_out_by_table() {
+    // The other half of the chain: `table` equals its grammar expansion above,
+    // so `describe` == stats + `table` proves it down to the grammar.
+    let loss = [0.982, 0.71, 0.55, 0.482, 0.41, 0.395, 0.37];
+    let val = [1.104, 0.83, 0.66, 0.58, f64::NAN];
+    let frame = Frame::plain(76, 7);
+    let preset = crate::describe(["loss", "val"], [&loss[..], &val[..]]).render(&frame);
+
+    let mut values = Vec::new();
+    for group in [&loss[..], &val[..]] {
+        let mut moments = crate::stat::Moments::new();
+        for &value in group {
+            moments.add(value);
+        }
+        let stats = crate::stat::BoxStats::of(group).expect("finite samples");
+        values.extend([
+            moments.count() as f64,
+            moments.mean().expect("finite samples"),
+            moments.standard_deviation().expect("two or more samples"),
+            moments.min().expect("finite samples"),
+            stats.q1,
+            stats.median,
+            stats.q3,
+            moments.max().expect("finite samples"),
+        ]);
+    }
+    let expansion = crate::table(
+        ["loss", "val"],
+        ["count", "mean", "sd", "min", "p25", "p50", "p75", "max"],
+        values,
+    )
+    .render(&frame);
+    assert_eq!(preset, expansion);
+}
+
+#[test]
+fn a_table_renders_aligned_with_gaps_as_dashes() {
+    let values = [1200.0, 0.4821, f64::NAN, 98500.0, 0.5174, -0.211];
+    let rendered = crate::table(["loss", "val_loss"], ["count", "mean", "sd"], &values[..])
+        .render(&Frame::plain(44, 6));
+    assert_eq!(
+        rendered,
+        "         │\n    loss ┤    1.20k     0.4821          —\nval_loss ┤   98.50k     0.5174    -0.2110\n         │\n         └──────────────────────────────────\n              count      mean       sd"
+    );
+}
+
+#[test]
+fn aligned_text_clips_to_its_band_with_a_truncation_marker() {
+    // Two five-cell-ish bands in sixteen columns: neither six-glyph number
+    // fits, so each keeps its leading digits and ends with the marker —
+    // digits from a neighboring column are never mixed into a number.
+    let rendered =
+        crate::table(["r"], ["alpha", "beta"], &[0.123456, 0.9][..]).render(&Frame::plain(16, 5));
+    assert_eq!(
+        rendered,
+        "  │\nr ┤ 0.12. 0.90.\n  │\n  └─────────────\n    alpha beta"
+    );
+}
+
+#[test]
+fn try_table_rejects_misshapen_values() {
+    let no_columns: [&str; 0] = [];
+    assert!(matches!(
+        crate::try_table(["r"], no_columns, &[1.0][..]),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    let no_rows: [&str; 0] = [];
+    assert!(matches!(
+        crate::try_table(no_rows, ["c"], Vec::<f64>::new()),
+        Err(crate::Error::EmptyDimension { .. })
+    ));
+    assert!(matches!(
+        crate::try_table(["r"], ["a", "b"], &[1.0, 2.0, 3.0][..]),
+        Err(crate::Error::NonRectangular { .. })
+    ));
+    assert!(matches!(
+        crate::try_table(["r"], ["a", "b"], &[1.0, 2.0, 3.0, 4.0][..]),
+        Err(crate::Error::UnequalChannels { .. })
+    ));
+}
+
+#[test]
+fn centered_and_right_aligned_annotations_shift_on_continuous_axes() {
+    use crate::mark::{Align, Text};
+
+    // The same label at the same anchor, in the three alignments: left starts
+    // at the anchor cell, right ends at it, center straddles it.
+    let render = |align: Align| {
+        Plot::new()
+            .x_domain(0.0, 10.0)
+            .y_domain(0.0, 2.0)
+            .layer(Text::at(5.0, 1.0, "mark").align(align))
+            .render(&Frame::plain(30, 6))
+    };
+    let position = |rendered: &str| {
+        rendered
+            .lines()
+            .find_map(|line| line.find("mark"))
+            .expect("the annotation renders")
+    };
+    let left = position(&render(Align::Left));
+    let center = position(&render(Align::Center));
+    let right = position(&render(Align::Right));
+    assert!(
+        right < center && center < left,
+        "{right} < {center} < {left}"
+    );
+    assert_eq!(left - right, 3, "right alignment ends where left begins");
+}

@@ -165,6 +165,18 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   colorless output. Curated sequential, diverging, and logarithmic colormaps
   keep heatmaps honest — signed data centered, decades distinguishable, zeros
   as gaps.
+- **The first look is sometimes a table.** `describe` renders the summary that
+  usually precedes any chart — count, mean, sd, min, quartiles, max, one row
+  per series, the same type-7 quantiles as the box plot — as a stat table:
+  text on two band axes, each column formatted by its own `NumberFormat`
+  (uniform decimals, one SI prefix per column, exact-decimal labels, gaps as
+  `—`), padded to the column's width so numbers meet at the decimal point,
+  and centered on its band by the same rule its header uses. `table` lays out
+  any numeric matrix the same way; `table_with` colors each value through a
+  colormap positioned within its own column — the heatmap reading, with the
+  digits still carrying the value in any pipe. `Grid` puts a table beside a
+  chart, and the `align` channel on `Text` annotates heatmaps — confusion
+  matrices with counts — from the grammar, no preset.
 - **Millions of points, measured.** Large lines reduce by M4, bucketed by the
   rendered column — pixel-identical to drawing every point. Ten million points
   render in tens of milliseconds on the dated baseline; grids denser than the
@@ -281,7 +293,9 @@ string-renderer is enough. Details in [cli/README.md](cli/README.md).
 Not a TUI framework (it never owns the terminal or handles input). No animations. No
 file parsing or dataframes in core — ingestion traits only. No config-object kitchen
 sink: if an option is not a mark channel, stat parameter, scale option, or theme
-entry, it does not ship.
+entry, it does not ship. No general table widget: a malevich table is a statistical
+summary it computed and formatted — borders, spans, wrapping, and cell styling belong
+to table crates.
 
 ## Name
 

@@ -106,6 +106,20 @@ Source: [examples/annotated.rs](examples/annotated.rs)
    0      10      20      30      40      50      60      70
 ```
 
+### describe
+
+The first look is sometimes a table: the box plot's flippers as their five-number summary — a stat table from text on band scales, every column formatted like a tiny axis and aligned at the decimal point.
+Source: [examples/describe.rs](examples/describe.rs)
+
+```text
+                       flipper length by species (mm)
+   Adelie ┤    151    190.0   6.518   172     186     190     195     210
+Chinstrap ┤     68    195.8   7.079   178     191     196     201     212
+   Gentoo ┤    123    217.2   6.459   203     212     216     221     231
+          └─────────────────────────────────────────────────────────────────
+              count   mean     sd     min     p25     p50     p75     max
+```
+
 ## Distributions
 
 Where the statistics layer earns its keep: real estimators, honest shapes.
@@ -607,21 +621,21 @@ y 0.0 ┤⡀⠂⠈
 
 ### confusion
 
-A confusion matrix from the grammar, no preset: a Cells matrix on Bands axes — class names label rows and columns, counts sit on the cells as Text, and row 0 is the top band so the chart reads in matrix order.
+A confusion matrix from the grammar, no preset: a Cells matrix on Bands axes — class names label rows and columns, counts sit centered in their cells through the Text align channel, and row 0 is the top band so the chart reads in matrix order.
 Source: [examples/confusion.rs](examples/confusion.rs)
 
 ```text
              validation confusion
        │
        │   █████████  ░░░░░░░░░   ░░░░░░░░░
-   cat ┤   ████38███  ░░░░░2░░░   ░░░░0░░░░
+   cat ┤   ███38████  ░░░░░2░░░   ░░░░0░░░░
        │   █████████  ░░░░░░░░░   ░░░░░░░░░
 t      │   ░░░░░░░░░  █████████   ░░░░░░░░░
 r      │   ░░░░░░░░░  █████████   ░░░░░░░░░
-u  dog ┤   ░░░░3░░░░  █████33██   ░░░░4░░░░
+u  dog ┤   ░░░░3░░░░  ████33███   ░░░░4░░░░
 e      │
        │   ░░░░░░░░░  ░░░░░░░░░   █████████
-  bird ┤   ░░░░1░░░░  ░░░░░5░░░   ████34███
+  bird ┤   ░░░░1░░░░  ░░░░░5░░░   ███34████
        │   ░░░░░░░░░  ░░░░░░░░░   █████████
        │
        └──────────────────────────────────────
@@ -774,6 +788,29 @@ Source: [examples/correlation.rs](examples/correlation.rs)
 0 ┤█████████▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ░ -1.0
   └┬──────────┬──────────┬──────────┬──
   0.0        2.5        5.0        7.5
+```
+
+### seasons
+
+A decade of Mauna Loa CO₂ as one stat table — ninety-six numbers, months down, years across, each year-column formatted and colored on its own scale (the color shows in a terminal; the digits survive any pipe).
+Source: [examples/seasons.rs](examples/seasons.rs)
+
+```text
+                Mauna Loa CO₂, monthly mean ppm
+Jan ┤  408.2  411.0  413.6  415.5  418.1  419.5  422.8  426.7
+Feb ┤  408.5  412.0  414.3  416.7  419.2  420.3  424.6  427.1
+Mar ┤  409.6  412.2  414.7  417.6  418.8  421.0  425.4  428.2
+Apr ┤  410.5  413.5  416.4  419.0  420.2  423.3  426.5  429.6
+May ┤  411.4  414.9  417.3  419.1  421.0  424.0  426.9  430.5
+Jun ┤  411.0  414.2  416.6  418.9  420.9  423.7  426.9  429.6
+Jul ┤  408.9  412.0  414.6  416.9  418.9  421.8  425.6  427.9
+Aug ┤  407.2  410.2  412.8  414.4  417.2  419.7  423.0  425.5
+Sep ┤  405.7  408.8  411.5  413.3  415.9  418.5  422.0  424.4
+Oct ┤  406.2  408.7  411.5  413.9  415.7  418.8  422.4  424.9
+Nov ┤  408.2  410.5  413.1  415.0  417.5  420.5  423.9  426.5
+Dec ┤  409.3  412.0  414.2  416.7  419.0  421.9  425.4  427.5
+    └──────────────────────────────────────────────────────────
+       2018   2019   2020   2021   2022   2023   2024   2025
 ```
 
 ### spectrogram

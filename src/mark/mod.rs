@@ -27,7 +27,7 @@ pub use range::Range;
 pub(crate) use range::RangePlacement;
 pub(crate) use rule::Orientation;
 pub use rule::Rule;
-pub use text::Text;
+pub use text::{Align, Text};
 
 /// Any mark, ready to be layered onto a plot.
 ///
@@ -179,6 +179,7 @@ mod validation_tests {
             y: 0.0,
             text: String::new(),
             color: None,
+            align: Align::Left,
         };
         assert!(matches!(
             text.validate(),

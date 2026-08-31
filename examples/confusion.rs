@@ -1,10 +1,11 @@
 //! A confusion matrix from the grammar, no preset: a Cells matrix on Bands
 //! axes — the class names label both rows and columns — with per-cell counts
-//! as Text marks. Row 0 is the top band, so the chart reads like the printed
-//! matrix: true classes down, predictions across.
+//! as Text marks, centered in their bands by the align channel. Row 0 is the
+//! top band, so the chart reads like the printed matrix: true classes down,
+//! predictions across.
 
 use malevich::scale::Colormap;
-use malevich::{Cells, Frame, Plot, Scale, Text};
+use malevich::{Align, Cells, Frame, Plot, Scale, Text};
 
 fn main() {
     let classes = ["cat", "dog", "bird"];
@@ -22,7 +23,8 @@ fn main() {
         .title("validation confusion");
     for (index, &count) in counts.iter().enumerate() {
         let (column, row) = (index % classes.len(), index / classes.len());
-        plot = plot.layer(Text::at(column as f64, row as f64, format!("{count:.0}")));
+        plot = plot
+            .layer(Text::at(column as f64, row as f64, format!("{count:.0}")).align(Align::Center));
     }
     println!("{}", plot.render(&Frame::plain(46, 16)));
 }

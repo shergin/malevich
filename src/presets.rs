@@ -4,9 +4,9 @@
 //! does is beyond reach of the grammar, and each returns the [`Plot`] for refinement.
 
 use crate::data::IntoSeries;
-use crate::mark::{Area, Bars, Cells, Line, Points, Range};
+use crate::mark::{Align, Area, Bars, Cells, Line, Points, Range, Text};
 use crate::plot::Plot;
-use crate::scale::Colormap;
+use crate::scale::{Colormap, NumberFormat};
 
 /// Configuration for [`hist_with`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1071,6 +1071,229 @@ pub fn violin_with<'a>(
         plot = plot.layer(Area::horizontal(positions, left, right));
     }
     Ok(plot)
+}
+
+/// Configuration for [`table_with`].
+#[derive(Debug, Clone, PartialEq, Default)]
+#[non_exhaustive]
+pub struct TableOptions {
+    /// Colors each value's text through this colormap, positioned within its
+    /// own column's finite extent — the color reading of a heatmap, column by
+    /// column. `None` (the default) renders in the default foreground. A
+    /// diverging map [`centered_at`](Colormap::centered_at) zero splits
+    /// positive from negative; gaps stay uncolored.
+    pub colormap: Option<Colormap>,
+}
+
+impl TableOptions {
+    /// The default options: plain foreground, no colormap.
+    pub const fn new() -> TableOptions {
+        TableOptions { colormap: None }
+    }
+
+    /// Colors values by column-relative position through `colormap`.
+    #[must_use]
+    pub fn colormap(mut self, colormap: Colormap) -> TableOptions {
+        self.colormap = Some(colormap);
+        self
+    }
+}
+
+/// A stat table: row-major `values` as column-formatted text on two band
+/// axes — row labels left, column headers below, like any band chart.
+///
+/// Each column is formatted by its own [`NumberFormat`]: a shared
+/// significant-digit budget, uniform fraction digits, one SI prefix, gaps as
+/// `—` — then padded to the column's width, so numbers align at the decimal
+/// point, and centered on the band by the same rule the header uses, so a
+/// column and its header land in lockstep. The expansion is `Scale::bands` on
+/// both axes plus one [`Text`] layer per cell, column by column, top to
+/// bottom.
+///
+/// A table is tightest when the plot rows equal its row count: a frame height
+/// of `rows + 2` — one more with a title — puts every row on a consecutive
+/// line; taller frames space the rows out.
+///
+/// ```
+/// let cells = [1200.0, 0.4821, 1200.0, 0.5174];
+/// let chart = malevich::table(["loss", "val_loss"], ["count", "mean"], &cells[..]);
+/// println!("{}", chart.render(&malevich::Frame::plain(40, 6)));
+/// ```
+///
+/// # Panics
+///
+/// Panics unless `values` holds exactly one value per row × column. Use
+/// [`try_table`] for a checked boundary.
+pub fn table<'a>(
+    rows: impl IntoIterator<Item = impl Into<String>>,
+    columns: impl IntoIterator<Item = impl Into<String>>,
+    values: impl IntoSeries<'a>,
+) -> Plot<'static> {
+    try_table(rows, columns, values).expect("table requires one value per row × column")
+}
+
+/// Fallible counterpart to [`table`] for data-driven shapes.
+///
+/// # Errors
+///
+/// Returns [`Error::EmptyDimension`](crate::Error::EmptyDimension) when `rows`
+/// or `columns` is empty, [`Error::NonRectangular`](crate::Error::NonRectangular)
+/// when the values do not fill complete rows, and
+/// [`Error::UnequalChannels`](crate::Error::UnequalChannels) when the value
+/// rows do not match the row labels.
+pub fn try_table<'a>(
+    rows: impl IntoIterator<Item = impl Into<String>>,
+    columns: impl IntoIterator<Item = impl Into<String>>,
+    values: impl IntoSeries<'a>,
+) -> crate::Result<Plot<'static>> {
+    table_with(rows, columns, values, TableOptions::new())
+}
+
+/// A [`table`] configured with [`TableOptions`]; the defaults reproduce the
+/// plain preset exactly.
+///
+/// ```
+/// use malevich::scale::Colormap;
+///
+/// let cells = [412.4, 414.7, 416.4, 418.5];
+/// let chart = malevich::table_with(
+///     ["2019", "2020", "2021", "2022"],
+///     ["ppm"],
+///     &cells[..],
+///     malevich::TableOptions::new().colormap(Colormap::VIRIDIS),
+/// )
+/// .unwrap();
+/// println!("{}", chart.render(&malevich::Frame::plain(24, 8)));
+/// ```
+///
+/// # Errors
+///
+/// The same shape errors as [`try_table`].
+pub fn table_with<'a>(
+    rows: impl IntoIterator<Item = impl Into<String>>,
+    columns: impl IntoIterator<Item = impl Into<String>>,
+    values: impl IntoSeries<'a>,
+    options: TableOptions,
+) -> crate::Result<Plot<'static>> {
+    let rows: Vec<String> = rows.into_iter().map(Into::into).collect();
+    let columns: Vec<String> = columns.into_iter().map(Into::into).collect();
+    let series = values.into_series();
+    let values = series.as_slice();
+    if columns.is_empty() {
+        return Err(crate::Error::EmptyDimension {
+            what: "table columns",
+        });
+    }
+    if rows.is_empty() {
+        return Err(crate::Error::EmptyDimension { what: "table rows" });
+    }
+    if !values.len().is_multiple_of(columns.len()) {
+        return Err(crate::Error::NonRectangular {
+            mark: "table",
+            shape: (values.len(), columns.len()),
+        });
+    }
+    if values.len() / columns.len() != rows.len() {
+        return Err(crate::Error::UnequalChannels {
+            mark: "table: row labels and value rows",
+            lengths: (rows.len(), values.len() / columns.len()),
+        });
+    }
+    let mut plot = Plot::new()
+        .x_scale(crate::scale::Scale::bands(
+            columns.iter().map(String::as_str),
+        ))
+        .y_scale(crate::scale::Scale::bands(rows.iter().map(String::as_str)));
+    for column in 0..columns.len() {
+        let cells: Vec<f64> = (0..rows.len())
+            .map(|row| values[row * columns.len() + column])
+            .collect();
+        let format = NumberFormat::for_values(&cells);
+        let labels: Vec<String> = cells.iter().map(|&value| format.format(value)).collect();
+        let width = labels
+            .iter()
+            .map(|label| label.chars().count())
+            .max()
+            .unwrap_or(0);
+        let extent = cells
+            .iter()
+            .copied()
+            .filter(|value| value.is_finite())
+            .fold(None, |extent: Option<(f64, f64)>, value| {
+                Some(extent.map_or((value, value), |(low, high)| {
+                    (low.min(value), high.max(value))
+                }))
+            });
+        for (row, label) in labels.into_iter().enumerate() {
+            let mut text = Text::at(column as f64, row as f64, format!("{label:>width$}"))
+                .align(Align::Center);
+            if let (Some(colormap), Some((low, high))) = (&options.colormap, extent)
+                && cells[row].is_finite()
+            {
+                text = text.color(colormap.color(colormap.position_in(cells[row], low, high)));
+            }
+            plot = plot.layer(text);
+        }
+    }
+    Ok(plot)
+}
+
+/// The columns of a [`describe`] table, in the [`Reducer`](crate::stat::Reducer)
+/// vocabulary. `count` counts finite values; the quartiles are the type-7
+/// estimator shared with [`box_plot`].
+const DESCRIBE_COLUMNS: [&str; 8] = ["count", "mean", "sd", "min", "p25", "p50", "p75", "max"];
+/// A summary table: the first look before any chart — one row per group,
+/// eight fixed columns (`count mean sd min p25 p50 p75 max`).
+///
+/// Statistics come from [`Moments`](crate::stat::Moments) (non-finite values
+/// ignored; `count` is the finite count) and [`BoxStats`](crate::stat::BoxStats)
+/// (the same type-7 quartiles as [`box_plot`]); a statistic with no answer —
+/// an empty group's mean, a single value's `sd` — renders as the `—` gap. The
+/// expansion is those statistics laid out by [`table`]. Like any table, it is
+/// tightest when the plot rows equal the group count — a frame height of
+/// `groups + 2`, one more with a title.
+///
+/// ```
+/// let loss = [0.9, 0.7, 0.55, 0.48, 0.41];
+/// let val = [1.0, 0.8, 0.62, 0.55, 0.5];
+/// let chart = malevich::describe(["loss", "val"], [&loss[..], &val[..]]);
+/// println!("{}", chart.render(&malevich::Frame::plain(76, 6)));
+/// ```
+///
+/// # Panics
+///
+/// Panics if the number of names differs from the number of groups.
+pub fn describe<'a>(
+    names: impl IntoIterator<Item = impl Into<String>>,
+    groups: impl IntoIterator<Item = impl IntoSeries<'a>>,
+) -> Plot<'static> {
+    let names: Vec<String> = names.into_iter().map(Into::into).collect();
+    let mut values = Vec::new();
+    let mut count = 0usize;
+    for group in groups {
+        let series = group.into_series();
+        let mut moments = crate::stat::Moments::new();
+        for &value in series.as_slice() {
+            moments.add(value);
+        }
+        let stats = crate::stat::BoxStats::of(series.as_slice());
+        let quartile = |pick: &dyn Fn(&crate::stat::BoxStats) -> f64| -> f64 {
+            stats.as_ref().map_or(f64::NAN, pick)
+        };
+        values.extend([
+            moments.count() as f64,
+            moments.mean().unwrap_or(f64::NAN),
+            moments.standard_deviation().unwrap_or(f64::NAN),
+            moments.min().unwrap_or(f64::NAN),
+            quartile(&|s| s.q1),
+            quartile(&|s| s.median),
+            quartile(&|s| s.q3),
+            moments.max().unwrap_or(f64::NAN),
+        ]);
+        count += 1;
+    }
+    assert_eq!(names.len(), count, "describe requires one name per group");
+    table(names, DESCRIBE_COLUMNS, values)
 }
 
 #[cfg(test)]

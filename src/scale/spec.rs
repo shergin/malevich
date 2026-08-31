@@ -22,7 +22,13 @@
 ///
 /// On y, Bands positions continuous marks against band indices exactly like x,
 /// and maps Cells rows onto the bands top-down — row 0 is the top band, so a
-/// labeled matrix reads in matrix order. Bars are rejected on a Bands y axis
+/// labeled matrix reads in matrix order. Centered and right-aligned Text
+/// ([`Text::align`](crate::Text::align)) treats the x band nearest its anchor
+/// as a box with exactly the geometry the band's label uses — its rounded
+/// center, its step-wide budget — so aligned text and band labels land in
+/// lockstep; text wider than the box clips to it, ending with a truncation
+/// `.` — the rule table cells and annotated matrices are built on.
+/// Left-aligned Text (the default) keeps its anchor-relative run everywhere. Bars are rejected on a Bands y axis
 /// (their length is numeric). Linear and Time accept every mark. Log accepts Line,
 /// Points, Range, Rule, Text, banded Area, and Cells with positive extents; it rejects
 /// Bars and zero-baseline Area because zero has no logarithmic position.

@@ -1,4 +1,4 @@
-use crate::render::{Canvas, Color, PlotRect, PointShape};
+use crate::render::{Anchor, Canvas, Color, PlotRect, PointShape};
 
 use super::PixelCanvas;
 
@@ -425,7 +425,7 @@ fn notes_ride_their_anchor_not_the_cell_grid() {
     let mut canvas = PixelCanvas::new(6, 2, (8, 8));
     // An anchor mid-cell: the ink starts at the anchor's pixel column,
     // vertically centered on it — where cell-snapped text could not sit.
-    canvas.note(11.0, 8.0, (8.0, 8.0), "A", RED);
+    canvas.note(11.0, 8.0, (8.0, 8.0), Anchor::Start, "A", RED);
     let ink: Vec<(usize, usize)> = (0..16)
         .flat_map(|y| (0..48).map(move |x| (x, y)))
         .filter(|&(x, y)| canvas.get(x, y).is_some())
@@ -441,4 +441,33 @@ fn notes_ride_their_anchor_not_the_cell_grid() {
         min_y >= 4 && max_y <= 12,
         "centered on y=8: {min_y}..{max_y}"
     );
+}
+
+#[test]
+fn anchored_notes_shift_by_their_own_ink_width() {
+    // The same two-glyph note through the three anchors: ink is 16px wide
+    // (8px boxes), so Middle centers it on the anchor and End finishes there.
+    let spans = |anchor: Anchor| -> (usize, usize) {
+        let mut canvas = PixelCanvas::new(8, 2, (8, 8));
+        canvas.note(32.0, 8.0, (8.0, 8.0), anchor, "AB", RED);
+        let ink: Vec<usize> = (0..16)
+            .flat_map(|y| (0..64).map(move |x| (x, y)))
+            .filter(|&(x, y)| canvas.get(x, y).is_some())
+            .map(|(x, _)| x)
+            .collect();
+        (
+            *ink.iter().min().expect("ink exists"),
+            *ink.iter().max().expect("ink exists"),
+        )
+    };
+    let (start_min, _) = spans(Anchor::Start);
+    let (middle_min, middle_max) = spans(Anchor::Middle);
+    let (_, end_max) = spans(Anchor::End);
+    assert!((32..=34).contains(&start_min), "starts at 32: {start_min}");
+    let middle = (middle_min + middle_max) / 2;
+    assert!(
+        (30..=34).contains(&middle),
+        "centers near 32: {middle_min}..{middle_max}"
+    );
+    assert!(end_max < 32, "ends before the anchor: {end_max}");
 }

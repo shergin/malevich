@@ -16,7 +16,7 @@ mod limits;
 mod surface;
 mod width;
 
-pub(crate) use canvas::{Canvas, PlotRect, PointShape};
+pub(crate) use canvas::{Anchor, Canvas, PlotRect, PointShape};
 pub use charset::Charset;
 pub use color::{Color, ColorMode};
 #[cfg(feature = "pixel")]
