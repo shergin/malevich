@@ -5,6 +5,13 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+## 1.21.0 (Desk and Room) — 2026-09-07
+
+The table release: the summary that usually precedes any chart, rendered by
+the grammar that renders the charts. A table is text on band scales — not a
+ninth mark, not a widget — and a table column is an axis you read instead
+of see.
+
 - `Raster` is the encoded cell grid of one render — glyphs and colors, chrome
   included — as a plain value. `Plot::raster` / `try_raster` produce it;
   `Raster::encode` is the string half, so a TUI host that paints cells and a
@@ -22,12 +29,6 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   `data::with_columns`, so a render request can keep large buffers out of
   the JSON document. Stored documents still encode series as arrays of
   numbers (gaps as `null`); a column reference without a bind is an error.
-
-The table release: the summary that usually precedes any chart, rendered by
-the grammar that renders the charts. A table is text on band scales — not a
-ninth mark, not a widget — and a table column is an axis you read instead
-of see.
-
 - `describe(names, groups)` renders the first-look summary — `count mean sd
   min p25 p50 p75 max`, one row per group — from `Moments` and the box
   plot's type-7 quantiles; `table(rows, columns, values)` (and `try_table`)

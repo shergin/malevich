@@ -5,7 +5,7 @@ speed promise. Wall-clock results vary with hardware, compiler, power state, and
 background load. This file is the authoritative dated record behind the README's
 “tens of milliseconds” claim.
 
-## 2026-08-28 addition — the mapping pass (unreleased)
+## 2026-08-28 addition — the mapping pass (released in 1.20.0)
 
 - Revision: `3e2f63a` (the commit introducing `Plot::mapping`'s layout-only
   pass)
@@ -30,7 +30,7 @@ temporarily routed back through the full render preparation — it matches the
 full-view render anchor below within noise, confirming the discarded work
 was the aggregation itself.
 
-## 2026-08-28 addition (unreleased)
+## 2026-08-28 addition (released in 1.20.0)
 
 - Revision: `a6f03ec` (the interactive-widget series)
 - Machine, OS, profile: as in the 2026-08-07 baseline below
