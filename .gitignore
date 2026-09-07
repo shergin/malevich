@@ -5,4 +5,5 @@ js/dist
 js/generated
 js/native/target
 js/*.tgz
+gallery/wasm
 

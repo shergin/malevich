@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>malevich — figures</title>
+    <meta
+      name="description"
+      content="Terminal charts rendered in the browser: ascii cells beside a pixel panel, with the Rust and TypeScript that produced them."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="banner">
+        <p class="mark">malevich</p>
+        <p class="refs">
+          <a href="https://crates.io/crates/malevich">crates.io</a>
+          <a href="https://www.npmjs.com/package/malevich">npm</a>
+          <a href="https://github.com/shergin/malevich">source</a>
+        </p>
+      </div>
+      <h1>Figures.</h1>
+      <p class="lede">
+        The same plot, drawn twice: a cell grid in the ascii charset, and the
+        device-pixel panel a capable terminal would place. The last plate is
+        live — a long line through M4. Wheel to zoom, drag to pan, and watch
+        the clock.
+      </p>
+    </header>
+
+    <main id="figures">
+      <p class="status" id="status">Composing figures…</p>
+    </main>
+
+    <footer>
+      <p>
+        Drawn in the browser from <code>engineVersion</code>
+        <span id="engine">…</span>. The pixel plate is a PNG from the iTerm2
+        path; the cell plate is the <code>Ascii</code> charset at truecolor.
+      </p>
+    </footer>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

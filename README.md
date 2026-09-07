@@ -132,7 +132,10 @@ Plot::new().layer(Line::y(&values[..]).style(LineStyle::Corners))
 Every chart in these docs is real program output, spliced in by
 `cargo run --example regen_docs` and verified in CI — never typed by hand. More in the
 gallery: [EXAMPLES.md](EXAMPLES.md), and `cargo run --example showcase` renders a
-colored tour sized to your terminal.
+colored tour sized to your terminal. Those figures also run in the
+browser at [shergin.github.io/malevich](https://shergin.github.io/malevich/)
+([gallery/](gallery/README.md)): ascii cells beside the pixel panel, and a
+live M4 plate that times zooms through a million-point series.
 
 In a terminal it looks like this — `cargo run --example showcase --features pixel`
 renders every chart twice, cells on the left and real pixels (sixel / kitty /

@@ -2,7 +2,8 @@
 
 TypeScript tours of the JS rim. They live **in this repo**, next to the
 package, the same way `examples/` sits next to the Rust crate. One engine,
-one golden suite — not a second website, not a separate package.
+one golden suite — not a second package. A browser gallery
+(ascii beside pixels, plus a live M4 plate) lives in [`gallery/`](../../gallery/README.md).
 
 Pixel side-by-side (cells vs sixel/kitty) is Phase 4 of [`notes/js.md`](../../notes/js.md).
 Until then these render cells, sized to your terminal via `Frame.detect()`.

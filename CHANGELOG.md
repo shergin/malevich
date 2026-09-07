@@ -5,6 +5,10 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- A GitHub Pages gallery (`gallery/`) runs the wasm in the browser: ascii
+  cells beside the pixel panel, Rust and TypeScript listings, and a live M4
+  plate that times zooms through a million-point series.
+
 ## 1.21.0 (Desk and Room) — 2026-09-07
 
 The table release: the summary that usually precedes any chart, rendered by
