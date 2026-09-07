@@ -11,5 +11,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: rustc --edition=2024 -D warnings -O fuzz/probe_parser.rs -o target/probe-parser-fuzz
+      - run: mkdir -p target && rustc --edition=2024 -D warnings -O fuzz/probe_parser.rs -o target/probe-parser-fuzz
       - run: target/probe-parser-fuzz 250000 ${{ github.run_id }}

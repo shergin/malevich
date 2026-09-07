@@ -298,8 +298,9 @@ const SPLICED: &[&str] = &[
 ];
 
 /// Examples that are deliberately not in the gallery: infrastructure, the colored
-/// tour (environment-dependent), interactive demos, README splice sources, and the
-/// pixel/HTML demos (image escapes and HTML have no place in a markdown gallery).
+/// tour (environment-dependent), interactive demos, README splice sources, the
+/// JS/Rust golden oracle, and the pixel/HTML demos (image escapes and HTML have
+/// no place in a markdown gallery).
 const EXEMPT: &[&str] = &[
     "regen_docs",
     "showcase",
@@ -315,6 +316,7 @@ const EXEMPT: &[&str] = &[
     "evcxr",
     "suprematist",
     "promo",
+    "js_goldens",
 ];
 
 fn main() {

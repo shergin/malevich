@@ -9,11 +9,11 @@
 //! the caller caches. Replies are capped because the four expected reports are
 //! small and no terminal-controlled byte stream should grow memory without bound.
 
-#[cfg(unix)]
 use super::probe::MAX_REPLY_BYTES;
 
 /// Appends the prefix that fits and reports whether the reply buffer is full.
-#[cfg(unix)]
+/// Compiled on every target so Windows tests the cap; `exchange` is Unix-only.
+#[cfg_attr(not(unix), allow(dead_code))]
 fn append_reply(replies: &mut Vec<u8>, chunk: &[u8]) -> bool {
     let remaining = MAX_REPLY_BYTES.saturating_sub(replies.len());
     replies.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
