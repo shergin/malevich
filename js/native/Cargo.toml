@@ -1,6 +1,6 @@
 [package]
 name = "malevich-js"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.88"
 publish = false
@@ -12,7 +12,7 @@ description = "WASM bindings for malevich: render a Document to a string or Rast
 crate-type = ["cdylib"]
 
 [dependencies]
-malevich = { path = "../..", features = ["serde"] }
+malevich = { path = "../..", features = ["serde", "pixel"] }
 js-sys = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

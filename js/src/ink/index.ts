@@ -1,5 +1,6 @@
 export type { Panel } from "../engine.js";
-export type { Viewport } from "../plot.js";
+export type { ViewportWindows } from "../plot.js";
+export { PlotColumn } from "./PlotColumn.js";
 export { PlotWidget, type PlotWidgetProps } from "./PlotWidget.js";
 export {
   PlotState,

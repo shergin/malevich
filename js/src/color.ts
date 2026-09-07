@@ -123,3 +123,118 @@ export function scaleToJSON(scale: "Auto" | "Linear" | "Log" | "Time" | { bands:
   }
   return scale;
 }
+
+/** Wire form of a categorical palette — `{ colors: [...] }` matching crate serde. */
+export type PaletteJSON = { colors: unknown[] };
+
+export const Palette = {
+  OKABE_ITO: {
+    colors: [
+      { Rgb: [230, 159, 0] },
+      { Rgb: [86, 180, 233] },
+      { Rgb: [0, 158, 115] },
+      { Rgb: [213, 94, 0] },
+      { Rgb: [204, 121, 167] },
+      { Rgb: [0, 114, 178] },
+      { Rgb: [240, 228, 66] },
+    ],
+  } satisfies PaletteJSON,
+  of(colors: Iterable<string | Color>): PaletteJSON {
+    const list = [...colors].map((color) => colorToJSON(canonicalizeColor(color)));
+    if (list.length === 0) {
+      throw new TypeError("Palette.of requires at least one color");
+    }
+    return { colors: list };
+  },
+};
+
+/** Wire form of a continuous colormap. */
+export type ColormapJSON = {
+  stops: [number, number, number][];
+  midpoint?: number;
+  log?: boolean;
+};
+
+export const Colormap = {
+  VIRIDIS: {
+    stops: [
+      [68, 1, 84],
+      [59, 82, 139],
+      [33, 145, 140],
+      [94, 201, 98],
+      [253, 231, 37],
+    ],
+  } satisfies ColormapJSON,
+  MAGMA: {
+    stops: [
+      [0, 0, 4],
+      [81, 18, 124],
+      [183, 55, 121],
+      [252, 137, 97],
+      [252, 253, 191],
+    ],
+  } satisfies ColormapJSON,
+  CIVIDIS: {
+    stops: [
+      [0, 32, 77],
+      [65, 77, 107],
+      [124, 123, 120],
+      [188, 175, 111],
+      [255, 233, 69],
+    ],
+  } satisfies ColormapJSON,
+  GREYS: { stops: [[64, 64, 64], [250, 250, 250]] } satisfies ColormapJSON,
+  RED_BLUE: {
+    stops: [
+      [202, 0, 32],
+      [244, 165, 130],
+      [247, 247, 247],
+      [146, 197, 222],
+      [5, 113, 176],
+    ],
+  } satisfies ColormapJSON,
+  PURPLE_ORANGE: {
+    stops: [
+      [94, 60, 153],
+      [178, 171, 210],
+      [247, 247, 247],
+      [253, 184, 99],
+      [230, 97, 1],
+    ],
+  } satisfies ColormapJSON,
+  named(name: string): ColormapJSON {
+    const key = name.trim().toLowerCase().replaceAll("_", "-");
+    const maps: Record<string, ColormapJSON> = {
+      viridis: Colormap.VIRIDIS,
+      magma: Colormap.MAGMA,
+      cividis: Colormap.CIVIDIS,
+      greys: Colormap.GREYS,
+      grays: Colormap.GREYS,
+      "red-blue": Colormap.RED_BLUE,
+      "purple-orange": Colormap.PURPLE_ORANGE,
+    };
+    const map = maps[key];
+    if (!map) {
+      throw new TypeError(`unknown colormap '${name}'`);
+    }
+    return { ...map, stops: map.stops.map((stop) => [...stop] as [number, number, number]) };
+  },
+  of(stops: Iterable<[number, number, number]>): ColormapJSON {
+    const list = [...stops];
+    if (list.length < 2) {
+      throw new TypeError("Colormap.of requires at least two stops");
+    }
+    return { stops: list };
+  },
+  centeredAt(map: ColormapJSON, midpoint: number): ColormapJSON {
+    if (!Number.isFinite(midpoint)) {
+      throw new TypeError("Colormap.centeredAt requires a finite midpoint");
+    }
+    return { ...map, midpoint };
+  },
+  log(map: ColormapJSON): ColormapJSON {
+    return { ...map, log: true };
+  },
+};
+
+export type Reducer = "Count" | "Sum" | "Mean" | "Median" | "Min" | "Max" | { Percentile: number };

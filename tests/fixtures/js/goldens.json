@@ -1,0 +1,713 @@
+[
+  {
+    "name": "line",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Line": {
+              "color": null,
+              "label": null,
+              "style": "Pixels",
+              "x": null,
+              "y": [
+                1.0,
+                5.0,
+                2.0,
+                8.0
+              ]
+            }
+          }
+        ],
+        "title": null,
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "7.5 ┤                                 ⡠⠊\n    │                               ⡠⠊\n    │                             ⡠⠊\n5.0 ┤         ⣀⠔⠊⠑⠢⢄⡀           ⡠⠊\n    │      ⣀⠔⠊      ⠈⠑⠢⢄⡀     ⡠⠊\n2.5 ┤   ⡠⠔⠉             ⠈⠑⠢⢄⡠⠊\n    │⡠⠔⠉\n0.0 ┤\n    └┬──────────┬───────────┬──────────┬\n     0          1           2          3"
+  },
+  {
+    "name": "bar",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Bars": {
+              "color": null,
+              "label": null,
+              "placement": {
+                "Bands": [
+                  "mon",
+                  "tue",
+                  "wed"
+                ]
+              },
+              "values": [
+                3.0,
+                7.0,
+                4.5
+              ]
+            }
+          }
+        ],
+        "title": null,
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "7.5 ┤             ▄▄▄▄▄▄▄▄\n    │             ████████\n5.0 ┤             ████████\n    │             ████████   ▇▇▇▇▇▇▇▇\n    │   ▃▃▃▃▃▃▃▃  ████████   ████████\n2.5 ┤   ████████  ████████   ████████\n    │   ████████  ████████   ████████\n0.0 ┤   ████████  ████████   ████████\n    └───────────────────────────────────\n           mon       tue        wed"
+  },
+  {
+    "name": "hist",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Bars": {
+              "color": null,
+              "label": null,
+              "placement": {
+                "Spans": {
+                  "start": 1.0,
+                  "width": 1.0
+                }
+              },
+              "values": [
+                1.0,
+                3.0,
+                3.0,
+                1.0,
+                1.0
+              ]
+            }
+          }
+        ],
+        "title": null,
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "3 ┤            ████████████\n  │            ████████████\n2 ┤            ████████████\n  │            ████████████\n  │            ████████████\n1 ┤      ▇▇▇▇▇▇████████████▇▇▇▇▇▇▇▇▇▇▇▇▇\n  │      ███████████████████████████████\n0 ┤      ███████████████████████████████\n  └┬───────────┬───────────┬───────────┬\n   0           2           4           6"
+  },
+  {
+    "name": "annotated",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Line": {
+              "color": null,
+              "label": null,
+              "style": "Pixels",
+              "x": null,
+              "y": [
+                1.0,
+                5.0,
+                2.0,
+                8.0
+              ]
+            }
+          },
+          {
+            "Rule": {
+              "color": null,
+              "label": "mid",
+              "orientation": {
+                "Horizontal": 4.0
+              }
+            }
+          },
+          {
+            "Text": {
+              "color": null,
+              "text": "hi",
+              "x": 2.0,
+              "y": 6.0
+            }
+          }
+        ],
+        "title": "annotated",
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "               annotated\n                 ── mid\n8 ┤                                  ⢀⠔⠊\n  │                        hi     ⢀⠤⠊⠁\n  │         ⢀⡠⠔⠒⠤⢄⣀            ⢀⡠⠊⠁\n4 ┤⠉⠉⠉⠉⠉⣉⠭⠝⠋⠉⠉⠉⠉⠉⠉⠉⠉⠙⠛⠫⠭⣉⡉⠉⠉⠉⡩⠛⠉⠉⠉⠉⠉⠉⠉⠉⠉\n  │ ⣀⠤⠒⠉                 ⠈⠉⠒⠉\n0 ┤⠉\n  └┬───────────┬───────────┬───────────┬\n   0           1           2           3"
+  },
+  {
+    "name": "area",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Area": {
+              "color": null,
+              "high": [
+                1.0,
+                3.0,
+                2.0,
+                4.0
+              ],
+              "horizontal": false,
+              "label": "fill",
+              "low": null,
+              "x": null
+            }
+          }
+        ],
+        "title": null,
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "                ▄▄ fill\n4 ┤                                 ⢀⣠⣴⣾\n  │           ⢀⣀⣀                ⣀⣤⣾⣿⣿⣿⣿\n  │        ⣀⣤⣶⣿⣿⣿⣿⣷⣶⣦⣤⣀⣀     ⢀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿\n2 ┤    ⢀⣠⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n  │ ⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n  │⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n0 ┤⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n  └┬───────────┬───────────┬───────────┬\n   0           1           2           3"
+  },
+  {
+    "name": "stacked-bars",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Bars": {
+              "color": null,
+              "label": "low",
+              "placement": {
+                "Bands": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              "values": [
+                1.0,
+                2.0,
+                1.5
+              ]
+            }
+          },
+          {
+            "Bars": {
+              "base": [
+                1.0,
+                2.0,
+                1.5
+              ],
+              "color": null,
+              "label": "high",
+              "placement": {
+                "Bands": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              "values": [
+                0.5,
+                1.0,
+                0.5
+              ]
+            }
+          }
+        ],
+        "title": "stack",
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "                 stack\n            ██ low  ██ high\n3 ┤              ████████\n  │              ████████   ▁▁▁▁▁▁▁▁▁\n2 ┤   ▁▁▁▁▁▁▁▁   ████████   █████████\n1 ┤   ████████   ████████   █████████\n  │   ████████   ████████   █████████\n0 ┤   ████████   ████████   █████████\n  └─────────────────────────────────────\n          a          b          c"
+  },
+  {
+    "name": "cells",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Cells": {
+              "colormap": {
+                "stops": [
+                  [
+                    68,
+                    1,
+                    84
+                  ],
+                  [
+                    59,
+                    82,
+                    139
+                  ],
+                  [
+                    33,
+                    145,
+                    140
+                  ],
+                  [
+                    94,
+                    201,
+                    98
+                  ],
+                  [
+                    253,
+                    231,
+                    37
+                  ]
+                ]
+              },
+              "columns": 4,
+              "extents": null,
+              "values": [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0,
+                7.0,
+                8.0,
+                9.0,
+                10.0,
+                11.0,
+                12.0,
+                13.0,
+                14.0,
+                15.0
+              ]
+            }
+          }
+        ],
+        "title": "grid",
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Quadrants",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "                  grid\n4 ┤████████████████████████████████████\n  │████████████████████████████████████\n  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n2 ┤▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\n  │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n  │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\n0 ┤░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\n  └┬────────┬────────┬────────┬────────┬\n   0        1        2        3        4"
+  },
+  {
+    "name": "range",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Range": {
+              "body": [
+                [
+                  2.0,
+                  3.0
+                ],
+                [
+                  3.0,
+                  4.0
+                ]
+              ],
+              "color": null,
+              "high": [
+                4.0,
+                5.0
+              ],
+              "label": "box",
+              "low": [
+                1.0,
+                2.0
+              ],
+              "marker": [
+                2.5,
+                3.5
+              ],
+              "placement": {
+                "Bands": [
+                  "a",
+                  "b"
+                ]
+              }
+            }
+          }
+        ],
+        "title": "intervals",
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "               intervals\n                 ┃┃ box\n5 ┤                        ⠉⠉⢹⠉⠉\n  │        ⠤⠤⡤⠤⠤         ⢠⣤⣤⣤⣼⣤⣤⣤⡄\n  │          ⡇           ⢸━━━━━━━━\n3 ┤      ⢸⣿⣿⣿⣿⣿⣿⣿⡇       ⠈⠉⠉⠉⢹⠉⠉⠉⠁\n  │      ━━━━━━━━━         ⠒⠒⠚⠒⠒\n1 ┤        ⣀⣀⣇⣀⣀\n  └─────────────────────────────────────\n             a               b"
+  },
+  {
+    "name": "heatmap",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": true,
+        "layers": [
+          {
+            "Cells": {
+              "colormap": {
+                "stops": [
+                  [
+                    68,
+                    1,
+                    84
+                  ],
+                  [
+                    59,
+                    82,
+                    139
+                  ],
+                  [
+                    33,
+                    145,
+                    140
+                  ],
+                  [
+                    94,
+                    201,
+                    98
+                  ],
+                  [
+                    253,
+                    231,
+                    37
+                  ]
+                ]
+              },
+              "columns": 4,
+              "extents": null,
+              "values": [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0,
+                7.0,
+                8.0,
+                9.0,
+                10.0,
+                11.0,
+                12.0,
+                13.0,
+                14.0,
+                15.0
+              ]
+            }
+          }
+        ],
+        "title": null,
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Quadrants",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "4 ┤███████████████████████████████  █ 15\n  │███████████████████████████████  █\n3 ┤▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓ 10\n  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓\n2 ┤▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▒\n1 ┤▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▒ 5\n  │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ░\n0 ┤░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ░ 0\n  └┬───────┬───────┬──────┬───────┬\n   0       1       2      3       4"
+  },
+  {
+    "name": "color-by",
+    "document": {
+      "kind": "plot",
+      "spec": {
+        "colorbar": false,
+        "layers": [
+          {
+            "Line": {
+              "color": null,
+              "color_by": [
+                "a",
+                "a",
+                "b",
+                "b"
+              ],
+              "label": null,
+              "style": "Corners",
+              "x": null,
+              "y": [
+                1.0,
+                2.0,
+                3.0,
+                4.0
+              ]
+            }
+          }
+        ],
+        "palette": {
+          "colors": [
+            {
+              "Rgb": [
+                230,
+                159,
+                0
+              ]
+            },
+            {
+              "Rgb": [
+                86,
+                180,
+                233
+              ]
+            },
+            {
+              "Rgb": [
+                0,
+                158,
+                115
+              ]
+            },
+            {
+              "Rgb": [
+                213,
+                94,
+                0
+              ]
+            },
+            {
+              "Rgb": [
+                204,
+                121,
+                167
+              ]
+            },
+            {
+              "Rgb": [
+                0,
+                114,
+                178
+              ]
+            },
+            {
+              "Rgb": [
+                240,
+                228,
+                66
+              ]
+            }
+          ]
+        },
+        "title": "groups",
+        "x": "Auto",
+        "x_domain": null,
+        "x_label": null,
+        "y": "Auto",
+        "y_domain": null,
+        "y_label": null
+      },
+      "version": 1
+    },
+    "frame": {
+      "charset": "Braille",
+      "color": "Plain",
+      "height": 10,
+      "theme": {
+        "palette": [
+          "Cyan",
+          "Yellow",
+          "Green",
+          "Magenta",
+          "Blue",
+          "Red"
+        ]
+      },
+      "width": 40
+    },
+    "expected": "                 groups\n               ── a  ── b\n4 ┤                                ╭────\n  │                           ─────╯\n3 ┤\n2 ┤             ╭─\n  │       ╭─────╯\n1 ┤   ────╯\n  └┬───────────┬───────────┬───────────┬\n   0           1           2           3"
+  }
+]

@@ -73,9 +73,22 @@ export function table(
   columns: Iterable<string>,
   values: SeriesLike,
 ): Plot {
+  return tableWith(rows, columns, values);
+}
+
+export function tableWith(
+  rows: Iterable<string>,
+  columns: Iterable<string>,
+  values: SeriesLike,
+  options: { colormap?: import("./color.js").ColormapJSON } = {},
+): Plot {
   return fromPreset(
     "table",
-    { rows: [...rows], columns: [...columns] },
+    {
+      rows: [...rows],
+      columns: [...columns],
+      colormap: options.colormap ?? null,
+    },
     [toFloat64(values)],
   );
 }

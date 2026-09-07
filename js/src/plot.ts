@@ -1,5 +1,6 @@
 import { inspect } from "node:util";
-import { ScaleJSON, scaleToJSON } from "./color.js";
+import { ScaleJSON, scaleToJSON, type PaletteJSON } from "./color.js";
+import { Mapping } from "./mapping.js";
 import { asPair, engine } from "./engine.js";
 import { wrapWasm } from "./error.js";
 import { Frame } from "./frame.js";
@@ -7,7 +8,7 @@ import { Mark } from "./mark.js";
 import { Raster, unpackRaster } from "./raster.js";
 
 /** An axis window pair. `undefined` on an axis means automatic. */
-export type Viewport = {
+export type ViewportWindows = {
   x?: [number, number];
   y?: [number, number];
 };
@@ -131,7 +132,11 @@ export class Plot {
     return this.withSpec({ colorbar: true });
   }
 
-  viewport(view: Viewport): Plot {
+  palette(palette: PaletteJSON): Plot {
+    return this.withSpec({ palette });
+  }
+
+  viewport(view: ViewportWindows): Plot {
     let next: Plot = this;
     const x = asPair(view.x);
     const y = asPair(view.y);
@@ -156,6 +161,45 @@ export class Plot {
     }
   }
 
+  /**
+   * Plot panel as sixel / kitty / iTerm2. Detection stays in JS — pass an
+   * explicit protocol. Deterministic for a given protocol and cell size.
+   */
+  renderPixels(
+    frame: Frame,
+    graphics: { protocol: "sixel" | "kitty" | "iterm2"; cellSize?: [number, number] },
+  ): string {
+    const [cellWidth, cellHeight] = graphics.cellSize ?? [8, 16];
+    try {
+      return engine().render_pixels_columns(
+        JSON.stringify(this.toJSON()),
+        JSON.stringify(frame.toJSON()),
+        this.columns,
+        graphics.protocol,
+        cellWidth,
+        cellHeight,
+      );
+    } catch (error) {
+      wrapWasm(error);
+    }
+  }
+
+  /**
+   * Best tier the environment offers: pixels when a protocol is advertised,
+   * otherwise cells. Reads `process.env` — not for snapshots.
+   */
+  renderBest(frame: Frame): string {
+    const graphics = detectGraphics();
+    if (!graphics) {
+      return this.render(frame);
+    }
+    try {
+      return this.renderPixels(frame, graphics);
+    } catch {
+      return this.render(frame);
+    }
+  }
+
   tryRender(frame: Frame): string {
     return this.render(frame);
   }
@@ -174,12 +218,14 @@ export class Plot {
     }
   }
 
-  mapping(frame: Frame) {
+  mapping(frame: Frame): Mapping {
     try {
-      return engine().mapping_columns(
-        JSON.stringify(this.toJSON()),
-        JSON.stringify(frame.toJSON()),
-        this.columns,
+      return Mapping.fromWasm(
+        engine().mapping_columns(
+          JSON.stringify(this.toJSON()),
+          JSON.stringify(frame.toJSON()),
+          this.columns,
+        ),
       );
     } catch (error) {
       wrapWasm(error);
@@ -294,6 +340,31 @@ export class Grid {
   toString(): string {
     return this.render(Frame.detect());
   }
+}
+
+function detectGraphics():
+  | { protocol: "sixel" | "kitty" | "iterm2"; cellSize: [number, number] }
+  | undefined {
+  const env = typeof process !== "undefined" ? process.env : {};
+  if (env.TMUX) {
+    return undefined;
+  }
+  const term = env.TERM ?? "";
+  if (term === "dumb" || term.startsWith("screen") || term.startsWith("tmux")) {
+    return undefined;
+  }
+  const cellSize: [number, number] = [8, 16];
+  if (env.KITTY_WINDOW_ID || term.includes("kitty") || term.includes("ghostty")) {
+    return { protocol: "kitty", cellSize };
+  }
+  const program = (env.TERM_PROGRAM ?? "").toLowerCase();
+  if (program === "iterm.app" || program.includes("iterm")) {
+    return { protocol: "iterm2", cellSize };
+  }
+  if (term.includes("sixel") || env.TERM_PROGRAM === "WezTerm" || env.WT_SESSION) {
+    return { protocol: "sixel", cellSize };
+  }
+  return undefined;
 }
 
 function rebaseCols(value: unknown, offset: number): void {

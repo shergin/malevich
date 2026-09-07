@@ -58,6 +58,7 @@ jobs:
         working-directory: js
       - run: node examples/hello.mjs
         working-directory: js
+      - run: cargo run --example js_goldens --features serde -- --check
 
   # The published CLI crate (`kaz`) is a workspace member kept out of the default
   # set, so every job above builds the library alone. This job is its own gate —

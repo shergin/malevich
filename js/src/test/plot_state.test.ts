@@ -286,9 +286,11 @@ test("mapping.viewport exposes window arithmetic", () => {
   }));
   const view = mapping.viewport();
   assert.equal(view.isAuto, false, "a seeded mapping fixes both axes");
-  const x = view.x as [number, number];
+  const x = view.x;
+  assert.ok(x);
   const zoomed = view.zoomX(0.8, (x[0] + x[1]) / 2);
-  const zx = zoomed.x as [number, number];
+  const zx = zoomed.x;
+  assert.ok(zx);
   assert.ok(zx[1] - zx[0] < x[1] - x[0]);
   assert.equal(view.resetY().y, undefined);
   assert.ok(view.withX(1, 4).x);

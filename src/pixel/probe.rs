@@ -12,6 +12,7 @@
 //! Parsing is pure over the reply bytes: fixtures test it without a terminal.
 
 /// Maximum aggregate reply bytes retained and parsed from one probe.
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) const MAX_REPLY_BYTES: usize = 4 * 1024;
 
 /// The query batch, barrier last.

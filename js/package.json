@@ -1,6 +1,6 @@
 {
   "name": "malevich",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Terminal plotting for JavaScript: a small grammar of marks, honest axes, millions of points. WASM-backed, Ink-ready.",
   "type": "module",
   "license": "MIT OR Apache-2.0",
@@ -25,6 +25,10 @@
     "cli",
     "braille"
   ],
+  "bin": {
+    "malevich": "./dist/cli.js"
+  },
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

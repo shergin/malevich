@@ -12,10 +12,12 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
   == 0`) sit to the right of a wide glyph. This is the host-neutral snapshot
   Ink (and any future cell-buffer host) consumes; the ratatui adapter may
   keep its private path in 1.x.
-- The JS rim (`js/`, npm `malevich`) is public. 0.2 gives Ink feature parity
-  with the ratatui widget: the same `PlotState` grammar, the same overlays,
-  the host still owns the event loop. See [js/CHANGELOG.md](js/CHANGELOG.md)
-  and [js/README.md](js/README.md).
+- The JS rim (`js/`, npm `malevich`) is public. 0.3 covers the eight-mark
+  grammar, shared goldens against this crate, Mapping/Viewport as JS values,
+  `npx malevich`, and pixel encoding (`Plot.renderPixels`) with detection in
+  JS. See [js/CHANGELOG.md](js/CHANGELOG.md) and [js/README.md](js/README.md).
+  `cargo run --example js_goldens --features serde -- --check` is the shared
+  oracle gate.
 - With `serde`, a series may deserialize from `{ "col": N }` inside
   `data::with_columns`, so a render request can keep large buffers out of
   the JSON document. Stored documents still encode series as arrays of

@@ -69,6 +69,10 @@ required-features = ["pixel"]
 name = "evcxr"
 required-features = ["evcxr"]
 
+[[example]]
+name = "js_goldens"
+required-features = ["serde"]
+
 [[bench]]
 name = "ticks"
 harness = false

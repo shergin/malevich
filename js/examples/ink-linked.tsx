@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, render, useApp, useInput, useStdin, useStdout } from "ink";
 import { Color, Line, Plot } from "../dist/index.js";
 import {
+  PlotColumn,
   PlotState,
   PlotWidget,
   disableMouse,

@@ -66,6 +66,14 @@ type Native = {
     columns: Float64Array[],
   ): JsMapping;
   expand_preset(name: string, options: string, columns: Float64Array[]): string;
+  render_pixels_columns(
+    document: string,
+    frame: string,
+    columns: Float64Array[],
+    protocol: string,
+    cell_width: number,
+    cell_height: number,
+  ): string;
   JsViewport: { auto(): JsViewport };
 };
 
@@ -95,6 +103,12 @@ let cached: Native | undefined;
 export function engine(): Native {
   cached ??= load();
   return cached;
+}
+
+/** Load the wasm module. Sync on Node/Bun/Deno; call once at startup in bundlers. */
+export function init(): Promise<void> {
+  engine();
+  return Promise.resolve();
 }
 
 export const engineVersion = "1.20.0";

@@ -5,6 +5,23 @@ The renderer underneath is whatever `engineVersion` reports.
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-07
+
+The JS rim covers the grammar, proves it against the crate, and stops leaking
+wasm handles.
+
+- Marks: `Cells` (`matrix` / `rgb` / `classes`), `Range` (`xy` / `y` / `over`,
+  `body`, `marker`), `Bars.spans` / `Bars.at` / `Bars.base`. `Plot.palette`,
+  `Palette`, `Colormap`, `tableWith`.
+- `Mapping` and `Viewport` are JS values. You never call `free()`.
+- Shared goldens: `tests/fixtures/js/goldens.json`, written by
+  `cargo run --example js_goldens --features serde`, checked in CI against both
+  the crate and wasm.
+- `npx malevich` — a tour, or `line` / `hist` / `bar` from stdin.
+- `Plot.renderPixels` / `Plot.renderBest` (JS sniffs the environment; wasm
+  never does). `PlotColumn` injects Ink `origin` from siblings above.
+- npm README uses the crate's showcase screenshots.
+
 ## 0.2.0 — 2026-09-06
 
 Ink feature parity with the ratatui widget. A chart becomes an instrument

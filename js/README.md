@@ -7,8 +7,12 @@ The engine is the [Rust crate](https://crates.io/crates/malevich) 1.x, compiled
 to WASM. A plot is a value. Rendering is a pure function of that value and a
 frame. The library never owns the terminal. Zero native dependencies.
 
+![Loss curves, a calendar time axis, and smoothing](https://raw.githubusercontent.com/shergin/malevich/main/examples/showcase-lines.png)
+
 ```sh
 npm install malevich
+npx malevich              # a tour, sized to your terminal
+printf '1 5 2 8' | npx malevich line
 ```
 
 ESM only (Node 18+, Bun, Deno). `require()` is not exported.
@@ -88,9 +92,19 @@ console.log(boxPlot(["train", "val"], [trainLoss, valLoss]));
 console.log(describe(["train", "val"], [trainLoss, valLoss]));
 ```
 
-Marks on the JS rim: `Line`, `Points`, `Bars`, `Area`, `Rule`, `Text`. Cells
-and range ride in through presets (`heatmap`, `boxPlot`, `errorBars`) until
-their constructors land. A preset is a proven composition:
+Eight marks: `Line`, `Points`, `Bars`, `Area`, `Cells`, `Range`, `Rule`,
+`Text`. A preset is a proven composition. Shared goldens prove JS output is
+byte-identical to the crate for the same document and frame.
+
+```js
+import { Bars, Cells, Colormap, Range } from "malevich";
+
+new Plot().layer(Cells.matrix(4, values).colormap(Colormap.VIRIDIS));
+new Plot().layer(Range.over(["a", "b"], low, high).body(q1, q3).marker(median));
+new Plot()
+  .layer(Bars.new(["a", "b"], lower).label("a"))
+  .layer(Bars.new(["a", "b"], upper).base(lower).label("b"));
+```
 
 ```js
 const chart = new Plot()
@@ -148,7 +162,7 @@ re-aggregates to the visible window on the next render.
 const mapping = chart.mapping(frame);
 const data = mapping.dataAt(column, row);      // [x, y] or undefined
 const view = mapping.viewport().zoomX(0.8, data[0]);
-console.log(chart.viewport({ x: view.x }).render(frame));
+console.log(chart.viewport(view.windows()).render(frame));
 ```
 
 Hosts that want different gestures than the Ink widget drive this physics
@@ -217,19 +231,38 @@ Each pane keeps its own y. The passive pane draws a vertical-only crosshair at
 *its* column for that x (`mapping.columnAt`), snaps its own series, and reads
 out the same instant.
 
-`origin={{ column, row }}` tells the widget where it sits in the terminal so
-mouse coordinates hit-test correctly when anything is stacked above it.
+Wrap stacked panes in `PlotColumn` and each `PlotWidget` gets `origin` from
+the heights above it — no manual row math. Pass `origin` yourself only when
+the layout is not a column.
+
+```js
+import { PlotColumn, PlotWidget } from "malevich/ink";
+
+<PlotColumn>
+  <Text>header</Text>
+  <PlotWidget plot={main} state={mainState} height={16} />
+  <PlotWidget plot={ctx} state={ctxState} height={8} />
+</PlotColumn>
+```
 
 A live tour: `npx tsx examples/ink-zoom.tsx` in this repo (two million points,
 wheel-zoom into any spike). Linked panes: `npx tsx examples/ink-linked.tsx`.
+
+Pixels, when the terminal speaks them:
+
+```js
+console.log(chart.renderBest(Frame.detect()));           // sniff env, then cells or image
+console.log(chart.renderPixels(frame, { protocol: "kitty" }));
+```
+
+Detection stays in JS. The wasm path is pure over the protocol you name.
 
 ## What it will not be
 
 Not a TUI framework (it never owns the terminal or handles input). No
 animations. No file parsing or dataframes — conversion happens once, at the
-rim, into `Float64Array` (`NaN` = gap). No config-object kitchen sink. Pixel
-protocols (sixel / kitty / iTerm2) are Phase 4 of the JS rim; the crate already
-has them.
+rim, into `Float64Array` (`NaN` = gap). No config-object kitchen sink. Not a
+browser charting library — `renderBest` is still a terminal string.
 
 ## Engine
 
@@ -237,7 +270,7 @@ has them.
 |---|---|
 | npm | `malevich` 0.x |
 | crate | [`malevich`](https://crates.io/crates/malevich) 1.x (`engineVersion`) |
-| artifact | `malevich_js_bg.wasm` (~216 KB gzipped) |
+| artifact | `malevich_js_bg.wasm` (~256 KB gzipped) |
 | license | MIT or Apache-2.0 |
 
 ## More

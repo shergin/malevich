@@ -1,11 +1,6 @@
-import {
-  asPair,
-  asPanel,
-  drop,
-  type JsMapping,
-  type Panel,
-} from "../engine.js";
-import type { Viewport } from "../plot.js";
+import { asPair, type Panel } from "../engine.js";
+import { Mapping, Viewport as View } from "../mapping.js";
+import type { ViewportWindows } from "../plot.js";
 
 /** Wheel and keyboard zoom steps: one notch in, its exact inverse out. */
 export const ZOOM_IN = 0.8;
@@ -48,14 +43,14 @@ type Hover =
  */
 export class PlotState {
   private area: Panel = { column: 0, row: 0, width: 0, height: 0 };
-  private mappingValue: JsMapping | undefined;
+  private mappingValue: Mapping | undefined;
   private viewX: [number, number] | undefined;
   private viewY: [number, number] | undefined;
   private hoverValue: Hover | undefined;
   private dragValue: Drag | undefined;
 
   /** The mapping cached by the last stateful render. */
-  mapping(): JsMapping | undefined {
+  mapping(): Mapping | undefined {
     return this.mappingValue;
   }
 
@@ -73,12 +68,12 @@ export class PlotState {
     if (localColumn < 0 || localRow < 0) {
       return undefined;
     }
-    return asPair(mapping.dataAt(localColumn, localRow));
+    return mapping.dataAt(localColumn, localRow);
   }
 
   /** The plot rectangle of the last stateful render, in terminal coordinates. */
   plotArea(): Panel | undefined {
-    const panel = asPanel(this.mappingValue?.plotArea);
+    const panel = this.mappingValue?.plotArea;
     if (!panel) {
       return undefined;
     }
@@ -118,7 +113,7 @@ export class PlotState {
    */
   hoverX(x: number): boolean {
     const column = Number.isFinite(x)
-      ? Number(this.mappingValue?.columnAt(x))
+      ? (this.mappingValue?.columnAt(x) ?? Number.NaN)
       : Number.NaN;
     const hover =
       Number.isFinite(column)
@@ -133,12 +128,12 @@ export class PlotState {
   }
 
   /** The viewport the next stateful render applies. */
-  viewport(): Viewport {
+  viewport(): ViewportWindows {
     return { x: this.viewX, y: this.viewY };
   }
 
   /** Replaces the viewport — the escape hatch for a host's own gestures. */
-  setViewport(view: Viewport): void {
+  setViewport(view: ViewportWindows): void {
     this.viewX = asPair(view.x);
     this.viewY = asPair(view.y);
   }
@@ -258,9 +253,9 @@ export class PlotState {
    * Called by the stateful widget after each render: caches the mapping of
    * what is on screen and the widget's rectangle in terminal coordinates.
    */
-  capture(mapping: JsMapping, area: Panel): void {
+  capture(mapping: Mapping, area: Panel): void {
     if (this.mappingValue && this.mappingValue !== mapping) {
-      drop(this.mappingValue);
+      this.mappingValue.dispose();
     }
     this.mappingValue = mapping;
     this.area = area;
@@ -338,15 +333,13 @@ export class PlotState {
 
   private zoomCenter(factor: number): boolean {
     const mapping = this.mappingValue;
-    const panel = asPanel(mapping?.plotArea);
+    const panel = mapping?.plotArea;
     if (!mapping || !panel || this.xIsBands()) {
       return false;
     }
-    const anchor = asPair(
-      mapping.dataAt(
-        panel.column + Math.floor(panel.width / 2),
-        panel.row + Math.floor(panel.height / 2),
-      ),
+    const anchor = mapping.dataAt(
+      panel.column + Math.floor(panel.width / 2),
+      panel.row + Math.floor(panel.height / 2),
     );
     if (!anchor) {
       return false;
@@ -356,7 +349,7 @@ export class PlotState {
 
   private panBy(from: [number, number], to: [number, number]): boolean {
     const mapping = this.mappingValue;
-    const panel = asPanel(mapping?.plotArea);
+    const panel = mapping?.plotArea;
     if (!mapping || !panel) {
       return false;
     }
@@ -392,12 +385,12 @@ export class PlotState {
     if (!mapping.yCategories) {
       view = take(view, view.withY(a[1], c[1]));
     }
-    this.viewX = asPair(view.x);
-    this.viewY = asPair(view.y);
-    drop(view);
+    this.viewX = view.x;
+    this.viewY = view.y;
+    view.dispose();
   }
 
-  private commitX(transform: (seeded: ReturnType<JsMapping["viewport"]>) => ReturnType<JsMapping["viewport"]>): boolean {
+  private commitX(transform: (seeded: View) => View): boolean {
     const mapping = this.mappingValue;
     if (!mapping) {
       return false;
@@ -411,15 +404,15 @@ export class PlotState {
       : take(seeded, seeded.resetY());
     const next = transform(seeded);
     if (next !== seeded) {
-      drop(seeded);
+      seeded.dispose();
     }
-    this.viewX = asPair(next.x);
-    this.viewY = asPair(next.y);
-    drop(next);
+    this.viewX = next.x;
+    this.viewY = next.y;
+    next.dispose();
     return true;
   }
 
-  private commitBoth(transform: (seeded: ReturnType<JsMapping["viewport"]>) => ReturnType<JsMapping["viewport"]>): boolean {
+  private commitBoth(transform: (seeded: View) => View): boolean {
     const mapping = this.mappingValue;
     if (!mapping) {
       return false;
@@ -433,11 +426,11 @@ export class PlotState {
     }
     const next = transform(seeded);
     if (next !== seeded) {
-      drop(seeded);
+      seeded.dispose();
     }
-    this.viewX = asPair(next.x);
-    this.viewY = asPair(next.y);
-    drop(next);
+    this.viewX = next.x;
+    this.viewY = next.y;
+    next.dispose();
     return true;
   }
 
@@ -458,9 +451,9 @@ export function linkX(active: PlotState, passive: PlotState): void {
   passive.hoverX(x ?? Number.NaN);
 }
 
-function take<T extends { free?(): void }>(previous: T, next: T): T {
+function take<T extends { dispose(): void }>(previous: T, next: T): T {
   if (previous !== next) {
-    drop(previous);
+    previous.dispose();
   }
   return next;
 }

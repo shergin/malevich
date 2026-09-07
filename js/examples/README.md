@@ -8,6 +8,9 @@ Pixel side-by-side (cells vs sixel/kitty) is Phase 4 of [`notes/js.md`](../../no
 Until then these render cells, sized to your terminal via `Frame.detect()`.
 
 ```sh
+npx malevich              # published package: a tour
+printf '1 5 2 8' | npx malevich line
+
 cd js
 npm install
 npm run build

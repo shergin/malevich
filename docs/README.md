@@ -21,6 +21,7 @@ What to read when.
   - understand the speed story — [performance.md](performance.md)
   - persist and interchange specs — [serde.md](serde.md)
   - use it from JavaScript — [../js/README.md](../js/README.md)
+    (`npx malevich`, shared goldens via `js_goldens`)
 - **What does it look like?**
   [../EXAMPLES.md](../EXAMPLES.md) — the gallery, every chart real program
   output. `cargo run --example showcase` renders a colored tour. The JS

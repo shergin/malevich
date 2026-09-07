@@ -58,6 +58,32 @@ pub fn render_columns(document: &str, frame: &str, columns: &JsValue) -> Result<
     document.try_render(&frame).map_err(js_error)
 }
 
+/// Hybrid pixel render. `protocol` is `sixel`, `kitty`, or `iterm2`.
+/// Detection stays in JS; this path is pure over the named protocol.
+#[wasm_bindgen]
+pub fn render_pixels_columns(
+    document: &str,
+    frame: &str,
+    columns: &JsValue,
+    protocol: &str,
+    cell_width: u16,
+    cell_height: u16,
+) -> Result<String, JsError> {
+    let document = decode_document(document, js_columns(columns)?)?;
+    let frame = decode_frame(frame)?;
+    let plot = document_plot(&document)?;
+    let protocol = match protocol {
+        "sixel" | "Sixel" => malevich::pixel::Protocol::Sixel,
+        "kitty" | "Kitty" => malevich::pixel::Protocol::Kitty,
+        "iterm2" | "iTerm2" | "ITerm2" => malevich::pixel::Protocol::ITerm2,
+        other => {
+            return Err(JsError::new(&format!("unknown pixel protocol '{other}'")));
+        }
+    };
+    let graphics = malevich::pixel::Graphics::new(protocol).cell_size(cell_width, cell_height);
+    plot.try_render_pixels(&frame, &graphics).map_err(js_error)
+}
+
 /// Same inputs as [`render_columns`]; returns a packed raster:
 /// `{ width, height, glyphs, fg, bg, columns }` where `fg`/`bg` are packed
 /// colors (4 bytes/cell) and `columns` is one byte per cell.
@@ -130,7 +156,11 @@ pub fn expand_preset(name: &str, options: &str, columns: &JsValue) -> Result<Str
         "table" => {
             let options: TableOptions =
                 serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            malevich::try_table(options.rows, options.columns, column(&columns, 0)?)
+            let mut table = malevich::TableOptions::new();
+            if let Some(colormap) = options.colormap {
+                table = table.colormap(colormap);
+            }
+            malevich::table_with(options.rows, options.columns, column(&columns, 0)?, table)
                 .map_err(js_error)?
         }
         "error_bars" | "errorBars" => malevich::error_bars(
@@ -185,6 +215,8 @@ struct DescribeOptions {
 struct TableOptions {
     rows: Vec<String>,
     columns: Vec<String>,
+    #[serde(default)]
+    colormap: Option<malevich::scale::Colormap>,
 }
 
 /// Resolved geometry of one render, queryable from JavaScript.
