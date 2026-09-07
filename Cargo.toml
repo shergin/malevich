@@ -11,7 +11,7 @@ categories = ["visualization", "command-line-interface"]
 # README screenshots live in the repo (crates.io rewrites the relative links to
 # GitHub), while the standalone fuzz runner is development-only; neither belongs
 # in the published crate.
-exclude = ["examples/*.png", "examples/*.jpg", "fuzz/"]
+exclude = ["examples/*.png", "examples/*.jpg", "fuzz/", "js/"]
 
 # Flagship TUI demo apps live in their own workspace member so their heavier deps
 # (ratatui, ureq) never touch the published crate or its CI. Build them explicitly:
@@ -19,7 +19,7 @@ exclude = ["examples/*.png", "examples/*.jpg", "fuzz/"]
 # is a member too — published, but versioned on its own and kept out of the
 # default set so core CI and `cargo test` stay the library alone.
 [workspace]
-members = ["cli", "demos/fred", "demos/learn", "demos/sysmon"]
+members = ["cli", "demos/fred", "demos/learn", "demos/sysmon", "js/native"]
 # Keep the default build/test/lint set to malevich alone, so CI and `cargo test`
 # never pull the demos' or the CLI's deps. Build a member explicitly with `-p`.
 default-members = ["."]

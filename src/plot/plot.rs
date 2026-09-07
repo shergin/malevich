@@ -6,7 +6,7 @@ use super::layout::Layout;
 use super::mapping::Mapping;
 use super::resolve::{Kind, Reduce, ResolvedLayer};
 use crate::mark::{LineStyle, Mark};
-use crate::render::Surface;
+use crate::render::{Raster, Surface};
 use crate::scale::Scale;
 
 static DEFAULT_CATEGORICAL_PALETTE: crate::scale::Palette = crate::scale::Palette::OKABE_ITO;
@@ -310,6 +310,28 @@ impl<'a> Plot<'a> {
     /// Renders into a string according to the frame's charset and color mode.
     pub fn render(&self, frame: &Frame) -> String {
         self.try_render_unvalidated(frame).unwrap_or_default()
+    }
+
+    /// Rasterizes into an encoded cell grid according to the frame's charset.
+    ///
+    /// This is the snapshot TUI hosts paint: glyphs and colors, chrome included,
+    /// no ANSI. [`Plot::render`] is this grid encoded as a string;
+    /// [`Raster::encode`] is that second half, so a cell-buffer host and a
+    /// string host share one grid. Never fails — sheds to an empty raster.
+    pub fn raster(&self, frame: &Frame) -> Raster {
+        self.try_raster_unvalidated(frame)
+            .unwrap_or_else(|_| Raster::empty())
+    }
+
+    /// [`Plot::validate`] followed by fallible rasterization: an encoded cell
+    /// grid, or the first spec, geometry, or allocation error.
+    pub fn try_raster(&self, frame: &Frame) -> crate::Result<Raster> {
+        self.validate()?;
+        self.try_raster_unvalidated(frame)
+    }
+
+    fn try_raster_unvalidated(&self, frame: &Frame) -> crate::Result<Raster> {
+        Ok(self.try_rasterize(frame)?.to_raster())
     }
 
     /// Renders the complete plot as a self-contained HTML terminal card.

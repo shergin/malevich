@@ -34,6 +34,40 @@ fn fixture_grid() -> Grid<'static> {
 }
 
 #[test]
+fn a_column_reference_deserializes_inside_with_columns() {
+    use crate::data::{Series, with_columns};
+
+    let json = r#"{"col": 0}"#;
+    let bound = with_columns(vec![vec![1.0, f64::NAN, 3.0]], || {
+        serde_json::from_str::<Series>(json).unwrap()
+    });
+    assert_eq!(bound.len(), 3);
+    assert_eq!(bound.as_slice()[0], 1.0);
+    assert!(bound.as_slice()[1].is_nan());
+    assert_eq!(bound.as_slice()[2], 3.0);
+
+    let error = serde_json::from_str::<Series>(json).unwrap_err();
+    assert!(error.to_string().contains("not bound"));
+}
+
+#[test]
+fn a_column_bound_document_renders_like_an_inline_series() {
+    let inline = Document::plot(crate::line(vec![1.0, 5.0, 2.0, 8.0])).unwrap();
+    let request = r#"{
+        "version": 1,
+        "kind": "plot",
+        "spec": {
+            "layers": [{"Line": {"x": null, "y": {"col": 0}, "color": null, "label": null, "style": "Pixels"}}]
+        }
+    }"#;
+    let bound: Document = crate::data::with_columns(vec![vec![1.0, 5.0, 2.0, 8.0]], || {
+        serde_json::from_str(request).unwrap()
+    });
+    let frame = Frame::plain(40, 10);
+    assert_eq!(bound.render(&frame), inline.render(&frame));
+}
+
+#[test]
 fn v1_documents_match_their_golden_wire_fixtures() {
     let plot = Document::plot(fixture_plot()).unwrap();
     assert_eq!(plot.version(), 1);

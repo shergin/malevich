@@ -8,4 +8,6 @@
 mod ndarray;
 mod series;
 
+#[cfg(feature = "serde")]
+pub use series::with_columns;
 pub use series::{IntoSeries, Series};

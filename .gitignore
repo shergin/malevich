@@ -1,2 +1,8 @@
 /private/
 /target
+js/node_modules
+js/dist
+js/generated
+js/native/target
+js/*.tgz
+

@@ -3,6 +3,7 @@
 use super::canvas::{Anchor, Canvas, PlotRect, PointShape};
 use super::charset::Charset;
 use super::color::{Color, ColorMode, Resolved};
+use super::raster::{Raster, RasterCell};
 
 /// One character cell: a subpixel pattern, a text slot, independent foreground
 /// and background colors, and an optional colorless fallback glyph.
@@ -346,6 +347,28 @@ impl Surface {
             text: Text::Glyph(' '),
             ..EMPTY
         };
+    }
+
+    /// Encodes this surface as a [`Raster`]: one cell per grid slot, glyphs
+    /// already chosen, continuation cells marked `columns == 0`.
+    pub fn to_raster(&self) -> Raster {
+        use unicode_width::UnicodeWidthChar;
+
+        let mut cells = Vec::with_capacity(self.width.saturating_mul(self.height));
+        for cell in &self.cells {
+            let (glyph, columns) = match cell.text {
+                Text::Continuation => (' ', 0),
+                Text::Glyph(glyph) => (glyph, glyph.width().unwrap_or(1).min(2) as u8),
+                Text::None => (self.charset.glyph(cell.bits), 1),
+            };
+            cells.push(RasterCell {
+                glyph,
+                foreground: cell.foreground,
+                background: cell.background,
+                columns,
+            });
+        }
+        Raster::from_cells(self.width, self.height, cells)
     }
 
     /// Encodes as plain text — no escape codes ever. Sugar for

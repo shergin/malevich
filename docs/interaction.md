@@ -11,12 +11,22 @@ input, never owns an event loop — and everything here is what that boundary
 | layer | owns | lives in |
 |---|---|---|
 | physics | cell ↔ data mapping, window arithmetic, snapping lookups | core: `Mapping`, `Viewport`, `stat::nearest` |
-| controller | gesture policy, hover/drag state, overlay drawing | the widget: `PlotState` (feature `ratatui`) |
+| controller | gesture policy, hover/drag state, overlay drawing | the widget: `PlotState` (feature `ratatui`; npm `malevich/ink`) |
 | host | event loop, mouse capture, key bindings, app state | your code |
 
 The controller is to interaction what presets are to the grammar: a proven
 composition of the public physics. Different policy wanted? Skip `on_mouse`
 and drive `Viewport` and `Mapping` yourself — the same escape hatch.
+
+The Ink adapter (`malevich/ink` on npm) is the same split under a different
+host. `PlotWidget` paints a `Raster` as Ink `Text` cells; `PlotState` is the
+same controller, speaking the same `Mouse` vocabulary, drawing the same
+overlays into the raster. The widget never reads stdin. `usePlotInteraction`
+is an optional composition that enables DECSET mouse tracking on Ink's
+stdout and parses SGR — skip it and feed `onMouse` yourself, exactly as a
+ratatui host maps crossterm events. Linked panes are `linkX(active, passive)`:
+share the x window by assignment, mirror the cursor as a data x. Live tours
+in the repo: `cd js && npm run example:zoom` and `npm run example:linked`.
 
 ## The physics
 

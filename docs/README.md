@@ -15,11 +15,15 @@ What to read when.
 - **How do I…**
   - meet any terminal honestly — [terminal.md](terminal.md)
   - make a chart interactive in a TUI — [interaction.md](interaction.md)
+    (ratatui, and the same controller in Ink)
   - draw real pixels in a terminal — [pixels.md](pixels.md)
   - plot in a Jupyter notebook — [notebooks.md](notebooks.md)
   - understand the speed story — [performance.md](performance.md)
   - persist and interchange specs — [serde.md](serde.md)
+  - use it from JavaScript — [../js/README.md](../js/README.md)
 - **What does it look like?**
   [../EXAMPLES.md](../EXAMPLES.md) — the gallery, every chart real program
-  output. `cargo run --example showcase` renders a colored tour.
-- **API reference** — [docs.rs/malevich](https://docs.rs/malevich).
+  output. `cargo run --example showcase` renders a colored tour. The JS
+  analog is `cd js && npm run showcase`.
+- **API reference** — [docs.rs/malevich](https://docs.rs/malevich); npm
+  [malevich](https://www.npmjs.com/package/malevich).

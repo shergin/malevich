@@ -5,6 +5,22 @@ release; the pre-1.0 entries below recorded breakage freely, without apology.
 
 ## Unreleased
 
+- `Raster` is the encoded cell grid of one render — glyphs and colors, chrome
+  included — as a plain value. `Plot::raster` / `try_raster` produce it;
+  `Raster::encode` is the string half, so a TUI host that paints cells and a
+  caller that wants a `String` share one grid. Continuation cells (`columns
+  == 0`) sit to the right of a wide glyph. This is the host-neutral snapshot
+  Ink (and any future cell-buffer host) consumes; the ratatui adapter may
+  keep its private path in 1.x.
+- The JS rim (`js/`, npm `malevich`) is public. 0.2 gives Ink feature parity
+  with the ratatui widget: the same `PlotState` grammar, the same overlays,
+  the host still owns the event loop. See [js/CHANGELOG.md](js/CHANGELOG.md)
+  and [js/README.md](js/README.md).
+- With `serde`, a series may deserialize from `{ "col": N }` inside
+  `data::with_columns`, so a render request can keep large buffers out of
+  the JSON document. Stored documents still encode series as arrays of
+  numbers (gaps as `null`); a column reference without a bind is an error.
+
 The table release: the summary that usually precedes any chart, rendered by
 the grammar that renders the charts. A table is text on band scales — not a
 ninth mark, not a widget — and a table column is an axis you read instead

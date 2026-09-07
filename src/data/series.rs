@@ -179,6 +179,12 @@ converting_into_series!(f32, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize)
 /// With the `serde` feature, a series encodes as a sequence of optional numbers:
 /// gaps (`NaN`) become `None`/`null`, so they survive formats like JSON that
 /// cannot carry `NaN`, and decode back to gaps exactly.
+///
+/// Deserialization also accepts `{ "col": N }` when [`with_columns`] is in
+/// progress: the Nth bound buffer becomes this series. That is the WASM
+/// columns lane — large data stays out of the JSON document. A column
+/// reference without a bind, or an index past the bind, is an error. Stored
+/// documents never use column references; they are a render-request spelling.
 #[cfg(feature = "serde")]
 impl serde::Serialize for Series<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -190,13 +196,57 @@ impl serde::Serialize for Series<'_> {
 }
 
 #[cfg(feature = "serde")]
+thread_local! {
+    static COLUMNS: std::cell::RefCell<Vec<Vec<f64>>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Binds `columns` for the duration of `f` so a series may deserialize from
+/// `{ "col": N }` as the Nth buffer (cloned into the series). Nested binds
+/// replace the table; the previous table is restored when `f` returns.
+///
+/// The JSON document stays the persistence format; column references exist
+/// only inside this bind — a stored document that cannot be decoded without
+/// a side buffer is a lie.
+#[cfg(feature = "serde")]
+pub fn with_columns<T>(columns: Vec<Vec<f64>>, f: impl FnOnce() -> T) -> T {
+    struct Guard(Vec<Vec<f64>>);
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            COLUMNS.with(|slot| {
+                *slot.borrow_mut() = std::mem::take(&mut self.0);
+            });
+        }
+    }
+    let previous = COLUMNS.with(|slot| std::mem::replace(&mut *slot.borrow_mut(), columns));
+    let _guard = Guard(previous);
+    f()
+}
+
+#[cfg(feature = "serde")]
 impl<'de, 'a> serde::Deserialize<'de> for Series<'a> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let values: Vec<Option<f64>> = serde::Deserialize::deserialize(deserializer)?;
-        Ok(values
-            .into_iter()
-            .map(|value| value.unwrap_or(f64::NAN))
-            .collect())
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum Wire {
+            Values(Vec<Option<f64>>),
+            Column { col: usize },
+        }
+
+        match Wire::deserialize(deserializer)? {
+            Wire::Values(values) => Ok(values
+                .into_iter()
+                .map(|value| value.unwrap_or(f64::NAN))
+                .collect()),
+            Wire::Column { col } => {
+                let values = COLUMNS.with(|slot| slot.borrow().get(col).cloned());
+                match values {
+                    Some(values) => Ok(values.into_iter().collect()),
+                    None => Err(serde::de::Error::custom(format!(
+                        "series column {col} is not bound; deserialize inside data::with_columns"
+                    ))),
+                }
+            }
+        }
     }
 }
 

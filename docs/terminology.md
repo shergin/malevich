@@ -172,26 +172,30 @@ spec-shaped state a host may persist. Maps to `plot::Viewport`.
 
 ## Widget
 
-The ratatui adapter (feature `ratatui`, depending only on `ratatui-core`):
-`Plot::widget()` renders any plot into a `Buffer` as cells and styles. The
-stateless `Widget` impl is fire-and-forget; the `StatefulWidget` impl threads
-a `PlotState` — the interaction controller: it caches the render's `Mapping`
-for hit-testing, applies its `Viewport` on the next draw, and interprets the
-default mouse gestures (hover crosshair, wheel zoom at the cursor, left-drag
-pan, right-drag rubber-band zoom) from the backend-neutral `Mouse` vocabulary
-the host feeds it. The cursor snaps to the data: for every point-backed line
-and points layer, the readout lists the value of the datum nearest the
-cursor's x inside the visible window — axis-formatted, its cell highlighted,
-a gap shown as `—` rather than an interpolation (`snap(false)` returns to
-plain cursor coordinates). A linked pane mirrors another pane's cursor by
-data x (`PlotState::hover_x`): a vertical-only crosshair at its own column —
-an x but no honest row — with snapping and the readout working as under a
-real cursor. The widget never reads the terminal: event loops,
-mouse capture, and key policy stay in the host, and the gestures are a preset
-over the public physics — a host with different policy drives `Viewport` and
+The TUI adapters. In Rust (feature `ratatui`, depending only on
+`ratatui-core`): `Plot::widget()` renders any plot into a `Buffer` as cells
+and styles. The stateless `Widget` impl is fire-and-forget; the
+`StatefulWidget` impl threads a `PlotState` — the interaction controller: it
+caches the render's `Mapping` for hit-testing, applies its `Viewport` on the
+next draw, and interprets the default mouse gestures (hover crosshair, wheel
+zoom at the cursor, left-drag pan, right-drag rubber-band zoom) from the
+backend-neutral `Mouse` vocabulary the host feeds it. In JavaScript the same
+split lives in `malevich/ink`: `PlotWidget` paints a `Raster` as Ink `Text`
+cells; `PlotState` is the same controller, overlays and all;
+`usePlotInteraction` is an optional composition that enables mouse tracking.
+The cursor snaps to the data: for every point-backed line and points layer,
+the readout lists the value of the datum nearest the cursor's x inside the
+visible window — axis-formatted, its cell highlighted, a gap shown as `—`
+rather than an interpolation (`snap(false)` returns to plain cursor
+coordinates). A linked pane mirrors another pane's cursor by data x
+(`PlotState::hover_x` / `hoverX`): a vertical-only crosshair at its own
+column — an x but no honest row — with snapping and the readout working as
+under a real cursor. The widget never reads the terminal: event loops, mouse
+capture, and key policy stay in the host, and the gestures are a preset over
+the public physics — a host with different policy drives `Viewport` and
 `Mapping` directly. Interaction chrome (crosshair, snap highlights, selection
-band, readout) draws into the buffer only; the plot value renders
-byte-identically with or without it. With the `pixel` feature,
+band, readout) draws into the buffer (or the raster) only; the plot value
+renders byte-identically with or without it. With the `pixel` feature,
 `widget().graphics(g)` renders the panel as a real image: the buffer holds
 skip-reserved ground, the `PlotState` carries the encoded block, and the host
 emits it after `terminal.draw` with `Graphics::present` (one synchronized
@@ -214,6 +218,20 @@ and wins over pixels. Drawing is infallible: out-of-surface clips,
 non-finite coordinates draw nothing, and control characters are dropped at
 the cell grid, so no input string can smuggle escape bytes into any encoder's
 output. Maps to `render::Surface`.
+
+## Raster
+
+The encoded cell grid of one render: glyphs and colors, chrome included, as
+a plain value. Marks draw on a Surface in subpixels; a charset codec maps
+each cell to a glyph; a Raster is that snapshot. TUI hosts (ratatui, Ink)
+paint it into their own buffer instead of decoding an ANSI string — ANSI
+round-trip loses cell identity (wide glyphs, independent fg/bg, the
+continuation cell). `Plot::render` is rasterize-then-encode; `Plot::raster`
+stops after rasterize; `Raster::encode` is the second half, so a string and
+a cell-buffer host share one grid. Continuation cells (`columns == 0`) sit
+to the right of a wide glyph; encoders skip them. Maps to `render::Raster`.
+The membership test: a second host demanded cells, and no composition of
+the public string renderer reproduces per-cell style.
 
 ## Charset
 

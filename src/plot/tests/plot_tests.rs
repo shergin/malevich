@@ -1,9 +1,37 @@
 use super::Plot;
 use crate::mark::Line;
 use crate::plot::Frame;
+use crate::{Charset, ColorMode};
 
 const fn assert_send_sync<T: Send + Sync>() {}
 const _: () = assert_send_sync::<Plot<'static>>();
+
+#[test]
+fn a_raster_encodes_to_the_same_string_as_render() {
+    let values = [1.0, 5.0, 2.0, 8.0];
+    let plot = crate::line(&values[..]).title("training");
+    for frame in [
+        Frame::plain(40, 10),
+        Frame::portable(60, 14),
+        Frame {
+            charset: Charset::Ascii,
+            color: ColorMode::Ansi16,
+            ..Frame::plain(32, 8)
+        },
+    ] {
+        let rendered = plot.render(&frame);
+        let rastered = plot.raster(&frame).encode(frame.color);
+        assert_eq!(
+            rastered, rendered,
+            "charset={:?} color={:?}",
+            frame.charset, frame.color
+        );
+        assert_eq!(
+            plot.try_raster(&frame).unwrap().encode(frame.color),
+            rendered
+        );
+    }
+}
 
 #[test]
 fn the_line_preset_equals_its_grammar_expansion() {

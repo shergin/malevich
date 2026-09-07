@@ -13,6 +13,7 @@ pub(crate) mod color;
 #[cfg(feature = "evcxr")]
 mod html;
 mod limits;
+mod raster;
 mod surface;
 mod width;
 
@@ -26,5 +27,6 @@ pub(crate) use limits::{
 };
 #[cfg(feature = "pixel")]
 pub(crate) use limits::{area as checked_area, dimension as checked_dimension};
+pub use raster::{Raster, RasterCell};
 pub use surface::Surface;
 pub(crate) use width::{display_width, display_width_ansi, fit_width_with};

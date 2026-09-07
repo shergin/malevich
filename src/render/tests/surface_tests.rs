@@ -18,6 +18,22 @@ const _: () = assert_send_sync::<Color>();
 const _: () = assert_send_sync::<Charset>();
 
 #[test]
+fn a_raster_matches_the_surface_string() {
+    let mut surface = Surface::new(4, 2, Charset::Braille);
+    surface.dot(0.0, 0.0, Color::Cyan);
+    surface.dot(3.0, 3.0, Color::Yellow);
+    surface.text(2, 0, "ab", Color::Green);
+    let raster = surface.to_raster();
+    assert_eq!(raster.width(), 4);
+    assert_eq!(raster.height(), 2);
+    assert_eq!(raster.encode(ColorMode::Plain), surface.to_plain());
+    assert_eq!(
+        raster.encode(ColorMode::TrueColor),
+        surface.encode(ColorMode::TrueColor)
+    );
+}
+
+#[test]
 fn a_dot_lights_one_braille_subpixel() {
     let mut surface = Surface::new(2, 1, Charset::Braille);
     surface.dot(0.0, 0.0, Color::Default);

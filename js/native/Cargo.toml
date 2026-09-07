@@ -1,0 +1,19 @@
+[package]
+name = "malevich-js"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/shergin/malevich"
+description = "WASM bindings for malevich: render a Document to a string or Raster"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+malevich = { path = "../..", features = ["serde"] }
+js-sys = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "0.2"

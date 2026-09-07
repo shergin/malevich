@@ -70,3 +70,33 @@ verified only after that core version reaches the registry index.
    GitHub release/CI state.
 5. Leave the worktree clean and record any post-release issue in the current private
    backlog rather than editing a historical release entry.
+
+## 5. npm (`malevich@0.x`)
+
+The JS rim is versioned independently of crates.io until the API is 1.x. Publish
+from `js/` after the wasm build is in `js/generated` (gitignored; produced by
+`npm run build`).
+
+First time on a machine:
+
+```sh
+# Create an account at https://www.npmjs.com/signup if you do not have one.
+npm login
+npm whoami
+```
+
+Then:
+
+```sh
+cd js
+npm run build
+npm test
+npm pack --dry-run          # licenses in, dist/test out, ~240 KB
+npm publish --access public
+```
+
+The package is unscoped ESM (`import { line } from "malevich"`). `prepublishOnly`
+rebuilds wasm and reruns tests. 2FA is required by npm for publish. Bump
+`js/package.json` independently of the crate (0.x until the JS API settles);
+keep `engineVersion` equal to the crate it was built against. Record the
+release in `js/CHANGELOG.md`.

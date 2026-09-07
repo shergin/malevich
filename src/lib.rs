@@ -115,6 +115,6 @@ pub use presets::{
     error_bars_asymmetric, heatmap, heatmap_with, hist, hist_with, hist2d, hist2d_with, line,
     quiver, scatter, stairs, table, table_with, trend, trend_with, try_table, violin, violin_with,
 };
-pub use render::{Charset, Color, ColorMode};
+pub use render::{Charset, Color, ColorMode, Raster, RasterCell};
 pub use scale::Scale;
 pub use theme::Theme;

@@ -1,0 +1,7 @@
+dist/test
+dist/generated
+src
+examples
+native
+tsconfig.json
+*.tgz

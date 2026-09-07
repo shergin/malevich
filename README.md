@@ -290,6 +290,33 @@ It contains zero rendering logic — argument parsing, stdin framing, and calls
 into this crate's public API — which makes it the proof that a pure
 string-renderer is enough. Details in [cli/README.md](cli/README.md).
 
+## JavaScript
+
+The same engine, compiled to WASM. [`js/`](js/) publishes [`malevich`](https://www.npmjs.com/package/malevich)
+on npm: zero native dependencies, `console.log(line([1, 5, 2, 8]))`, an Ink
+widget with the same interaction grammar as the ratatui adapter. Detection
+stays in JS; render is still a pure function of a plot and a frame. Details
+in [js/README.md](js/README.md).
+
+```js
+import { line } from "malevich";
+console.log(line([1, 5, 2, 8]));
+```
+
+```js
+import { PlotState, PlotWidget, usePlotInteraction } from "malevich/ink";
+// hover crosshair, wheel zoom, drag pan, rubber-band — the widget never
+// reads the terminal; the host feeds PlotState.onMouse.
+```
+
+The TypeScript analog of `cargo run --example showcase` lives in
+[`js/examples/`](js/examples/) in this repo, next to the interactive Ink
+tours (`example:zoom`, `example:linked`):
+
+```sh
+cd js && npm run build && npm run showcase
+```
+
 ## What it will not be
 
 Not a TUI framework (it never owns the terminal or handles input). No animations. No
