@@ -157,8 +157,20 @@ fn a_pixel_panel_merges_runs_down_rows_and_keeps_faint_coverage() {
     );
     assert_eq!(
         out,
-        "<path fill=\"#ff0000\" d=\"M10 20H30V40H10Z\"/>\n\
+        "<g shape-rendering=\"geometricPrecision\">\n\
+         <path fill=\"#ff0000\" d=\"M10 20H30V40H10Z\"/>\n\
          <path fill=\"#0000ff\" d=\"M30 30H40V40H30Z\"/>\n\
-         <path fill=\"#161016\" d=\"M40 20H50V40H40Z\"/>\n"
+         <path fill=\"#161016\" d=\"M40 20H50V40H40Z\"/>\n\
+         </g>\n"
     );
+    let mut empty = String::new();
+    write_pixel_panel(
+        &mut empty,
+        (10.0, 20.0, 40.0, 20.0),
+        4,
+        2,
+        &[NONE; 8].concat(),
+        (13, 17, 23),
+    );
+    assert_eq!(empty, "", "a panel with no ink writes no group");
 }

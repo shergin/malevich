@@ -6,6 +6,13 @@ freely, without apology.
 
 ## Unreleased
 
+- The pixel card's panel resamples smoothly. It inherited the card's
+  `crispEdges`, which snaps every device-pixel run to the screen grid, so
+  wherever a device pixel is not one screen pixel — Retina-density cells on
+  a 1× screen — anti-aliased lines came out stepped. The panel now sits in a
+  `geometricPrecision` group, and the chrome stays crisp. One path per color
+  keeps fills free of seams.
+
 ## 1.24.0 (Black Circle) — 2026-10-03
 
 A card can carry real pixels. A page that draws with SVG gets the hybrid a

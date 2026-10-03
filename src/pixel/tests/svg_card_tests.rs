@@ -25,6 +25,12 @@ fn no_markup_surprises(svg: &str) {
     );
     assert!(!svg.contains("<script"));
     assert!(svg.contains("shape-rendering=\"crispEdges\""));
+    assert_eq!(
+        svg.matches("<g shape-rendering=\"geometricPrecision\">")
+            .count(),
+        1,
+        "the chrome stays crisp and the panel alone resamples smoothly"
+    );
 }
 
 #[test]

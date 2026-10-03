@@ -513,7 +513,8 @@ impl<'a> Plot<'a> {
     /// Chrome — title, axes, ticks, legend — is the cell card: rectangles and
     /// text runs, drawn by the host's font. The plot panel is the device-pixel
     /// raster [`Plot::render_pixels`] draws, encoded as rectangles: one path
-    /// per color. No image element and no extra dependency.
+    /// per color, which the host resamples smoothly while the chrome stays
+    /// crisp. No image element and no extra dependency.
     ///
     /// `graphics.protocol` is terminal transport and does not change the bytes.
     /// Cell size and stroke are the ones the panel uses. The frame's color mode
