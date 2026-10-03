@@ -209,6 +209,13 @@ struct Run {
 /// or a flat fill is one subpath. Rectangles of one color share a path.
 /// Every edge is written as `origin + index * step`, absolute, so neighbors
 /// print the same coordinate and rounding cannot open a seam.
+///
+/// The paths sit in a `geometricPrecision` group. The card's `crispEdges`
+/// suits glyph blocks on the cell grid, but the panel is an image the host
+/// resamples: a device pixel is rarely one screen pixel, and snapping each
+/// run to the screen grid would step the anti-aliased ink the canvas drew.
+/// One path per color keeps that smoothing free of seams, because a path's
+/// own subpaths are filled together.
 #[cfg(feature = "pixel")]
 pub(crate) fn write_pixel_panel(
     out: &mut String,
@@ -294,9 +301,14 @@ pub(crate) fn write_pixel_panel(
     for run in open {
         close(run, pixels_high);
     }
+    if paths.is_empty() {
+        return;
+    }
+    out.push_str("<g shape-rendering=\"geometricPrecision\">\n");
     for ((r, g, b), d) in paths {
         let _ = writeln!(out, "<path fill=\"#{r:02x}{g:02x}{b:02x}\" d=\"{d}\"/>");
     }
+    out.push_str("</g>\n");
 }
 
 fn rect(out: &mut String, x: f64, y: f64, width: f64, height: f64, fill: &str) {

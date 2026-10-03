@@ -93,8 +93,8 @@ kitty/sixel/iTerm2 terminal is the live proof.
 
 The same hybrid, for a host that draws SVG. Chrome stays the cell card:
 rectangles and text the host's font draws. The panel is the device-pixel
-raster, one path of rectangles per color. There is no image element and no
-dependency.
+raster, one path of rectangles per color, resampled smoothly on any screen.
+There is no image element and no dependency.
 GitHub's sanitizer keeps rectangles and drops embedded images. `Plot::to_svg`
 stays the cell-grid card and needs no feature.
 
