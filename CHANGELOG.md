@@ -6,6 +6,13 @@ freely, without apology.
 
 ## Unreleased
 
+## 1.24.0 (Black Circle) — 2026-10-03
+
+A card can carry real pixels. A page that draws with SVG gets the hybrid a
+graphics terminal gets: the cell card for chrome, the device-pixel raster for
+the panel, with no image and no new dependency. The gallery shows every
+example as its card, and the site checks its own links into the API.
+
 - `Plot::to_svg_pixels` and `Plot::try_to_svg_pixels` (feature `pixel`) encode
   the hybrid pixel render as an SVG card. Chrome stays the cell card. The
   panel is the device-pixel raster a graphics terminal would show, one path

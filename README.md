@@ -238,7 +238,7 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   [docs/notebooks.md](docs/notebooks.md).
 
   ```rust
-  :dep malevich = { version = "1.23", features = ["evcxr"] }
+  :dep malevich = { version = "1.24", features = ["evcxr"] }
   use malevich::{Line, Plot};
 
   let values = [1.0, 5.0, 2.0, 8.0];
