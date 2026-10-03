@@ -6,6 +6,10 @@ freely, without apology.
 
 ## Unreleased
 
+## 1.24.1 — 2026-10-03
+
+A fix to the pixel card that 1.24.0 introduced.
+
 - The pixel card's panel resamples smoothly. It inherited the card's
   `crispEdges`, which snaps every device-pixel run to the screen grid, so
   wherever a device pixel is not one screen pixel — Retina-density cells on

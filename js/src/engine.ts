@@ -111,7 +111,7 @@ export function init(): Promise<void> {
   return Promise.resolve();
 }
 
-export const engineVersion = "1.24.0";
+export const engineVersion = "1.24.1";
 
 /** A viewport with both axes automatic — seed from a mapping before transforming. */
 export function viewportAuto(): JsViewport {

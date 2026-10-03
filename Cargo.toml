@@ -1,6 +1,6 @@
 [package]
 name = "malevich"
-version = "1.24.0"
+version = "1.24.1"
 edition = "2024"
 rust-version = "1.88"
 description = "Terminal plotting: a small grammar of marks, honest axes, millions of points"
