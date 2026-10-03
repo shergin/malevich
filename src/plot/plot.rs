@@ -507,6 +507,106 @@ impl<'a> Plot<'a> {
         self.raster(frame).to_svg(frame.theme)
     }
 
+    /// Renders the hybrid pixel plot as an SVG card (feature `pixel`).
+    ///
+    /// The sibling of [`Plot::render_pixels`] for a host that draws with SVG.
+    /// Chrome — title, axes, ticks, legend — is the cell card: rectangles and
+    /// text runs, drawn by the host's font. The plot panel is the device-pixel
+    /// raster [`Plot::render_pixels`] draws, encoded as rectangles: one path
+    /// per color. No image element and no extra dependency.
+    ///
+    /// `graphics.protocol` is terminal transport and does not change the bytes.
+    /// Cell size and stroke are the ones the panel uses. The frame's color mode
+    /// is ignored, the same way [`Plot::to_svg`] ignores it; size, charset, and
+    /// theme apply to the chrome. Default-colored marks take the card
+    /// foreground, so an unlabeled series matches the axes. Named colors freeze
+    /// to the same concrete RGB the pixel canvas uses.
+    ///
+    /// The size follows the ink, not the frame. Each run of one color along a
+    /// device-pixel row is a rectangle, and it grows down while the rows below
+    /// repeat it. Bars and flat fills cost little. Anti-aliased lines and
+    /// translucent fills cost more, and a smooth color field changes color at
+    /// nearly every pixel, so its card runs to megabytes; [`Plot::to_svg`] or
+    /// a smaller [`Graphics::cell_size`](crate::pixel::Graphics::cell_size)
+    /// keeps such a plot small.
+    ///
+    /// Ink centered on the fitted domain edge clips, as it does on the pixel
+    /// canvas. Widen the domain with [`Plot::x_max`] or [`Plot::y_max`] when
+    /// the whole marker has to stay inside. A text-only plot, a zero cell
+    /// size, and a frame with no panel degrade to [`Plot::to_svg`]. In-panel
+    /// text marks are drawn by the pixel font, the same as [`Plot::render_pixels`].
+    ///
+    /// Pure and deterministic: the same plot, frame, and graphics always
+    /// produce the same string, and nothing is read from the environment. Like
+    /// [`Plot::render_pixels`], it draws without validating first; an error
+    /// along the way degrades to [`Plot::to_svg`].
+    ///
+    /// ```
+    /// use malevich::pixel::{Graphics, Protocol};
+    /// use malevich::Frame;
+    ///
+    /// let svg = malevich::line(&[1.0, 3.0, 2.0][..]).to_svg_pixels(
+    ///     &Frame::portable(30, 8),
+    ///     &Graphics::new(Protocol::Kitty),
+    /// );
+    /// assert!(svg.starts_with("<svg xmlns=\"http://www.w3.org/2000/svg\""));
+    /// assert!(svg.ends_with("</svg>\n"));
+    /// assert!(!svg.contains("<image"));
+    /// ```
+    #[cfg(feature = "pixel")]
+    pub fn to_svg_pixels(&self, frame: &Frame, graphics: &crate::pixel::Graphics) -> String {
+        self.try_to_svg_pixels_unvalidated(frame, graphics)
+            .unwrap_or_else(|_| self.to_svg(frame))
+    }
+
+    /// The fallible counterpart of [`Plot::to_svg_pixels`].
+    ///
+    /// # Errors
+    ///
+    /// Returns the first problem [`Plot::validate`] reports, or a geometry or
+    /// allocation error from the device-pixel raster. A text-only plot, a zero
+    /// cell size, and an empty panel are not errors: each returns the cell card.
+    #[cfg(feature = "pixel")]
+    pub fn try_to_svg_pixels(
+        &self,
+        frame: &Frame,
+        graphics: &crate::pixel::Graphics,
+    ) -> crate::Result<String> {
+        self.validate()?;
+        self.try_to_svg_pixels_unvalidated(frame, graphics)
+    }
+
+    /// The pixel card without [`Plot::validate`]: the infallible path draws
+    /// what it can, and the checked one validates first.
+    #[cfg(feature = "pixel")]
+    fn try_to_svg_pixels_unvalidated(
+        &self,
+        frame: &Frame,
+        graphics: &crate::pixel::Graphics,
+    ) -> crate::Result<String> {
+        let cell_card = || -> crate::Result<String> {
+            Ok(self.try_raster_unvalidated(frame)?.to_svg(frame.theme))
+        };
+        let cell = (
+            usize::from(graphics.cell_size.0),
+            usize::from(graphics.cell_size.1),
+        );
+        if self.panel_is_text_only() || cell.0 == 0 || cell.1 == 0 {
+            return cell_card();
+        }
+        let (background, foreground) = frame.theme.card_rgb();
+        let (surface, canvas, rect, _) =
+            self.try_rasterize_hybrid(frame, cell, graphics.stroke, Some(foreground))?;
+        if rect.columns == 0 || rect.rows == 0 {
+            return cell_card();
+        }
+        let (width, height, rgba) = crate::pixel::crop_rgba(&canvas, rect)?;
+        let panel = crate::render::cell_rect(rect.gutter, rect.top, rect.columns, rect.rows);
+        Ok(surface.to_raster().to_svg_with(frame.theme, |out| {
+            crate::render::write_pixel_panel(out, panel, width, height, &rgba, background);
+        }))
+    }
+
     /// Displays this plot when it is the last expression in an Evcxr cell.
     ///
     /// Emits three representations and lets the frontend pick the richest it
@@ -1045,12 +1145,18 @@ impl<'a> Plot<'a> {
     /// returned [`Mapping`] answers in cell coordinates (its subpixel density
     /// is the device-pixel cell), so interactive hosts hit-test pixel panels
     /// exactly like glyph ones.
+    ///
+    /// `default_ink`, when set, is the concrete RGB `Color::Default` draws as.
+    /// Terminal output leaves it unset: the canvas cannot know the terminal's
+    /// foreground, so `Default` stays mid-gray. The SVG card sets it to the
+    /// card foreground, matching the chrome.
     #[cfg(feature = "pixel")]
     pub(crate) fn try_rasterize_hybrid(
         &self,
         frame: &Frame,
         cell: (usize, usize),
         stroke: Option<u8>,
+        default_ink: Option<(u8, u8, u8)>,
     ) -> crate::Result<(
         Surface,
         crate::pixel::PixelCanvas,
@@ -1071,6 +1177,9 @@ impl<'a> Plot<'a> {
             return Ok((surface, canvas, empty, Mapping::empty()));
         }
         let mut canvas = canvas;
+        if let Some(ink) = default_ink {
+            canvas.set_default_ink(ink);
+        }
         let labels = (self.x_label.as_deref(), self.y_label.as_deref());
         let PreparedRender { layout, layers } =
             self.prepare_render(frame, TargetPolicy::pixels(cell))?;

@@ -89,6 +89,38 @@ mechanics live in
 [interaction.md](interaction.md#real-pixels). `cargo run -p fred` in a
 kitty/sixel/iTerm2 terminal is the live proof.
 
+## On a page
+
+The same hybrid, for a host that draws SVG. Chrome stays the cell card:
+rectangles and text the host's font draws. The panel is the device-pixel
+raster, one path of rectangles per color. There is no image element and no
+dependency.
+GitHub's sanitizer keeps rectangles and drops embedded images. `Plot::to_svg`
+stays the cell-grid card and needs no feature.
+
+```rust
+use malevich::pixel::{Graphics, Protocol};
+
+let svg = plot.to_svg_pixels(&frame, &Graphics::new(Protocol::Kitty));
+```
+
+`Graphics::protocol` is terminal transport and does not change the bytes.
+Any protocol is fine. Cell size and stroke are the ones the panel uses, the
+same fields `render_pixels` reads. `economical()` is the caller's choice, as
+it is for a terminal. Default-colored marks take the card foreground, so an
+unlabeled series matches the axes. Named colors freeze to the same concrete
+RGB the pixel canvas uses. Ink centered on the fitted domain edge clips, as
+it does on the pixel canvas; widen the domain with `x_max` or `y_max` when
+the whole marker has to stay inside. A text-only plot, a zero cell size, and
+a frame with no panel degrade to `Plot::to_svg`. In-panel text marks use the
+pixel font. Axis text does not.
+
+The size follows the ink, not the frame. A run of one color along a pixel row
+is one rectangle, and it grows down while the rows below repeat it. Bars and
+flat fills cost little; anti-aliased lines and translucent fills cost more. A
+smooth color field changes color at nearly every pixel and runs to megabytes.
+For that plot, `Plot::to_svg` or a smaller cell size is the better card.
+
 ## Rough edges
 
 - A multiplexer (tmux, screen) blocks probing by design. Sniffed answers

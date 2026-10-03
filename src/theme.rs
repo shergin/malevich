@@ -60,6 +60,21 @@ impl Theme {
             ("#0d1117", "#e6edf3")
         }
     }
+
+    /// The same card colors as concrete RGB, for encoders that composite
+    /// coverage onto the card. Parsed from the [`Theme::card_colors`]
+    /// literals, so the two cannot drift.
+    #[cfg(feature = "pixel")]
+    pub(crate) fn card_rgb(self) -> ((u8, u8, u8), (u8, u8, u8)) {
+        let rgb = |hex: &str| {
+            let channel = |at: usize| {
+                u8::from_str_radix(&hex[at..at + 2], 16).expect("a card color is #rrggbb")
+            };
+            (channel(1), channel(3), channel(5))
+        };
+        let (background, foreground) = self.card_colors();
+        (rgb(background), rgb(foreground))
+    }
 }
 
 impl Default for Theme {

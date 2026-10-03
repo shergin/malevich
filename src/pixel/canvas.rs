@@ -36,6 +36,10 @@ pub(crate) struct PixelCanvas {
     /// An optional drawing clip in pixel coordinates `(x0, y0, x1, y1)`, upper
     /// bounds exclusive — the same contract as the cell surface's clip.
     clip: Option<(i64, i64, i64, i64)>,
+    /// Concrete RGB `Color::Default` resolves to. The terminal cannot know
+    /// its own foreground, so this stays the mid-gray [`Color::to_rgb`]
+    /// freezes unless an encoder that paints a known ground sets it.
+    default_ink: (u8, u8, u8),
 }
 
 impl PixelCanvas {
@@ -93,6 +97,7 @@ impl PixelCanvas {
             opacity: 1.0,
             accumulate: false,
             clip: None,
+            default_ink: Color::Default.to_rgb(),
         })
     }
 
@@ -108,7 +113,24 @@ impl PixelCanvas {
             opacity: 1.0,
             accumulate: false,
             clip: None,
+            default_ink: Color::Default.to_rgb(),
         }
+    }
+
+    /// Resolves `Color::Default` to the encoder's ground. Every other color
+    /// keeps [`Color::to_rgb`], so a named color is the same RGB on every path.
+    fn rgb(&self, color: Color) -> (u8, u8, u8) {
+        if color == Color::Default {
+            self.default_ink
+        } else {
+            color.to_rgb()
+        }
+    }
+
+    /// Sets the RGB `Color::Default` draws as. Terminal output leaves the
+    /// mid-gray default in place.
+    pub(crate) fn set_default_ink(&mut self, rgb: (u8, u8, u8)) {
+        self.default_ink = rgb;
     }
 
     /// An anti-aliased stroked segment with round caps: coverage falls off
@@ -259,10 +281,10 @@ impl PixelCanvas {
     }
 
     fn set(&mut self, x: i64, y: i64, color: Color) {
+        let (r, g, b) = self.rgb(color);
         if self.opacity < 1.0 {
-            self.blend(x, y, color.to_rgb(), 1.0);
+            self.blend(x, y, (r, g, b), 1.0);
         } else if self.inside(x, y) {
-            let (r, g, b) = color.to_rgb();
             self.pixels[y as usize * self.width + x as usize] = [r, g, b, 255];
         }
     }
@@ -366,7 +388,7 @@ impl Canvas for PixelCanvas {
         let (sx, sy) = (x, y);
         let (x, y) = (x.round() as i64, y.round() as i64);
         match shape {
-            PointShape::Dot => self.aa_disc(sx, sy, self.point as f64 / 2.0, color.to_rgb()),
+            PointShape::Dot => self.aa_disc(sx, sy, self.point as f64 / 2.0, self.rgb(color)),
             PointShape::Plus => {
                 for offset in -self.point..=self.point {
                     self.set(x + offset, y, color);
@@ -388,7 +410,7 @@ impl Canvas for PixelCanvas {
                 }
             }
             PointShape::Circle => {
-                self.aa_ring(sx, sy, self.point.max(1) as f64, color.to_rgb());
+                self.aa_ring(sx, sy, self.point.max(1) as f64, self.rgb(color));
             }
         }
     }
@@ -400,7 +422,7 @@ impl Canvas for PixelCanvas {
         if self.width == 0 || self.height == 0 {
             return;
         }
-        self.aa_segment(from, to, self.stroke as f64 / 2.0, color.to_rgb(), 1.0);
+        self.aa_segment(from, to, self.stroke as f64 / 2.0, self.rgb(color), 1.0);
     }
 
     /// The glow pass: a halo fading quadratically from the stroke's edge
@@ -416,7 +438,7 @@ impl Canvas for PixelCanvas {
         }
         let core = self.stroke as f64 / 2.0;
         let reach = core + (self.stroke as f64 * 1.5).max(2.5);
-        self.sweep_segment(from, to, reach + 1.0, color.to_rgb(), move |distance| {
+        self.sweep_segment(from, to, reach + 1.0, self.rgb(color), move |distance| {
             let t = ((reach + 0.5 - distance) / (reach + 0.5 - core)).clamp(0.0, 1.0);
             0.28 * t * t
         });

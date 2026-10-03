@@ -147,5 +147,7 @@ sniffs (UTF-8 → quadrants, `TERM=dumb` or non-UTF-8 → ASCII) and
 `MALEVICH_CHARSET` overrides. `pixel::Capabilities` holds the two-tier
 answer with its `Source`; the probe preconditions live in
 `Capabilities::detect_for`. `Raster::to_html` and `Raster::to_svg` are the
-card encoders. Furniture shedding is collision-aware layout in resolve. This
-section may rot; the rest must not.
+cell-card encoders, and with the `pixel` feature `Plot::to_svg_pixels`
+encodes the hybrid render for an SVG host, degrading to the cell card.
+Furniture shedding is collision-aware layout in resolve. This section may
+rot; the rest must not.

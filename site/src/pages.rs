@@ -185,10 +185,16 @@ pub const SECTIONS: &[Section] = &[
                 "Sixel, kitty, and iTerm2 panels, with the text chrome left around them.",
                 Source::RepoWith(
                     "docs/pixels.md",
-                    &[(
-                        "## Turn it on",
-                        "![Loss curves, a calendar time axis, and smoothing: cell rendering beside pixel rendering](../examples/showcase-lines.png)\n\n![A 2D density, contour lines, and a vector field: cell rendering beside pixel rendering](../examples/showcase-2d.png)\n\n*The showcase in a kitty terminal. Every chart twice: cells on the left, the same plot value as a real image on the right. Title, axes, and legend stay text. Only the plot rectangle becomes pixels.*",
-                    )],
+                    &[
+                        (
+                            "## Turn it on",
+                            "![Loss curves, a calendar time axis, and smoothing: cell rendering beside pixel rendering](../examples/showcase-lines.png)\n\n![A 2D density, contour lines, and a vector field: cell rendering beside pixel rendering](../examples/showcase-2d.png)\n\n*The showcase in a kitty terminal. Every chart twice: cells on the left, the same plot value as a real image on the right. Title, axes, and legend stay text. Only the plot rectangle becomes pixels.*",
+                        ),
+                        (
+                            "## On a page",
+                            "{{pixelcard hero | One plot value, two SVG cards. The chrome is the same cell card in both. The panel is quadrant cells in the first, and in the second the device-pixel raster a graphics terminal shows, the note at data coordinates in the pixel font.}}",
+                        ),
+                    ],
                 ),
             ),
             page(

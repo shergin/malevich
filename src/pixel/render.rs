@@ -50,7 +50,7 @@ pub(crate) fn try_render_mapped(
         return Ok((block, plot.mapping(frame)));
     }
     let (surface, canvas, rect, mapping) =
-        plot.try_rasterize_hybrid(frame, cell, graphics.stroke)?;
+        plot.try_rasterize_hybrid(frame, cell, graphics.stroke, None)?;
     // Full-width rows: the block owns its whole rectangle, so reprinting
     // it in place replaces the previous block entirely (a shorter title
     // erases the longer one it lands on).
@@ -224,7 +224,10 @@ pub(crate) struct Image {
 
 /// The panel rectangle of the canvas as raw RGBA bytes, alpha 0 where
 /// nothing drew — the kitty fast path (one pass, no [`Image`] detour).
-fn crop_rgba(canvas: &PixelCanvas, rect: PlotRect) -> crate::Result<(usize, usize, Vec<u8>)> {
+pub(crate) fn crop_rgba(
+    canvas: &PixelCanvas,
+    rect: PlotRect,
+) -> crate::Result<(usize, usize, Vec<u8>)> {
     let (x0, y0, width, height, count) = crop_geometry(canvas, rect)?;
     let bytes = count
         .checked_mul(4)

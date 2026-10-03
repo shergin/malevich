@@ -6,6 +6,14 @@ freely, without apology.
 
 ## Unreleased
 
+- `Plot::to_svg_pixels` and `Plot::try_to_svg_pixels` (feature `pixel`) encode
+  the hybrid pixel render as an SVG card. Chrome stays the cell card. The
+  panel is the device-pixel raster a graphics terminal would show, one path
+  of rectangles per color, with no embedded image and no new dependency.
+  Cell size and stroke shape it; the graphics protocol does not. A plot with
+  no panel to draw gets `Plot::to_svg`, which is unchanged. The site's
+  pixels guide shows both cards.
+
 ## 1.23.1 — 2026-10-02
 
 A documentation release: no library code changed since 1.23.0. The README

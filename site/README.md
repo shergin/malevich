@@ -21,7 +21,8 @@ python3 -m http.server 4173 --directory site/dist
 A `{{directive}}` on a line of its own in any page becomes a figure:
 `{{figure name}}` (the card and its code), `{{plain name}}`, `{{ansi name Ansi16}}`,
 `{{charsets name}}`, `{{colors name}}`, `{{sizes name 80x20 40x10}}`,
-`{{pair a b}}`, `{{html name}}`, `{{json name}}`, `{{example gallery_name}}`,
+`{{pair a b}}`, `{{html name}}`, `{{pixelcard name}}` (`to_svg` above
+`to_svg_pixels`), `{{json name}}`, `{{example gallery_name}}`,
 and the wasm-driven `{{explorer}}` and `{{resizer}}`. A caption follows a `|`.
 `SITE_CONTACT_SHEET=1 cargo run -p malevich-site` also writes `dist/contact/`,
 every figure on one page, for proofing.

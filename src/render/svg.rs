@@ -8,7 +8,9 @@
 //! `textLength` so the layout survives whatever font that is. Colors resolve
 //! exactly as the HTML card resolves them. No font is rasterized and no mark is
 //! drawn from its data; a chart that the terminal cannot show, the SVG cannot
-//! show either.
+//! show either. The pixel card (feature `pixel`) keeps that rule one rung up:
+//! its panel is the raster a graphics terminal shows, pixel font included,
+//! painted over cells the chrome left blank.
 
 use super::charset::{OCTANTS, QUADRANTS};
 use super::color::Color;
@@ -145,6 +147,158 @@ fn hex(color: Color) -> String {
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
+/// Straight RGBA composited onto the card background. Alpha 0 is undrawn.
+/// Anything else becomes an opaque RGB, so the card never needs
+/// `fill-opacity`. Faint coverage stays: dropping it would sample ink away.
+#[cfg(feature = "pixel")]
+fn composite(pixel: &[u8; 4], background: (u8, u8, u8)) -> Option<(u8, u8, u8)> {
+    let alpha = pixel[3];
+    if alpha == 0 {
+        return None;
+    }
+    if alpha == 255 {
+        return Some((pixel[0], pixel[1], pixel[2]));
+    }
+    let mix = |source: u8, ground: u8| {
+        let blended = (f64::from(source) * f64::from(alpha)
+            + f64::from(ground) * f64::from(255 - alpha))
+            / 255.0;
+        blended.round() as u8
+    };
+    Some((
+        mix(pixel[0], background.0),
+        mix(pixel[1], background.1),
+        mix(pixel[2], background.2),
+    ))
+}
+
+/// The CSS box of a cell-grid rectangle: `(x, y, width, height)` in the
+/// card's coordinate space.
+#[cfg(feature = "pixel")]
+pub(crate) fn cell_rect(
+    column: usize,
+    row: usize,
+    columns: usize,
+    rows: usize,
+) -> (f64, f64, f64, f64) {
+    (
+        PAD_X + column as f64 * CELL_W,
+        PAD_Y + row as f64 * CELL_H,
+        columns as f64 * CELL_W,
+        rows as f64 * CELL_H,
+    )
+}
+
+/// One run of a color along a device-pixel row, `start..end`, open since row
+/// `top`.
+#[cfg(feature = "pixel")]
+#[derive(Clone, Copy)]
+struct Run {
+    start: usize,
+    end: usize,
+    top: usize,
+    color: (u8, u8, u8),
+}
+
+/// The device-pixel panel over the cell card: one `<path>` per color.
+///
+/// `rgba` is straight RGBA, row-major, `pixels_wide` by `pixels_high`. Alpha
+/// 0 is skipped. Every other pixel is composited onto `background` and
+/// becomes opaque ink. A horizontal run of one color is a rectangle, and the
+/// rectangle grows down while the rows below repeat the run exactly, so a bar
+/// or a flat fill is one subpath. Rectangles of one color share a path.
+/// Every edge is written as `origin + index * step`, absolute, so neighbors
+/// print the same coordinate and rounding cannot open a seam.
+#[cfg(feature = "pixel")]
+pub(crate) fn write_pixel_panel(
+    out: &mut String,
+    panel: (f64, f64, f64, f64),
+    pixels_wide: usize,
+    pixels_high: usize,
+    rgba: &[u8],
+    background: (u8, u8, u8),
+) {
+    use std::collections::HashMap;
+    use std::fmt::Write as _;
+
+    debug_assert_eq!(
+        Some(rgba.len()),
+        pixels_wide
+            .checked_mul(pixels_high)
+            .and_then(|n| n.checked_mul(4))
+    );
+    let (x0, y0, css_width, css_height) = panel;
+    if pixels_wide == 0 || pixels_high == 0 {
+        return;
+    }
+    let dx = css_width / pixels_wide as f64;
+    let dy = css_height / pixels_high as f64;
+    let mut paths: Vec<((u8, u8, u8), String)> = Vec::new();
+    let mut path_of: HashMap<(u8, u8, u8), usize> = HashMap::new();
+    let mut close = |run: Run, bottom: usize| {
+        let index = *path_of.entry(run.color).or_insert_with(|| {
+            paths.push((run.color, String::new()));
+            paths.len() - 1
+        });
+        let left = num(x0 + run.start as f64 * dx);
+        let _ = write!(
+            paths[index].1,
+            "M{left} {}H{}V{}H{left}Z",
+            num(y0 + run.top as f64 * dy),
+            num(x0 + run.end as f64 * dx),
+            num(y0 + bottom as f64 * dy),
+        );
+    };
+    let mut open: Vec<Run> = Vec::new();
+    let mut row: Vec<Run> = Vec::new();
+    for (y, pixels) in rgba
+        .chunks_exact(pixels_wide * 4)
+        .take(pixels_high)
+        .enumerate()
+    {
+        row.clear();
+        for (x, pixel) in pixels.as_chunks::<4>().0.iter().enumerate() {
+            let Some(color) = composite(pixel, background) else {
+                continue;
+            };
+            match row.last_mut() {
+                Some(run) if run.end == x && run.color == color => run.end = x + 1,
+                _ => row.push(Run {
+                    start: x,
+                    end: x + 1,
+                    top: y,
+                    color,
+                }),
+            }
+        }
+        // Both lists are sorted by start: a run carries on when this row has
+        // the same span in the same color, and closes otherwise.
+        let mut next = 0;
+        for run in open.drain(..) {
+            while next < row.len() && row[next].start < run.start {
+                next += 1;
+            }
+            match row.get_mut(next) {
+                Some(same)
+                    if same.start == run.start
+                        && same.end == run.end
+                        && same.color == run.color =>
+                {
+                    same.top = run.top;
+                }
+                _ => close(run, y),
+            }
+        }
+        std::mem::swap(&mut open, &mut row);
+    }
+    for run in open {
+        close(run, pixels_high);
+    }
+    for ((r, g, b), d) in paths {
+        let _ = writeln!(out, "<path fill=\"#{r:02x}{g:02x}{b:02x}\" d=\"{d}\"/>");
+    }
+}
+
 fn rect(out: &mut String, x: f64, y: f64, width: f64, height: f64, fill: &str) {
     use std::fmt::Write as _;
 
@@ -171,6 +325,15 @@ impl Raster {
     /// A plot's [`crate::Plot::to_svg`] is this encoding of its raster. Pure
     /// and deterministic.
     pub fn to_svg(&self, theme: Theme) -> String {
+        self.to_svg_with(theme, |_| {})
+    }
+
+    /// The cell card, then `overlay` immediately before the closing tag.
+    ///
+    /// An empty overlay is [`Raster::to_svg`] byte for byte. The pixel card
+    /// paints its panel here, over chrome that was never drawn into the
+    /// panel cells.
+    pub(crate) fn to_svg_with(&self, theme: Theme, overlay: impl FnOnce(&mut String)) -> String {
         use std::fmt::Write as _;
 
         let (columns, rows) = (self.width(), self.height());
@@ -198,6 +361,7 @@ impl Raster {
             self.svg_ink(&mut out, cells, y, foreground);
             self.svg_text(&mut out, cells, y);
         }
+        overlay(&mut out);
         out.push_str("</svg>\n");
         out
     }

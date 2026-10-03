@@ -30,4 +30,6 @@ pub(crate) use limits::{
 pub(crate) use limits::{area as checked_area, dimension as checked_dimension};
 pub use raster::{Raster, RasterCell};
 pub use surface::Surface;
+#[cfg(feature = "pixel")]
+pub(crate) use svg::{cell_rect, write_pixel_panel};
 pub(crate) use width::{display_width, display_width_ansi, fit_width_with};

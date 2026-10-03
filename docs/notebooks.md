@@ -56,6 +56,10 @@ plot.to_html(&Frame::portable(120, 30))
 plot.to_svg(&Frame::portable(120, 30))
 ```
 
+With the `pixel` feature, `Plot::to_svg_pixels(&frame, &graphics)` is the
+hybrid pixel render for the same kind of host: chrome stays this card, and the
+panel is the device-pixel raster. See [pixels.md](pixels.md#on-a-page).
+
 Redirect `cargo run --example evcxr > plot.html` for a standalone fragment
 you can inspect in a browser, or `cargo run --example speedup -- --svg >
 plot.svg` for the SVG card. That is the one the README embeds as an image,
@@ -63,7 +67,8 @@ because GitHub strips the HTML card's styles.
 
 ## The terminal-card contract
 
-What a host may rely on, for the HTML card and the SVG card alike:
+What a host may rely on, for the HTML card and the SVG cell card
+(`Plot::to_html`, `Plot::to_svg`) alike:
 
 - **The grid is the chart.** A card is the exact cell grid the terminal
   renderer would print for the same plot and frame. One `<pre>` (HTML) or

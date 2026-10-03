@@ -220,7 +220,7 @@ fn smooth_cells_read_as_a_continuous_field() {
         let cells = if smooth { cells.smooth() } else { cells };
         let plot = Plot::new().layer(cells);
         let (_, canvas, rect, _) = plot
-            .try_rasterize_hybrid(&Frame::plain(24, 12), (8, 16), None)
+            .try_rasterize_hybrid(&Frame::plain(24, 12), (8, 16), None, None)
             .unwrap();
         let (cw, ch) = canvas.cell();
         let y = (rect.top + rect.rows / 2) * ch;
@@ -246,7 +246,7 @@ fn table_text_centers_in_its_pixel_rows() {
     // value's ink inside its own row band, aligned with its cell-pane label.
     let plot = crate::table(["a", "b"], ["v"], &[1.0, 2.0][..]);
     let (_, canvas, rect, _) = plot
-        .try_rasterize_hybrid(&Frame::plain(20, 4), (8, 16), None)
+        .try_rasterize_hybrid(&Frame::plain(20, 4), (8, 16), None, None)
         .expect("a small table rasterizes");
     let ch = 16usize;
     let top = rect.top * ch;

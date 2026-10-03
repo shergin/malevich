@@ -375,6 +375,14 @@ the `evcxr` feature adds only the notebook protocol around them. A card that
 drew something the terminal would not draw would be a figure, and a figure
 is a different product.
 
+With the `pixel` feature, `Plot::to_svg_pixels` encodes the hybrid render for
+the same kind of host. Chrome is still this card. The plot panel is the
+device-pixel raster the terminal would draw, as rectangles, not a second
+drawing from the data and not an embedded image. `Plot::to_svg` stays the
+cell card. A text-only plot, a zero cell size, or a frame with no panel
+degrades to it. In-panel text marks use the pixel font, as they do in
+`render_pixels`; axis text stays the host's font.
+
 ## Charset
 
 A charset is a glyph tier used to encode the surface. Glyph tables are data,
@@ -401,7 +409,9 @@ Graphics is how to draw the plot panel as a real image (feature `pixel`):
 which protocol, at what cell size in device pixels. It is render state like
 `Frame`, and a plain value like everything else. `None` means the caller
 falls back to cells. Output stays hybrid: chrome as text, only the plot
-rectangle as pixels. `economical()` is the slow-link trade: halve a Retina
+rectangle as pixels. `Plot::to_svg_pixels` is that hybrid for an SVG host.
+It reads cell size and stroke. The protocol is terminal transport and does
+not change the SVG. `economical()` is the slow-link trade: halve a Retina
 density, keep the ink weight, a quarter of the bytes. Sixel, with no
 placement scaling, stays native. Maps to `pixel::Graphics`. See
 [the pixels guide](pixels.md).

@@ -6,6 +6,7 @@
 
 use std::cell::Cell;
 
+use malevich::pixel::{Graphics, Protocol};
 use malevich::render::{Charset, ColorMode};
 use malevich::{Document, Frame, Plot, Theme};
 
@@ -287,6 +288,34 @@ impl Registry {
                     "card-html",
                 ))
             }
+            // The cell card above the pixel card: `to_svg` and `to_svg_pixels`.
+            "pixelcard" => {
+                let figure = self.figure(first()?)?;
+                self.rendered.set(self.rendered.get() + 1);
+                let graphics = Graphics::new(Protocol::Kitty);
+                let cards = [
+                    ("Plot::to_svg", figure.plot.to_svg(&figure.frame)),
+                    (
+                        "Plot::to_svg_pixels",
+                        figure.plot.to_svg_pixels(&figure.frame, &graphics),
+                    ),
+                ];
+                let mut inner = String::from("<div class=\"sizes\">");
+                for (label, svg) in cards {
+                    inner.push_str(&format!(
+                        "<div class=\"size\"><p class=\"rung-label\"><code>{label}</code></p>{}</div>",
+                        present_svg(&svg, &format!("{label}: {}", figure.caption)),
+                    ));
+                }
+                inner.push_str("</div>");
+                Ok(plate(
+                    next(),
+                    &inner,
+                    &caption_of(figure),
+                    None,
+                    "sizes-plate",
+                ))
+            }
             // The head of the SVG source, to show what a card is made of.
             "svgsource" => {
                 let figure = self.figure(first()?)?;
@@ -337,25 +366,33 @@ impl Registry {
     /// own width and height, with an accessible name.
     pub fn svg(&self, figure: &Figure, frame: &Frame) -> String {
         self.rendered.set(self.rendered.get() + 1);
-        let svg = figure.plot.to_svg(frame);
-        let head_end = svg.find('>').expect("svg root element");
-        let head = &svg[..head_end];
-        let rest = &svg[head_end..];
-        let mut attributes = String::new();
-        for attribute in head.split_whitespace().skip(1) {
-            if attribute.starts_with("width=") || attribute.starts_with("height=") {
-                continue;
-            }
-            attributes.push(' ');
-            attributes.push_str(attribute);
-        }
-        let columns = frame.width;
-        format!(
-            "<svg class=\"card\" role=\"img\" aria-label=\"{}\" style=\"max-width:{}px\"{attributes}{rest}",
-            escape(figure.caption),
-            32.0 + columns as f64 * 7.8,
-        )
+        present_svg(&figure.plot.to_svg(frame), figure.caption)
     }
+}
+
+/// An SVG card sized by CSS: the root keeps its `viewBox`, gains an accessible
+/// name, and grows no wider than the width the encoder wrote.
+pub fn present_svg(svg: &str, label: &str) -> String {
+    let head_end = svg.find('>').expect("svg root element");
+    let (head, rest) = svg.split_at(head_end);
+    let mut width = None;
+    let mut attributes = String::new();
+    for attribute in head.split_whitespace().skip(1) {
+        if let Some(value) = attribute.strip_prefix("width=\"") {
+            width = value.strip_suffix('"');
+            continue;
+        }
+        if attribute.starts_with("height=") {
+            continue;
+        }
+        attributes.push(' ');
+        attributes.push_str(attribute);
+    }
+    let width = width.expect("an SVG card states its width");
+    format!(
+        "<svg class=\"card\" role=\"img\" aria-label=\"{}\" style=\"max-width:{width}px\"{attributes}{rest}",
+        escape(label),
+    )
 }
 
 fn color_mode(name: &str) -> Result<ColorMode, String> {

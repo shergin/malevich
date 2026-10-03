@@ -223,6 +223,9 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   kitty graphics, or iTerm2 inline PNG, all hand-rolled: chrome stays crisp
   text, the panel becomes an actual image, and the result is still a
   deterministic `String`. `render_best` is the one-call ladder top.
+  `Plot::to_svg_pixels` is that hybrid for an SVG host: chrome stays the cell
+  card, the panel is rectangles of the same raster, and `Plot::to_svg` remains
+  the cell card when pixels are not wanted or not possible.
   [docs/pixels.md](docs/pixels.md).
 - **Every host that draws a cell grid is a terminal.** `Plot::to_html` and
   `Plot::to_svg` encode the same grid as a card for hosts that draw with

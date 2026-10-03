@@ -1,3 +1,5 @@
+#[cfg(feature = "pixel")]
+use super::write_pixel_panel;
 use super::{Ink, ink, num};
 
 #[test]
@@ -131,4 +133,32 @@ fn numbers_print_without_trailing_zeros() {
     assert_eq!(num(23.4), "23.4");
     assert_eq!(num(0.975), "0.975");
     assert_eq!(num(5.0 / 3.0), "1.667");
+}
+
+#[cfg(feature = "pixel")]
+#[test]
+fn a_pixel_panel_merges_runs_down_rows_and_keeps_faint_coverage() {
+    // Alpha 0 is skipped. A run repeated in the next row grows one rectangle
+    // down; a run that changes closes. Alpha 10 still composites onto the
+    // card background instead of disappearing.
+    const RED: [u8; 4] = [255, 0, 0, 255];
+    const BLUE: [u8; 4] = [0, 0, 255, 255];
+    const NONE: [u8; 4] = [255, 0, 0, 0];
+    const FAINT: [u8; 4] = [255, 0, 0, 10];
+    let rgba = [RED, RED, NONE, FAINT, RED, RED, BLUE, FAINT].concat();
+    let mut out = String::new();
+    write_pixel_panel(
+        &mut out,
+        (10.0, 20.0, 40.0, 20.0),
+        4,
+        2,
+        &rgba,
+        (13, 17, 23),
+    );
+    assert_eq!(
+        out,
+        "<path fill=\"#ff0000\" d=\"M10 20H30V40H10Z\"/>\n\
+         <path fill=\"#0000ff\" d=\"M30 30H40V40H30Z\"/>\n\
+         <path fill=\"#161016\" d=\"M40 20H50V40H40Z\"/>\n"
+    );
 }

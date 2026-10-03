@@ -10,6 +10,8 @@
 //! Nothing here touches a terminal at render time: rendering is a pure function
 //! of the plot, the frame, and the graphics configuration, deterministic and
 //! snapshot-testable like every other output path.
+//! [`Plot::to_svg_pixels`](crate::Plot::to_svg_pixels) encodes the same panel for
+//! a host that draws with SVG.
 
 mod base64;
 mod canvas;
@@ -29,7 +31,11 @@ pub(crate) use canvas::PixelCanvas;
 pub use capabilities::{Capabilities, Source};
 #[cfg(feature = "ratatui")]
 pub(crate) use render::try_render_mapped;
-pub(crate) use render::{render, try_render};
+pub(crate) use render::{crop_rgba, render, try_render};
+
+#[cfg(test)]
+#[path = "tests/svg_card_tests.rs"]
+mod svg_card_tests;
 
 /// The image protocol to emit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +57,9 @@ pub enum Protocol {
 ///
 /// A plain value, like [`Frame`](crate::Frame): rendering with the same plot,
 /// frame, and graphics is deterministic, and nothing here touches a terminal.
+/// [`Plot::to_svg_pixels`](crate::Plot::to_svg_pixels) reads [`Graphics::cell_size`]
+/// and [`Graphics::stroke`] and ignores [`Graphics::protocol`]: the protocol is
+/// terminal transport, and an SVG host has none.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Graphics {
