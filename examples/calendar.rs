@@ -6,6 +6,7 @@
 
 use malevich::stat::{TimeUnit, calendar_bins};
 use malevich::{Bars, Frame, Plot, Scale};
+include!("support/svg_card.rs");
 
 fn main() {
     // Commits over fourteen months, bursty, with a silent August.
@@ -26,5 +27,9 @@ fn main() {
         .y_scale(Scale::Integer)
         .time_x()
         .title("commits per month (synthetic)");
-    println!("{}", plot.render_best(&Frame::plain(72, 14)));
+    let frame = Frame::plain(72, 14);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

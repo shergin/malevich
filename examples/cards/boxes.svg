@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="280" viewBox="0 0 500 280" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="500" height="280" rx="8" fill="#0d1117"/>
+<text x="148.6" y="24.5" textLength="195" lengthAdjust="spacingAndGlyphs" xml:space="preserve">flipper length by species</text>
+<rect x="382.6" y="28" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="398.2" y="28" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="402.1" y="28" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="406" y="28" width="15.6" height="8" fill="#00cdcd"/>
+<text x="31.6" y="40.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">230 ┤</text>
+<rect x="402.1" y="44" width="3.9" height="16" fill="#00cdcd"/>
+<text x="62.8" y="56.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="374.8" y="60" width="54.6" height="16" fill="#00cdcd"/>
+<rect x="429.4" y="60" width="3.9" height="16" fill="#00cdcd"/>
+<text x="31.6" y="72.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">220 ┤</text>
+<text x="62.8" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="374.8" y="88.5" fill="#00cdcd" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">━━━━━━━━</text>
+<rect x="133" y="100" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="148.6" y="100" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="156.4" y="100" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="257.8" y="92" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="273.4" y="92" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="277.3" y="92" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="281.2" y="92" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="374.8" y="92" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="398.2" y="92" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="402.1" y="92" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="406" y="92" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="429.4" y="92" width="3.9" height="8" fill="#00cdcd"/>
+<text x="31.6" y="104.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">210 ┤</text>
+<rect x="148.6" y="108" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="277.3" y="108" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="382.6" y="116" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="398.2" y="116" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="402.1" y="108" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="406" y="116" width="15.6" height="8" fill="#00cdcd"/>
+<text x="16" y="120.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">m     │</text>
+<rect x="148.6" y="124" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="246.1" y="124" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="250" y="124" width="54.6" height="16" fill="#00cdcd"/>
+<rect x="304.6" y="124" width="3.9" height="16" fill="#00cdcd"/>
+<text x="16" y="136.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">m 200 ┤</text>
+<rect x="121.3" y="148" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="125.2" y="148" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="148.6" y="140" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="152.5" y="148" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="156.4" y="148" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="246.1" y="140" width="3.9" height="16" fill="#00cdcd"/>
+<text x="62.8" y="152.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="250" y="152.5" fill="#00cdcd" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">━━━━━━━━</text>
+<rect x="246.1" y="156" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="250" y="156" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="273.4" y="156" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="277.3" y="156" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="281.2" y="156" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="304.6" y="156" width="3.9" height="8" fill="#00cdcd"/>
+<text x="31.6" y="168.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">190 ┤</text>
+<text x="117.4" y="168.5" fill="#00cdcd" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">━━━━━━━━━</text>
+<rect x="121.3" y="172" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="125.2" y="172" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="148.6" y="172" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="152.5" y="172" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="156.4" y="172" width="23.4" height="8" fill="#00cdcd"/>
+<rect x="277.3" y="172" width="3.9" height="16" fill="#00cdcd"/>
+<text x="62.8" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="148.6" y="188" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="277.3" y="188" width="3.9" height="16" fill="#00cdcd"/>
+<text x="31.6" y="200.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">180 ┤</text>
+<rect x="133" y="212" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="148.6" y="204" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="152.5" y="212" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="156.4" y="212" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="257.8" y="204" width="39" height="8" fill="#00cdcd"/>
+<text x="62.8" y="216.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="148.6" y="220" width="3.9" height="8" fill="#cdcd00"/>
+<text x="31.6" y="232.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">170 ┤</text>
+<text x="62.8" y="248.5" textLength="421.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└─────────────────────────────────────────────────────</text>
+<text x="125.2" y="264.5" textLength="296.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Adelie         Chinstrap        Gentoo</text>
+</svg>

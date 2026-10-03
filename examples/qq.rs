@@ -5,6 +5,7 @@
 
 use malevich::stat::quantiles;
 use malevich::{Dash, Frame, Line, Plot, Points};
+include!("support/svg_card.rs");
 
 fn main() {
     let noise = |i: usize, seed: f64| {
@@ -42,5 +43,9 @@ fn main() {
         .title("Q\u{2013}Q: heavy-tailed vs normal-ish")
         .x_label("normal-ish quantiles")
         .y_label("heavy-tailed");
-    println!("{}", plot.render_best(&Frame::plain(64, 20)));
+    let frame = Frame::plain(64, 20);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

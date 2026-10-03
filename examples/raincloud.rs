@@ -8,6 +8,7 @@
 
 use malevich::stat::{BoxStats, jitter, kde};
 use malevich::{Area, Frame, Plot, Points, Range, Scale};
+include!("support/svg_card.rs");
 
 fn main() {
     let names = ["Adelie", "Chinstrap", "Gentoo"];
@@ -58,5 +59,9 @@ fn main() {
             .body(box_q1, box_q3)
             .marker(box_median),
     );
-    println!("{}", plot.render_best(&Frame::plain(66, 22)));
+    let frame = Frame::plain(66, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

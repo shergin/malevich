@@ -6,6 +6,7 @@
 
 use malevich::scale::Colormap;
 use malevich::{Align, Cells, Frame, Plot, Scale, Text};
+include!("support/svg_card.rs");
 
 fn main() {
     let classes = ["cat", "dog", "bird"];
@@ -26,5 +27,9 @@ fn main() {
         plot = plot
             .layer(Text::at(column as f64, row as f64, format!("{count:.0}")).align(Align::Center));
     }
-    println!("{}", plot.render(&Frame::plain(46, 16)));
+    let frame = Frame::plain(46, 16);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

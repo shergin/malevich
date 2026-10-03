@@ -3,6 +3,7 @@
 //! axis cannot place them honestly.
 
 use malevich::{Frame, Line, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let plot = Plot::new()
@@ -11,5 +12,9 @@ fn main() {
         .title("power laws on log-log axes")
         .log_x()
         .log_y();
-    println!("{}", plot.render_best(&Frame::plain(64, 16)));
+    let frame = Frame::plain(64, 16);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

@@ -2,6 +2,7 @@
 //! data coordinates so the arrows scale with the axes.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let mut x = Vec::new();
@@ -22,5 +23,9 @@ fn main() {
         .title("spiral flow into a sink")
         .x_label("x")
         .y_label("y");
-    println!("{}", chart.render_best(&Frame::plain(72, 22)));
+    let frame = Frame::plain(72, 22);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

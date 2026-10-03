@@ -13,6 +13,13 @@ freely, without apology.
   Cell size and stroke shape it; the graphics protocol does not. A plot with
   no panel to draw gets `Plot::to_svg`, which is unchanged. The site's
   pixels guide shows both cards.
+- The gallery examples take `--svg` and print the dark quadrant card of the
+  same plot values, in the same frames, as their pipe text; a grid prints one
+  card per pane at the size the grid gives it. `cargo run --example
+  regen_docs` writes them to `examples/cards/` and checks them like
+  `EXAMPLES.md`, and the site's gallery shows the card with the pipe text one
+  switch away. The README's SVG figure lives there too. `regen_docs` builds
+  every example once, in parallel, and runs the binaries directly.
 
 ## 1.23.1 — 2026-10-02
 

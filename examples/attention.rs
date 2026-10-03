@@ -6,6 +6,7 @@
 
 use malevich::scale::Colormap;
 use malevich::{Cells, Frame, Plot, Scale};
+include!("support/svg_card.rs");
 
 fn main() {
     let tokens = ["The", "robot", "ate", "the", "red", "apple", "."];
@@ -37,5 +38,9 @@ fn main() {
         .y_label("query")
         .colorbar()
         .title("attention, layer 7 head 3");
-    println!("{}", plot.render(&Frame::plain(66, 20)));
+    let frame = Frame::plain(66, 20);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

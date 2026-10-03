@@ -2,6 +2,7 @@
 //! clusters come from sums of incommensurate sines (a poor man's central limit).
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let bell = |i: f64, seed: f64| -> f64 {
@@ -30,5 +31,9 @@ fn main() {
         })
         .collect();
     let chart = malevich::hist2d(&x[..], &y[..]).title("two clusters, binned (synthetic)");
-    println!("{}", chart.render_best(&Frame::plain(60, 17)));
+    let frame = Frame::plain(60, 17);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="546.8" height="280" viewBox="0 0 546.8 280" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="546.8" height="280" rx="8" fill="#0d1117"/>
+<text x="133" y="24.5" textLength="280.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">request latency, density (synthetic)</text>
+<text x="156.4" y="40.5" fill="#00cdcd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──</text>
+<text x="179.8" y="40.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">unbounded</text>
+<text x="265.6" y="40.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──</text>
+<text x="289" y="40.5" textLength="93.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bounded at 0</text>
+<rect x="94" y="44" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="97.9" y="52" width="3.9" height="8" fill="#cdcd00"/>
+<text x="16" y="56.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0.15 ┤</text>
+<rect x="94" y="68" width="3.9" height="8" fill="#e6edf3"/>
+<rect x="101.8" y="60" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="105.7" y="60" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="109.6" y="68" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="109.6" y="76" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="113.5" y="84" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="117.4" y="84" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="94" y="92" width="3.9" height="8" fill="#e6edf3"/>
+<rect x="101.8" y="100" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="105.7" y="92" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="113.5" y="92" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="117.4" y="92" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="121.3" y="92" width="3.9" height="16" fill="#cdcd00"/>
+<text x="16" y="104.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0.10 ┤</text>
+<rect x="94" y="116" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="97.9" y="108" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="125.2" y="108" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="129.1" y="116" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="133" y="116" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="120.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="94" y="132" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="133" y="124" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="136.9" y="124" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="140.8" y="132" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="90.1" y="148" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="94" y="140" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="144.7" y="140" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="148.6" y="140" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="152.5" y="148" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="152.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="90.1" y="156" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="94" y="164" width="3.9" height="8" fill="#e6edf3"/>
+<rect x="156.4" y="156" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="164.2" y="164" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="172" y="164" width="3.9" height="8" fill="#cdcd00"/>
+<text x="16" y="168.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0.05 ┤</text>
+<rect x="86.2" y="172" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="172" y="172" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="179.8" y="172" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="183.7" y="180" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="187.6" y="180" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="195.4" y="180" width="3.9" height="8" fill="#cdcd00"/>
+<text x="55" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="82.3" y="188" width="3.9" height="16" fill="#00cdcd"/>
+<rect x="94" y="188" width="3.9" height="8" fill="#e6edf3"/>
+<rect x="195.4" y="188" width="15.6" height="8" fill="#cdcd00"/>
+<rect x="211" y="188" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="214.9" y="196" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="218.8" y="196" width="23.4" height="8" fill="#cdcd00"/>
+<text x="55" y="200.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="62.8" y="212" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="70.6" y="212" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="74.5" y="204" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="94" y="212" width="3.9" height="8" fill="#e6edf3"/>
+<rect x="238.3" y="204" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="242.2" y="204" width="54.6" height="8" fill="#cdcd00"/>
+<rect x="296.8" y="212" width="202.8" height="8" fill="#cdcd00"/>
+<text x="16" y="216.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0.00 ┤</text>
+<text x="55" y="232.5" textLength="475.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└────┬──────────┬──────────┬──────────┬──────────┬──────────┬</text>
+<text x="94" y="248.5" textLength="436.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0         10         20         30         40         50</text>
+<text x="289" y="264.5" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ms</text>
+</svg>

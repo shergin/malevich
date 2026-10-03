@@ -5,6 +5,7 @@
 //! `Colormap::thresholds` between them.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let (columns, rows) = (46, 46);
@@ -17,7 +18,11 @@ fn main() {
         }
     }
     let chart = malevich::contourf(columns, &z[..]).title("the peaks function, filled");
-    println!("{}", chart.render_best(&Frame::plain(72, 24)));
+    let frame = Frame::plain(72, 24);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }
 
 fn peaks(x: f64, y: f64) -> f64 {

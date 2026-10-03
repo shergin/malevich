@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="578" height="280" viewBox="0 0 578 280" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="578" height="280" rx="8" fill="#0d1117"/>
+<text x="218.8" y="24.5" textLength="132.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">the corners style</text>
+<text x="23.8" y="40.5" textLength="241.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">15 ┤              ╭───────────╮</text>
+<text x="47.2" y="56.5" textLength="241.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│            ╭─╯           ╰──╮</text>
+<text x="23.8" y="72.5" textLength="280.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">10 ┤          ╭─╯                ╰─╮</text>
+<text x="47.2" y="88.5" textLength="265.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│        ╭─╯                    ╰╮</text>
+<text x="31.6" y="104.5" textLength="296.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">5 ┤      ╭─╯                       ╰─╮</text>
+<text x="47.2" y="120.5" textLength="296.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│     ─╯                           ╰─╮</text>
+<text x="31.6" y="136.5" textLength="319.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0 ┤                                    ╰╮</text>
+<text x="47.2" y="152.5" textLength="319.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│                                     ╰─╮</text>
+<text x="23.8" y="168.5" textLength="358.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">-5 ┤                                       ╰─╮</text>
+<text x="47.2" y="184.5" textLength="514.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│                                         ╰─╮                  ╭──</text>
+<text x="16" y="200.5" textLength="530.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">-10 ┤                                           ╰─╮              ╭─╯</text>
+<text x="47.2" y="216.5" textLength="483.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│                                             ╰──╮       ╭───╯</text>
+<text x="16" y="232.5" textLength="483.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">-15 ┤                                                ╰───────╯</text>
+<text x="47.2" y="248.5" textLength="514.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬──────────┬─────────┬──────────┬──────────┬──────────┬─────────┬</text>
+<text x="55" y="264.5" textLength="507" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0         10        20         30         40         50        60</text>
+</svg>

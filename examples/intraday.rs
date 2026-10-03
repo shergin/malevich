@@ -5,6 +5,7 @@
 //! walk from 09:30 to 16:00 UTC on 2026-08-03.
 
 use malevich::{Frame, Line, Plot, Rule};
+include!("support/svg_card.rs");
 
 fn main() {
     let open = 1_785_749_400.0; // 2026-08-03 09:30 UTC
@@ -25,5 +26,9 @@ fn main() {
         .title("one session (synthetic)")
         .x_label("time (UTC)")
         .y_label("$");
-    println!("{}", plot.render_best(&Frame::plain(72, 16)));
+    let frame = Frame::plain(72, 16);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

@@ -9,6 +9,7 @@
 use malevich::mark::Dash;
 use malevich::stat::{Reducer, Window, WindowAnchor};
 use malevich::{Color, Frame, Line, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     // A random-walk price, deterministic.
@@ -51,5 +52,9 @@ fn main() {
         .layer(Line::xy(&x[..], &prices[..]).label("price"))
         .title("Bollinger bands: a centered window's mean ± 2σ (synthetic)")
         .x_label("day");
-    println!("{}", plot.render_best(&Frame::plain(72, 20)));
+    let frame = Frame::plain(72, 20);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

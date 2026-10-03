@@ -8,6 +8,7 @@
 
 use malevich::scale::Colormap;
 use malevich::{Cells, Frame, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let (columns, rows) = (360usize, 240usize);
@@ -41,5 +42,9 @@ fn main() {
         .y_label("Hz")
         .colorbar()
         .title("spectrogram");
-    println!("{}", plot.render(&Frame::plain(66, 22)));
+    let frame = Frame::plain(66, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

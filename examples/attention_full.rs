@@ -9,6 +9,7 @@
 use malevich::scale::Colormap;
 use malevich::stat::Reducer;
 use malevich::{Cells, Frame, Grid, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let n = 1024usize;
@@ -39,8 +40,12 @@ fn main() {
             )
             .title(title.to_string())
     };
-    let grid = Grid::new(2)
-        .with(pane(Reducer::Mean, "mean-reduced"))
-        .with(pane(Reducer::Max, "max-reduced"));
-    println!("{}", grid.render(&Frame::plain(76, 22)));
+    let mean = pane(Reducer::Mean, "mean-reduced");
+    let max = pane(Reducer::Max, "max-reduced");
+    let frame = Frame::plain(76, 22);
+    if svg_grid(&[&mean, &max], 2, &frame) {
+        return;
+    }
+    let grid = Grid::new(2).with(mean).with(max);
+    println!("{}", grid.render(&frame));
 }

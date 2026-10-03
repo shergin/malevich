@@ -6,6 +6,7 @@
 //! ramp, so the orientations stay readable without color.
 
 use malevich::{Cells, Frame, Grid, Plot};
+include!("support/svg_card.rs");
 
 /// One 18×18 Gabor patch at `theta`, with per-channel phase offsets — zero
 /// offsets give a grayscale edge detector, nonzero give the red/green and
@@ -41,13 +42,21 @@ fn main() {
         (1.6, (0.0, 2.1, 4.2), "92° rgb"),
         (2.6, (0.0, 2.1, 4.2), "149° rgb"),
     ];
-    let mut grid = Grid::new(3);
+    let mut plots = Vec::new();
     for (theta, phases, title) in banks {
-        grid = grid.with(
+        plots.push(
             Plot::new()
                 .layer(Cells::rgb(18, gabor(theta, phases)))
                 .title(title),
         );
     }
-    println!("{}", grid.render(&Frame::plain(76, 24)));
+    let frame = Frame::plain(76, 24);
+    if svg_grid(&plots.iter().collect::<Vec<_>>(), 3, &frame) {
+        return;
+    }
+    let mut grid = Grid::new(3);
+    for plot in plots {
+        grid = grid.with(plot);
+    }
+    println!("{}", grid.render(&frame));
 }

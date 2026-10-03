@@ -7,6 +7,7 @@
 //! decimal point, centered under its header by the header's own rule.
 
 use malevich::{DescribeOptions, Frame};
+include!("support/svg_card.rs");
 
 fn main() {
     let (species, groups) = penguin_flippers();
@@ -16,7 +17,11 @@ fn main() {
     let chart = malevich::describe_with(species, refs, DescribeOptions::new().histogram(8))
         .expect("one name per group")
         .title("flipper length by species (mm)");
-    println!("{}", chart.render(&Frame::plain(96, 6)));
+    let frame = Frame::plain(96, 6);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render(&frame));
 }
 
 fn penguin_flippers() -> (Vec<&'static str>, [Vec<f64>; 3]) {

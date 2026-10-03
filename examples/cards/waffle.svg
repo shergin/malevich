@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="468.8" height="248" viewBox="0 0 468.8 248" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="468.8" height="248" rx="8" fill="#0d1117"/>
+<text x="47.2" y="24.5" textLength="374.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">language share, one cell per percent (synthetic)</text>
+<rect x="304.6" y="28" width="15.6" height="16" fill="#d55e00"/>
+<text x="94" y="40.5" fill="#e69f00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">░░</text>
+<text x="117.4" y="40.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">rust</text>
+<text x="164.2" y="40.5" fill="#56b4e9" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▒▒</text>
+<text x="187.6" y="40.5" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">go</text>
+<text x="218.8" y="40.5" fill="#009e73" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▓▓</text>
+<text x="242.2" y="40.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">python</text>
+<text x="328" y="40.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">other</text>
+<rect x="16" y="44" width="46.8" height="16" fill="#009e73"/>
+<rect x="62.8" y="44" width="382.2" height="16" fill="#d55e00"/>
+<rect x="16" y="60" width="429" height="16" fill="#009e73"/>
+<rect x="16" y="76" width="132.6" height="16" fill="#56b4e9"/>
+<rect x="16" y="76" width="132.6" height="8" fill="#009e73"/>
+<rect x="148.6" y="76" width="296.4" height="16" fill="#009e73"/>
+<rect x="148.6" y="92" width="296.4" height="16" fill="#56b4e9"/>
+<rect x="16" y="92" width="132.6" height="16" fill="#56b4e9"/>
+<rect x="148.6" y="92" width="296.4" height="8" fill="#009e73"/>
+<rect x="16" y="108" width="429" height="16" fill="#56b4e9"/>
+<rect x="16" y="124" width="429" height="16" fill="#56b4e9"/>
+<rect x="16" y="140" width="257.4" height="16" fill="#e69f00"/>
+<rect x="273.4" y="140" width="171.6" height="16" fill="#56b4e9"/>
+<rect x="16" y="156" width="429" height="16" fill="#e69f00"/>
+<rect x="16" y="172" width="429" height="16" fill="#e69f00"/>
+<rect x="16" y="188" width="429" height="16" fill="#e69f00"/>
+<rect x="16" y="204" width="429" height="16" fill="#e69f00"/>
+<rect x="16" y="220" width="429" height="8" fill="#e69f00"/>
+</svg>

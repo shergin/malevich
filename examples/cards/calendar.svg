@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="593.6" height="248" viewBox="0 0 593.6 248" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="593.6" height="248" rx="8" fill="#0d1117"/>
+<text x="179.8" y="24.5" textLength="226.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">commits per month (synthetic)</text>
+<rect x="47.2" y="28" width="39" height="16" fill="#e6edf3"/>
+<rect x="117.4" y="34" width="31.2" height="10" fill="#e6edf3"/>
+<rect x="148.6" y="36" width="39" height="8" fill="#e6edf3"/>
+<rect x="187.6" y="34" width="31.2" height="10" fill="#e6edf3"/>
+<rect x="218.8" y="36" width="39" height="8" fill="#e6edf3"/>
+<rect x="257.8" y="30" width="31.2" height="14" fill="#e6edf3"/>
+<rect x="328" y="36" width="39" height="8" fill="#e6edf3"/>
+<rect x="367" y="34" width="31.2" height="10" fill="#e6edf3"/>
+<rect x="398.2" y="38" width="39" height="6" fill="#e6edf3"/>
+<rect x="437.2" y="30" width="70.2" height="14" fill="#e6edf3"/>
+<text x="39.4" y="40.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="44" width="39" height="16" fill="#e6edf3"/>
+<rect x="86.2" y="50" width="31.2" height="10" fill="#e6edf3"/>
+<rect x="117.4" y="44" width="171.6" height="16" fill="#e6edf3"/>
+<rect x="328" y="44" width="179.4" height="16" fill="#e6edf3"/>
+<rect x="507.4" y="50" width="31.2" height="10" fill="#e6edf3"/>
+<text x="16" y="56.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">60 ┤</text>
+<rect x="47.2" y="60" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="60" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="76" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="76" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="92" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="92" width="210.6" height="16" fill="#e6edf3"/>
+<text x="16" y="104.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">40 ┤</text>
+<rect x="47.2" y="108" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="108" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="120.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="124" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="124" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="140" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="140" width="210.6" height="16" fill="#e6edf3"/>
+<text x="16" y="152.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">20 ┤</text>
+<rect x="47.2" y="156" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="156" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="168.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="172" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="172" width="210.6" height="16" fill="#e6edf3"/>
+<text x="39.4" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="47.2" y="188" width="241.8" height="16" fill="#e6edf3"/>
+<rect x="328" y="188" width="210.6" height="16" fill="#e6edf3"/>
+<rect x="538.6" y="198" width="39" height="6" fill="#e6edf3"/>
+<text x="23.8" y="200.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0 ┤</text>
+<text x="39.4" y="216.5" textLength="538.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬────────────┬─────────────┬────────────┬─────────────┬────────────┬</text>
+<text x="31.6" y="232.5" textLength="546" lengthAdjust="spacingAndGlyphs" xml:space="preserve">2025          Apr           Jul          Oct          2026         Apr</text>
+</svg>

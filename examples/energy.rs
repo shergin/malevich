@@ -3,6 +3,7 @@
 //! Synthetic data.
 
 use malevich::{Area, Frame, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let x: Vec<f64> = (0..80).map(f64::from).collect();
@@ -18,5 +19,9 @@ fn main() {
     for ((low, high), label) in bands.iter().zip(["solar", "wind", "hydro"]) {
         plot = plot.layer(Area::between(&x[..], &low[..], &high[..]).label(label));
     }
-    println!("{}", plot.render_best(&Frame::plain(64, 16)));
+    let frame = Frame::plain(64, 16);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

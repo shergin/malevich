@@ -10,6 +10,7 @@
 
 use malevich::stat::{StackOffset, StackOptions, stack_with};
 use malevich::{Align, Bars, Frame, Plot, Scale, Text};
+include!("support/svg_card.rs");
 
 fn main() {
     let regions = ["north", "coast", "plains", "island", "outage"];
@@ -50,5 +51,9 @@ fn main() {
         }
     }
     // Five bands in five plot rows: title, legend, axis, and x label make ten.
-    println!("{}", plot.render_best(&Frame::plain(66, 10)));
+    let frame = Frame::plain(66, 10);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

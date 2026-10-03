@@ -4,6 +4,7 @@
 //! through.
 
 use malevich::{Frame, Line, Plot, Rule, Text};
+include!("support/svg_card.rs");
 
 fn main() {
     let loss: Vec<f64> = (0..70)
@@ -15,5 +16,9 @@ fn main() {
         .layer(Rule::h(0.5).label("target"))
         .layer(Text::at(34.0, 2.2, "< converging"))
         .title("annotated loss (synthetic)");
-    println!("{}", plot.render_best(&Frame::plain(60, 14)));
+    let frame = Frame::plain(60, 14);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

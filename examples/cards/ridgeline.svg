@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="531.2" height="408" viewBox="0 0 531.2 408" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="531.2" height="408" rx="8" fill="#0d1117"/>
+<text x="148.6" y="24.5" textLength="234" lengthAdjust="spacingAndGlyphs" xml:space="preserve">gradient distribution by epoch</text>
+<text x="16" y="40.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">5 ┤</text>
+<text x="242.2" y="40.5" fill="#cdcd00" textLength="109.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭────────────╮</text>
+<text x="31.6" y="56.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="226.6" y="56.5" fill="#cdcd00" textLength="156" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯            ╰───╮</text>
+<text x="31.6" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="179.8" y="72.5" fill="#00cdcd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╮</text>
+<text x="203.2" y="72.5" fill="#cdcd00" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭──╯</text>
+<text x="234.4" y="72.5" fill="#00cdcd" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─────────────╮</text>
+<text x="374.8" y="72.5" fill="#cdcd00" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰───╮</text>
+<text x="31.6" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="140.8" y="88.5" fill="#cdcd00" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭───────╯</text>
+<text x="211" y="88.5" fill="#00cdcd" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭──╯</text>
+<text x="242.2" y="88.5" fill="#cd0000" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─────╮</text>
+<text x="343.6" y="88.5" fill="#00cdcd" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="406" y="88.5" fill="#cdcd00" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰────╮</text>
+<text x="16" y="104.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">4 ┤</text>
+<text x="62.8" y="104.5" fill="#cdcd00" textLength="85.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──────────╯</text>
+<text x="172" y="104.5" fill="#00cdcd" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯ ╭─╯</text>
+<text x="218.8" y="104.5" fill="#cd0000" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭──╯</text>
+<text x="250" y="104.5" fill="#0000ee" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╮</text>
+<text x="289" y="104.5" fill="#cd0000" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="367" y="104.5" fill="#00cdcd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="445" y="104.5" fill="#cdcd00" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰────────</text>
+<text x="31.6" y="120.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="164.2" y="120.5" fill="#00cdcd" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭───╯</text>
+<text x="203.2" y="120.5" fill="#cd0000" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="226.6" y="120.5" fill="#0000ee" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="234.4" y="120.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──</text>
+<text x="250" y="120.5" fill="#0000ee" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰────╮</text>
+<text x="312.4" y="120.5" fill="#cd0000" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="382.6" y="120.5" fill="#00cdcd" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="31.6" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="62.8" y="136.5" fill="#00cdcd" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─────────────╯│</text>
+<text x="187.6" y="136.5" fill="#cd0000" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="211" y="136.5" fill="#0000ee" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─╯</text>
+<text x="226.6" y="136.5" fill="#cd00cd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="234.4" y="136.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─╮</text>
+<text x="250" y="136.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="289" y="136.5" fill="#0000ee" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="335.8" y="136.5" fill="#cd0000" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="406" y="136.5" fill="#00cdcd" textLength="109.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─────────────</text>
+<text x="31.6" y="152.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="156.4" y="152.5" fill="#cd0000" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭───╯</text>
+<text x="195.4" y="152.5" fill="#0000ee" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─╯</text>
+<text x="211" y="152.5" fill="#cd00cd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="218.8" y="152.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="242.2" y="152.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="265.6" y="152.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="296.8" y="152.5" fill="#0000ee" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="359.2" y="152.5" fill="#cd0000" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="16" y="168.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">3 ┤</text>
+<text x="117.4" y="168.5" fill="#cd0000" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭────╯</text>
+<text x="172" y="168.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="179.8" y="168.5" fill="#0000ee" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="195.4" y="168.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="211" y="168.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="226.6" y="168.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="250" y="168.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="281.2" y="168.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="312.4" y="168.5" fill="#0000ee" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="374.8" y="168.5" fill="#cd0000" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰────╮</text>
+<text x="31.6" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="62.8" y="184.5" fill="#cd0000" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">───────╯</text>
+<text x="164.2" y="184.5" fill="#0000ee" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="187.6" y="184.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="211" y="184.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="234.4" y="184.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="257.8" y="184.5" fill="#00cd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="289" y="184.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="335.8" y="184.5" fill="#0000ee" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="413.8" y="184.5" fill="#cd0000" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰────────</text>
+<text x="31.6" y="200.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="148.6" y="200.5" fill="#0000ee" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="172" y="200.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="179.8" y="200.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="195.4" y="200.5" fill="#00cd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="211" y="200.5" fill="#00cdcd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="234.4" y="200.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="257.8" y="200.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="296.8" y="200.5" fill="#cd00cd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="351.4" y="200.5" fill="#0000ee" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="31.6" y="216.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="109.6" y="216.5" fill="#0000ee" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─────╯</text>
+<text x="164.2" y="216.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="218.8" y="216.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="234.4" y="216.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="265.6" y="216.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="304.6" y="216.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="374.8" y="216.5" fill="#0000ee" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─────</text>
+<text x="16" y="232.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">2 ┤</text>
+<text x="148.6" y="232.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭─╯</text>
+<text x="172" y="232.5" fill="#00cd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="218.8" y="232.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="242.2" y="232.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="273.4" y="232.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="320.2" y="232.5" fill="#cd00cd" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─╮</text>
+<text x="31.6" y="248.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="101.8" y="248.5" fill="#cd00cd" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──────╯</text>
+<text x="156.4" y="248.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="172" y="248.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╯</text>
+<text x="218.8" y="248.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="242.2" y="248.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="281.2" y="248.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="335.8" y="248.5" fill="#cd00cd" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──────</text>
+<text x="31.6" y="264.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="148.6" y="264.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="164.2" y="264.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="218.8" y="264.5" fill="#00cdcd" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="250" y="264.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="289" y="264.5" fill="#00cd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="31.6" y="280.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="109.6" y="280.5" fill="#00cd00" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─────╯</text>
+<text x="156.4" y="280.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="218.8" y="280.5" fill="#00cdcd" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="250" y="280.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰╮</text>
+<text x="296.8" y="280.5" fill="#00cd00" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰─────</text>
+<text x="16" y="296.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">1 ┤</text>
+<text x="148.6" y="296.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="164.2" y="296.5" fill="#00cdcd" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│       │</text>
+<text x="257.8" y="296.5" fill="#cdcd00" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="31.6" y="312.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="140.8" y="312.5" fill="#cdcd00" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯</text>
+<text x="156.4" y="312.5" fill="#00cdcd" textLength="78" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯       │</text>
+<text x="257.8" y="312.5" fill="#cdcd00" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──╮</text>
+<text x="31.6" y="328.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="125.2" y="328.5" fill="#cdcd00" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">──╯</text>
+<text x="156.4" y="328.5" fill="#00cdcd" textLength="78" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│        │</text>
+<text x="281.2" y="328.5" fill="#cdcd00" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╰──</text>
+<text x="31.6" y="344.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="148.6" y="344.5" fill="#00cdcd" textLength="93.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">╭╯        ╰╮</text>
+<text x="16" y="360.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0 ┤</text>
+<text x="140.8" y="360.5" fill="#00cdcd" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve">─╯          ╰──</text>
+<text x="31.6" y="376.5" textLength="483.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬────────┬───────┬────────┬────────┬───────┬────────┬───────┬</text>
+<text x="23.8" y="392.5" textLength="491.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">-1.0     -0.5     0.0      0.5      1.0     1.5      2.0    2.5</text>
+</svg>

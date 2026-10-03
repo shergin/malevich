@@ -30,3 +30,10 @@ every figure on one page, for proofing.
 The pages that draw in the browser — the gallery plates, the ladder explorer,
 the playground — use the wasm build of the JS rim (`js/native`) through the
 scripts in [`static/`](static/).
+
+Gallery cards are generated with the docs. `cargo run --example regen_docs`
+writes `examples/cards/<name>.svg` from each example's `--svg` path — the dark
+quadrant card of the same plot values in the same frames as the pipe text, one
+`<svg>` per plot or grid pane — and checks those files the same way it checks
+`EXAMPLES.md`. The gallery shows the card. "What a pipe sees" reveals the pipe
+text.

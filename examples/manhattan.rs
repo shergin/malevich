@@ -4,6 +4,7 @@
 //! significance threshold as a `Rule` with a label.
 
 use malevich::{Color, Dash, Frame, Plot, Points, Rule};
+include!("support/svg_card.rs");
 
 fn main() {
     let noise = |i: usize, seed: f64| {
@@ -43,5 +44,9 @@ fn main() {
         .title("association scan (synthetic)")
         .x_label("genomic position")
         .y_label("-log10 p");
-    println!("{}", plot.render_best(&Frame::plain(76, 20)));
+    let frame = Frame::plain(76, 20);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

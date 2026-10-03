@@ -4,6 +4,7 @@
 //! prefix (`2.5M`) that large axes pick automatically.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let n = 10_000_000;
@@ -14,5 +15,9 @@ fn main() {
         })
         .collect();
     let chart = malevich::line(&y[..]).title("10,000,000 points");
-    println!("{}", chart.render_best(&Frame::plain(72, 16)));
+    let frame = Frame::plain(72, 16);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

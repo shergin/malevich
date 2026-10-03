@@ -7,6 +7,7 @@
 use malevich::mark::Dash;
 use malevich::stat::Normalization;
 use malevich::{Frame, HistogramOptions, Rule, hist_with};
+include!("support/svg_card.rs");
 
 fn main() {
     // An exponential pile against zero (mean 6 ms), deterministic.
@@ -25,5 +26,9 @@ fn main() {
         .layer(Rule::h(95.0).dash(Dash::Dotted).label("p95"))
         .title("requests served within a latency (synthetic)")
         .x_label("ms");
-    println!("{}", plot.render_best(&Frame::plain(66, 14)));
+    let frame = Frame::plain(66, 14);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

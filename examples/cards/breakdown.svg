@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="546.8" height="184" viewBox="0 0 546.8 184" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="546.8" height="184" rx="8" fill="#0d1117"/>
+<text x="55" y="24.5" textLength="429" lengthAdjust="spacingAndGlyphs" xml:space="preserve">electricity by source, share of each region (synthetic)</text>
+<rect x="133" y="28" width="15.6" height="16" fill="#00cdcd"/>
+<rect x="211" y="28" width="15.6" height="16" fill="#cdcd00"/>
+<rect x="281.2" y="28" width="15.6" height="16" fill="#00cd00"/>
+<rect x="359.2" y="28" width="15.6" height="16" fill="#cd00cd"/>
+<text x="156.4" y="40.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">hydro</text>
+<text x="234.4" y="40.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">wind</text>
+<text x="304.6" y="40.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">solar</text>
+<text x="382.6" y="40.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">gas</text>
+<rect x="179.8" y="44" width="23.4" height="16" fill="#00cdcd"/>
+<rect x="343.6" y="44" width="23.4" height="16" fill="#cdcd00"/>
+<rect x="468.4" y="44" width="23.4" height="16" fill="#cd00cd"/>
+<rect x="78.4" y="44" width="101.4" height="16" fill="#00cdcd"/>
+<rect x="203.2" y="44" width="93.6" height="16" fill="#00cdcd"/>
+<rect x="296.8" y="44" width="46.8" height="16" fill="#cdcd00"/>
+<rect x="367" y="44" width="23.4" height="16" fill="#cdcd00"/>
+<rect x="390.4" y="44" width="31.2" height="16" fill="#00cd00"/>
+<rect x="421.6" y="44" width="46.8" height="16" fill="#cd00cd"/>
+<rect x="491.8" y="44" width="39" height="16" fill="#cd00cd"/>
+<text x="23.8" y="56.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">north ┤</text>
+<text x="179.8" y="56.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">49%</text>
+<text x="343.6" y="56.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">21%</text>
+<text x="468.4" y="56.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">24%</text>
+<rect x="148.6" y="60" width="23.4" height="16" fill="#cdcd00"/>
+<rect x="265.6" y="60" width="23.4" height="16" fill="#00cd00"/>
+<rect x="421.6" y="60" width="23.4" height="16" fill="#cd00cd"/>
+<rect x="78.4" y="60" width="7.8" height="16" fill="#00cdcd"/>
+<rect x="86.2" y="60" width="62.4" height="16" fill="#cdcd00"/>
+<rect x="172" y="60" width="54.6" height="16" fill="#cdcd00"/>
+<rect x="226.6" y="60" width="39" height="16" fill="#00cd00"/>
+<rect x="289" y="60" width="31.2" height="16" fill="#00cd00"/>
+<rect x="320.2" y="60" width="101.4" height="16" fill="#cd00cd"/>
+<rect x="445" y="60" width="85.8" height="16" fill="#cd00cd"/>
+<text x="23.8" y="72.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">coast ┤</text>
+<text x="148.6" y="72.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">30%</text>
+<text x="265.6" y="72.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">22%</text>
+<text x="421.6" y="72.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">45%</text>
+<rect x="218.8" y="76" width="23.4" height="16" fill="#cdcd00"/>
+<rect x="367" y="76" width="23.4" height="16" fill="#00cd00"/>
+<rect x="452.8" y="76" width="23.4" height="16" fill="#cd00cd"/>
+<rect x="78.4" y="76" width="31.2" height="16" fill="#00cdcd"/>
+<rect x="109.6" y="76" width="109.2" height="16" fill="#cdcd00"/>
+<rect x="242.2" y="76" width="101.4" height="16" fill="#cdcd00"/>
+<rect x="343.6" y="76" width="23.4" height="16" fill="#00cd00"/>
+<rect x="390.4" y="76" width="7.8" height="16" fill="#00cd00"/>
+<rect x="398.2" y="76" width="54.6" height="16" fill="#cd00cd"/>
+<rect x="476.2" y="76" width="54.6" height="16" fill="#cd00cd"/>
+<text x="16" y="88.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">plains ┤</text>
+<text x="218.8" y="88.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">51%</text>
+<text x="367" y="88.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">13%</text>
+<text x="452.8" y="88.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">28%</text>
+<rect x="125.2" y="92" width="23.4" height="16" fill="#00cd00"/>
+<rect x="335.8" y="92" width="23.4" height="16" fill="#cd00cd"/>
+<rect x="78.4" y="92" width="31.2" height="16" fill="#cdcd00"/>
+<rect x="109.6" y="92" width="15.6" height="16" fill="#00cd00"/>
+<rect x="148.6" y="92" width="7.8" height="16" fill="#00cd00"/>
+<rect x="156.4" y="92" width="179.4" height="16" fill="#cd00cd"/>
+<rect x="359.2" y="92" width="171.6" height="16" fill="#cd00cd"/>
+<text x="16" y="104.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">island ┤</text>
+<text x="125.2" y="104.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">11%</text>
+<text x="335.8" y="104.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">82%</text>
+<text x="16" y="120.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">outage ┤</text>
+<text x="70.6" y="136.5" textLength="460.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬──────────┬───────────┬──────────┬───────────┬──────────┬</text>
+<text x="70.6" y="152.5" textLength="460.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0.0        0.2         0.4        0.6         0.8       1.0</text>
+<text x="289" y="168.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">share</text>
+</svg>

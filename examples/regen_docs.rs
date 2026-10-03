@@ -9,12 +9,21 @@
 //!   `cargo run --example NAME` in a `text` fence.
 //! - `FILES` names whole files an example writes through stdout — the SVG cards
 //!   a README embeds as images — with the arguments that select that output.
+//! - `examples/cards/` is one file per gallery example: `cargo run --example NAME -- --svg`.
+//!   A file may hold several cards, split by a `<!-- card -->` line. The site
+//!   inlines them. The pipe text in `EXAMPLES.md` is still the snapshot. A card
+//!   `FILES` already writes there is not written twice.
+//!
+//! Every example is built once, in parallel, and its binary runs directly.
 //!
 //! CI runs this with `--check` and fails on any stale file. Examples used here must
 //! render fixed `Frame::plain` or `Frame::portable` frames so their output is
 //! deterministic.
 
-use std::process::Command;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 /// One gallery entry: example name plus the one-line story it tells.
 type Entry = (&'static str, &'static str);
@@ -370,11 +379,11 @@ const SPLICED: &[&str] = &[
 /// Checked for staleness like every spliced block, so a figure in the README is
 /// program output, regenerated and diffed.
 const FILES: &[(&str, &[&str], &str)] = &[
-    ("speedup", &["--svg"], "examples/speedup.svg"),
+    ("speedup", &["--svg"], "examples/cards/speedup.svg"),
     (
         "speedup",
         &["--svg", "--light"],
-        "examples/speedup-light.svg",
+        "examples/cards/speedup-light.svg",
     ),
 ];
 
@@ -429,6 +438,7 @@ fn main() {
 
     let gallery = gallery_content();
     apply("EXAMPLES.md", gallery, check, &mut stale);
+    write_cards(check, &mut stale);
 
     for path in SPLICED {
         let content = std::fs::read_to_string(path)
@@ -453,25 +463,81 @@ fn main() {
     }
 }
 
+/// One SVG card file per gallery example. `--svg` prints the dark quadrant card
+/// (or several, split by `<!-- card -->`) and leaves the pipe snapshot alone.
+fn write_cards(check: bool, stale: &mut Vec<String>) {
+    if !check {
+        std::fs::create_dir_all("examples/cards").expect("cards directory");
+    }
+    for (_, _, entries) in GALLERY {
+        for (name, _) in *entries {
+            let path = format!("examples/cards/{name}.svg");
+            if FILES.iter().any(|(_, _, file)| *file == path) {
+                continue;
+            }
+            let svg = output_of_with(name, &["--svg"]);
+            assert!(
+                svg.trim_start().starts_with("<svg"),
+                "{name} --svg did not print an SVG card:\n{}",
+                svg.chars().take(240).collect::<String>()
+            );
+            apply(&path, svg, check, stale);
+        }
+    }
+}
+
 /// Runs one example and returns its stdout with the trailing newline trimmed.
 fn output_of(name: &str) -> String {
     output_of_with(name, &[]).trim_end_matches('\n').to_string()
 }
 
-/// Runs one example with `arguments` and returns its stdout whole.
+/// Runs one example with arguments and returns its stdout whole.
 fn output_of_with(name: &str, arguments: &[&str]) -> String {
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    let output = Command::new(cargo)
-        .args(["run", "--quiet", "--example", name, "--"])
+    let binary = examples()
+        .get(name)
+        .unwrap_or_else(|| panic!("example {name} was not built"));
+    let output = Command::new(binary)
         .args(arguments)
         .output()
-        .expect("failed to run cargo");
+        .unwrap_or_else(|error| panic!("failed to run example {name}: {error}"));
     assert!(
         output.status.success(),
         "example {name} failed:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).expect("example output is not UTF-8")
+}
+
+/// Every example binary by name, built once by one parallel `cargo build`.
+/// Cargo's JSON messages name each executable, so no run pays cargo's startup.
+fn examples() -> &'static HashMap<String, PathBuf> {
+    static EXAMPLES: OnceLock<HashMap<String, PathBuf>> = OnceLock::new();
+    EXAMPLES.get_or_init(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+        let output = Command::new(cargo)
+            .args(["build", "--quiet", "--examples", "--message-format=json"])
+            .stderr(Stdio::inherit())
+            .output()
+            .expect("failed to run cargo");
+        assert!(output.status.success(), "building the examples failed");
+        let mut binaries = HashMap::new();
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            let Ok(message) = serde_json::from_str::<serde_json::Value>(line) else {
+                continue;
+            };
+            let is_example = message["target"]["kind"]
+                .as_array()
+                .is_some_and(|kinds| kinds.iter().any(|kind| kind == "example"));
+            if let (true, Some(name), Some(path)) = (
+                is_example,
+                message["target"]["name"].as_str(),
+                message["executable"].as_str(),
+            ) {
+                binaries.insert(name.to_string(), PathBuf::from(path));
+            }
+        }
+        binaries
+    })
 }
 
 fn gallery_content() -> String {

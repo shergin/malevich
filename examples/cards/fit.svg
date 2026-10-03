@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="593.6" height="344" viewBox="0 0 593.6 344" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="593.6" height="344" rx="8" fill="#0d1117"/>
+<text x="187.6" y="24.5" textLength="218.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">y = 0.82x + 3.87   R² = 0.95</text>
+<rect x="550.3" y="28" width="3.9" height="8" fill="#00cd00"/>
+<rect x="558.1" y="36" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="562" y="36" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="569.8" y="36" width="3.9" height="8" fill="#00cdcd"/>
+<text x="31.6" y="40.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">30 ┤</text>
+<rect x="507.4" y="52" width="3.9" height="8" fill="#00cd00"/>
+<rect x="511.3" y="44" width="3.9" height="8" fill="#00cd00"/>
+<rect x="519.1" y="52" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="523" y="52" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="538.6" y="44" width="15.6" height="16" fill="#cdcd00"/>
+<rect x="554.2" y="44" width="7.8" height="16" fill="#00cd00"/>
+<rect x="562" y="44" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="569.8" y="44" width="3.9" height="16" fill="#cdcd00"/>
+<text x="55" y="56.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="468.4" y="68" width="3.9" height="8" fill="#00cd00"/>
+<rect x="484" y="68" width="7.8" height="8" fill="#00cd00"/>
+<rect x="491.8" y="68" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="499.6" y="68" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="503.5" y="60" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="507.4" y="60" width="23.4" height="16" fill="#cdcd00"/>
+<rect x="530.8" y="60" width="3.9" height="16" fill="#00cd00"/>
+<rect x="534.7" y="60" width="3.9" height="8" fill="#00cd00"/>
+<rect x="538.6" y="60" width="7.8" height="8" fill="#00cd00"/>
+<rect x="546.4" y="60" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="569.8" y="68" width="3.9" height="8" fill="#00cd00"/>
+<text x="31.6" y="72.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">25 ┤</text>
+<rect x="437.2" y="76" width="3.9" height="8" fill="#00cd00"/>
+<rect x="445" y="84" width="3.9" height="8" fill="#00cd00"/>
+<rect x="448.9" y="76" width="3.9" height="16" fill="#00cd00"/>
+<rect x="452.8" y="76" width="3.9" height="16" fill="#00cd00"/>
+<rect x="456.7" y="84" width="3.9" height="8" fill="#00cd00"/>
+<rect x="460.6" y="84" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="464.5" y="76" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="468.4" y="76" width="7.8" height="16" fill="#00cd00"/>
+<rect x="476.2" y="76" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="484" y="76" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="487.9" y="76" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="491.8" y="76" width="3.9" height="8" fill="#00cd00"/>
+<rect x="495.7" y="76" width="3.9" height="16" fill="#00cd00"/>
+<rect x="499.6" y="76" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="507.4" y="76" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="523" y="84" width="3.9" height="8" fill="#00cd00"/>
+<text x="55" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="394.3" y="100" width="3.9" height="8" fill="#00cd00"/>
+<rect x="406" y="100" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="413.8" y="92" width="7.8" height="16" fill="#00cd00"/>
+<rect x="421.6" y="100" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="425.5" y="92" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="429.4" y="92" width="7.8" height="16" fill="#00cd00"/>
+<rect x="437.2" y="92" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="445" y="92" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="448.9" y="92" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="452.8" y="92" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="460.6" y="92" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="491.8" y="100" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="104.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">r    │</text>
+<rect x="351.4" y="108" width="3.9" height="8" fill="#00cd00"/>
+<rect x="367" y="116" width="7.8" height="8" fill="#00cd00"/>
+<rect x="374.8" y="116" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="382.6" y="116" width="3.9" height="8" fill="#00cd00"/>
+<rect x="386.5" y="108" width="3.9" height="16" fill="#00cd00"/>
+<rect x="390.4" y="108" width="15.6" height="16" fill="#cdcd00"/>
+<rect x="406" y="108" width="15.6" height="8" fill="#cdcd00"/>
+<rect x="421.6" y="108" width="7.8" height="8" fill="#00cdcd"/>
+<text x="16" y="120.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">e 20 ┤</text>
+<rect x="312.4" y="124" width="3.9" height="8" fill="#00cd00"/>
+<rect x="328" y="132" width="3.9" height="8" fill="#00cd00"/>
+<rect x="331.9" y="124" width="3.9" height="16" fill="#00cd00"/>
+<rect x="335.8" y="132" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="343.6" y="132" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="347.5" y="124" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="351.4" y="124" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="359.2" y="124" width="7.8" height="16" fill="#00cd00"/>
+<rect x="367" y="124" width="15.6" height="8" fill="#cdcd00"/>
+<rect x="382.6" y="124" width="3.9" height="8" fill="#00cd00"/>
+<rect x="402.1" y="132" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="136.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">s    │</text>
+<rect x="289" y="148" width="7.8" height="8" fill="#00cd00"/>
+<rect x="296.8" y="148" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="304.6" y="148" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="308.5" y="140" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="312.4" y="140" width="7.8" height="16" fill="#00cd00"/>
+<rect x="320.2" y="140" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="324.1" y="140" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="328" y="140" width="3.9" height="16" fill="#00cd00"/>
+<rect x="331.9" y="140" width="3.9" height="8" fill="#00cd00"/>
+<rect x="335.8" y="140" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="343.6" y="140" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="152.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">p    │</text>
+<rect x="246.1" y="164" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="250" y="164" width="7.8" height="8" fill="#00cd00"/>
+<rect x="257.8" y="156" width="3.9" height="16" fill="#00cd00"/>
+<rect x="261.7" y="164" width="3.9" height="8" fill="#00cd00"/>
+<rect x="265.6" y="164" width="3.9" height="8" fill="#00cd00"/>
+<rect x="269.5" y="156" width="3.9" height="16" fill="#00cd00"/>
+<rect x="273.4" y="156" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="281.2" y="156" width="7.8" height="16" fill="#00cd00"/>
+<rect x="289" y="156" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="296.8" y="156" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="304.6" y="156" width="3.9" height="8" fill="#00cdcd"/>
+<text x="16" y="168.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">o 15 ┤</text>
+<rect x="187.6" y="172" width="3.9" height="8" fill="#00cd00"/>
+<rect x="207.1" y="180" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="211" y="180" width="15.6" height="8" fill="#cdcd00"/>
+<rect x="226.6" y="172" width="7.8" height="16" fill="#00cd00"/>
+<rect x="234.4" y="172" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="242.2" y="172" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="246.1" y="172" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="250" y="172" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="257.8" y="172" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="304.6" y="172" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="184.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">n    │</text>
+<rect x="148.6" y="196" width="3.9" height="8" fill="#00cd00"/>
+<rect x="164.2" y="196" width="3.9" height="8" fill="#00cd00"/>
+<rect x="168.1" y="188" width="3.9" height="16" fill="#00cd00"/>
+<rect x="172" y="196" width="3.9" height="8" fill="#00cd00"/>
+<rect x="175.9" y="188" width="3.9" height="16" fill="#00cd00"/>
+<rect x="179.8" y="196" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="183.7" y="188" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="187.6" y="188" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="195.4" y="188" width="7.8" height="16" fill="#00cd00"/>
+<rect x="203.2" y="188" width="3.9" height="16" fill="#00cd00"/>
+<rect x="207.1" y="188" width="3.9" height="8" fill="#00cd00"/>
+<rect x="211" y="188" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="218.8" y="188" width="3.9" height="8" fill="#00cd00"/>
+<rect x="222.7" y="188" width="3.9" height="16" fill="#00cd00"/>
+<rect x="234.4" y="196" width="3.9" height="8" fill="#00cd00"/>
+<rect x="242.2" y="196" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="200.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">s 10 ┤</text>
+<rect x="121.3" y="212" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="125.2" y="212" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="133" y="212" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="140.8" y="212" width="3.9" height="8" fill="#cdcd00"/>
+<rect x="144.7" y="204" width="3.9" height="16" fill="#cdcd00"/>
+<rect x="148.6" y="204" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="156.4" y="204" width="7.8" height="16" fill="#00cd00"/>
+<rect x="164.2" y="204" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="172" y="204" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="179.8" y="204" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="211" y="204" width="3.9" height="8" fill="#00cd00"/>
+<text x="16" y="216.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">e    │</text>
+<rect x="62.8" y="220" width="3.9" height="8" fill="#00cd00"/>
+<rect x="82.3" y="228" width="3.9" height="8" fill="#00cdcd"/>
+<rect x="86.2" y="228" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="94" y="228" width="7.8" height="8" fill="#cdcd00"/>
+<rect x="101.8" y="220" width="7.8" height="16" fill="#cdcd00"/>
+<rect x="109.6" y="220" width="23.4" height="16" fill="#00cd00"/>
+<rect x="133" y="220" width="15.6" height="8" fill="#00cd00"/>
+<rect x="148.6" y="220" width="3.9" height="8" fill="#00cdcd"/>
+<text x="55" y="232.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="62.8" y="236" width="15.6" height="16" fill="#cdcd00"/>
+<rect x="78.4" y="236" width="15.6" height="16" fill="#00cd00"/>
+<rect x="94" y="236" width="15.6" height="8" fill="#00cdcd"/>
+<rect x="109.6" y="236" width="3.9" height="8" fill="#00cdcd"/>
+<text x="39.4" y="248.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">5 ┤</text>
+<rect x="62.8" y="252" width="7.8" height="8" fill="#00cdcd"/>
+<rect x="70.6" y="252" width="3.9" height="8" fill="#00cd00"/>
+<rect x="101.8" y="252" width="3.9" height="8" fill="#00cd00"/>
+<text x="55" y="264.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="39.4" y="280.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0 ┤</text>
+<text x="55" y="296.5" textLength="522.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬──────────┬──────────┬──────────┬──────────┬─────────┬──────────┬</text>
+<text x="62.8" y="312.5" textLength="514.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0          5         10         15         20        25         30</text>
+<text x="304.6" y="328.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dose</text>
+</svg>

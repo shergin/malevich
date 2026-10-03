@@ -8,6 +8,7 @@
 use malevich::mark::Dash;
 use malevich::stat::{KdeOptions, kde, kde_with};
 use malevich::{Frame, Line, Plot, Rule};
+include!("support/svg_card.rs");
 
 fn main() {
     // An exponential pile against zero (mean 6 ms), deterministic.
@@ -30,5 +31,9 @@ fn main() {
         .layer(Line::xy(bxs, honest).label("bounded at 0"))
         .title("request latency, density (synthetic)")
         .x_label("ms");
-    println!("{}", plot.render_best(&Frame::plain(66, 16)));
+    let frame = Frame::plain(66, 16);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

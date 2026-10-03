@@ -5,6 +5,7 @@
 //! all. Synthetic shares.
 
 use malevich::{Cells, Frame, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let shares = [("rust", 46), ("go", 27), ("python", 18), ("other", 9)];
@@ -17,5 +18,9 @@ fn main() {
         .layer(Cells::classes(10, classes))
         .axes(false)
         .title("language share, one cell per percent (synthetic)");
-    println!("{}", plot.render_best(&Frame::plain(56, 14)));
+    let frame = Frame::plain(56, 14);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

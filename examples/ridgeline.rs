@@ -8,6 +8,7 @@
 
 use malevich::stat::kde;
 use malevich::{Frame, Line, LineStyle, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let mut state = 7u64;
@@ -43,5 +44,9 @@ fn main() {
         let lifted: Vec<f64> = density.iter().map(|d| lift + d * 1.6).collect();
         plot = plot.layer(Line::xy(xs, lifted).style(LineStyle::Corners));
     }
-    println!("{}", plot.render(&Frame::plain(64, 24)));
+    let frame = Frame::plain(64, 24);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

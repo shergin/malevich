@@ -2,6 +2,7 @@
 //! quartiles, Tukey whiskers, outliers as dots. Real measurements, real spread.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let (categories, groups) = penguin_flippers();
@@ -10,6 +11,9 @@ fn main() {
         .title("flipper length by species")
         .y_label("mm");
     let frame = Frame::portable(60, 16);
+    if svg_card(&chart, &frame) {
+        return;
+    }
     println!("{}", chart.render_best(&frame));
 }
 

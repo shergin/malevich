@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780.8" height="120" viewBox="0 0 780.8 120" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="780.8" height="120" rx="8" fill="#0d1117"/>
+<text x="273.4" y="24.5" textLength="234" lengthAdjust="spacingAndGlyphs" xml:space="preserve">flipper length by species (mm)</text>
+<rect x="686.8" y="42" width="7.8" height="2" fill="#e6edf3"/>
+<rect x="694.6" y="38" width="7.8" height="6" fill="#e6edf3"/>
+<rect x="702.4" y="32" width="7.8" height="12" fill="#e6edf3"/>
+<rect x="710.2" y="28" width="15.6" height="16" fill="#e6edf3"/>
+<rect x="725.8" y="34" width="7.8" height="10" fill="#e6edf3"/>
+<rect x="733.6" y="42" width="15.6" height="2" fill="#e6edf3"/>
+<text x="39.4" y="40.5" textLength="624" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Adelie ┤     151     190.0    6.539     172      186      190       195      210</text>
+<rect x="686.8" y="56" width="7.8" height="4" fill="#e6edf3"/>
+<rect x="694.6" y="58" width="7.8" height="2" fill="#e6edf3"/>
+<rect x="702.4" y="50" width="15.6" height="10" fill="#e6edf3"/>
+<rect x="718" y="44" width="7.8" height="16" fill="#e6edf3"/>
+<rect x="725.8" y="50" width="7.8" height="10" fill="#e6edf3"/>
+<rect x="733.6" y="56" width="15.6" height="4" fill="#e6edf3"/>
+<text x="16" y="56.5" textLength="647.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Chinstrap ┤      68     195.8    7.132     178      191      196       201      212</text>
+<rect x="686.8" y="74" width="7.8" height="2" fill="#e6edf3"/>
+<rect x="694.6" y="68" width="7.8" height="8" fill="#e6edf3"/>
+<rect x="702.4" y="60" width="23.4" height="16" fill="#e6edf3"/>
+<rect x="725.8" y="68" width="7.8" height="8" fill="#e6edf3"/>
+<rect x="733.6" y="70" width="7.8" height="6" fill="#e6edf3"/>
+<rect x="741.4" y="66" width="7.8" height="10" fill="#e6edf3"/>
+<text x="39.4" y="72.5" textLength="624" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Gentoo ┤     123     217.2    6.485     203      212      216       221      231</text>
+<text x="94" y="88.5" textLength="670.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└─────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="133" y="104.5" textLength="600.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">count    mean      sd       min      p25      p50       p75      max     hist</text>
+</svg>

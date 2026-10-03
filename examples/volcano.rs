@@ -4,6 +4,7 @@
 
 use malevich::scale::Palette;
 use malevich::{Color, Dash, Frame, Plot, Points, Rule};
+include!("support/svg_card.rs");
 
 fn main() {
     // Deterministic synthetic differential expression: most genes near zero
@@ -58,5 +59,9 @@ fn main() {
         .title("differential expression (synthetic)")
         .x_label("log2 fold change")
         .y_label("-log10 p");
-    println!("{}", plot.render_best(&Frame::plain(72, 22)));
+    let frame = Frame::plain(72, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

@@ -5,6 +5,7 @@
 
 use malevich::scale::Palette;
 use malevich::{Color, Frame, Plot, Range};
+include!("support/svg_card.rs");
 
 fn main() {
     let days = 46usize;
@@ -50,5 +51,9 @@ fn main() {
         ]))
         .title("daily candles (synthetic)")
         .y_label("price");
-    println!("{}", plot.render_best(&Frame::plain(72, 20)));
+    let frame = Frame::plain(72, 20);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

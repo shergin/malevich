@@ -9,6 +9,7 @@
 
 use malevich::scale::Colormap;
 use malevich::{Cells, Frame, Line, Plot, PointStyle, Points};
+include!("support/svg_card.rs");
 
 fn himmelblau(x: f64, y: f64) -> f64 {
     (x * x + y - 11.0).powi(2) + (x + y * y - 7.0).powi(2)
@@ -60,5 +61,9 @@ fn main() {
         // output, where it draws at device resolution).
         .layer(Points::xy(&path_x[..], &path_y[..]).style(PointStyle::Circle))
         .title("momentum on Himmelblau");
-    println!("{}", plot.render(&Frame::plain(62, 24)));
+    let frame = Frame::plain(62, 24);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

@@ -4,6 +4,7 @@
 //! diagonal is the classifier; everything else is furniture.
 
 use malevich::{Dash, Frame, Line, Plot, stat};
+include!("support/svg_card.rs");
 
 fn main() {
     // A deterministic classifier in miniature: positive scores center higher
@@ -36,5 +37,9 @@ fn main() {
         .x_label("false positive rate")
         .y_label("true positive rate")
         .title(format!("ROC, AUC {area:.3}"));
-    println!("{}", plot.render(&Frame::plain(58, 22)));
+    let frame = Frame::plain(58, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

@@ -5,6 +5,7 @@
 
 use malevich::stat::Fit;
 use malevich::{Frame, TrendOptions};
+include!("support/svg_card.rs");
 
 fn main() {
     let noise = |i: usize, seed: f64| {
@@ -32,5 +33,9 @@ fn main() {
         ))
         .x_label("dose")
         .y_label("response");
-    println!("{}", chart.render_best(&Frame::plain(72, 20)));
+    let frame = Frame::plain(72, 20);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

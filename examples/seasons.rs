@@ -9,6 +9,7 @@
 
 use malevich::Frame;
 use malevich::scale::Colormap;
+include!("support/svg_card.rs");
 
 fn main() {
     const MONTHS: [&str; 12] = [
@@ -39,5 +40,9 @@ fn main() {
     )
     .expect("twelve months of complete years")
     .title("Mauna Loa CO\u{2082}, monthly mean ppm");
-    println!("{}", chart.render(&Frame::plain(63, 15)));
+    let frame = Frame::plain(63, 15);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render(&frame));
 }

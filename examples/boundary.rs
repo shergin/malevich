@@ -5,6 +5,7 @@
 //! same glyphs, so the boundary survives a pipe.
 
 use malevich::{Cells, Frame, Plot, PointStyle, Points};
+include!("support/svg_card.rs");
 
 /// Three deterministic training blobs (a tiny LCG stands in for a dataset —
 /// loading files is the host's job).
@@ -67,5 +68,9 @@ fn main() {
         .layer(Cells::classes(n, regions).extents((lo, hi), (lo, hi)))
         .layer(Points::xy(&x[..], &y[..]).style(PointStyle::Cross))
         .title("5-NN decision regions");
-    println!("{}", plot.render(&Frame::plain(60, 22)));
+    let frame = Frame::plain(60, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

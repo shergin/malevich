@@ -5,11 +5,12 @@
 //! coverage and may otherwise show as tofu.
 
 use malevich::{Charset, Frame, Line, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let x: Vec<f64> = (0..90).map(|i| i as f64 * 0.1).collect();
     let y: Vec<f64> = x.iter().map(|v| v.sin() * (v * 0.5).cos()).collect();
-    for (charset, label) in [
+    let tiers = [
         (
             Charset::Octants,
             "Octants — 2x4 solid blocks (Unicode 16, densest ink)",
@@ -25,15 +26,24 @@ fn main() {
         (Charset::HalfBlocks, "Half blocks — 1x2"),
         (Charset::Braille, "Braille — 2x4 dots (dense opt-in)"),
         (Charset::Ascii, "ASCII — 1x1, the guaranteed fallback"),
-    ] {
-        let frame = Frame {
-            charset,
-            ..Frame::plain(60, 8)
-        };
+    ];
+    let cards: Vec<_> = tiers
+        .iter()
+        .map(|(charset, _)| {
+            let frame = Frame {
+                charset: *charset,
+                ..Frame::plain(60, 8)
+            };
+            let plot = Plot::new().layer(Line::xy(&x[..], &y[..]));
+            (plot, frame)
+        })
+        .collect();
+    let refs: Vec<_> = cards.iter().map(|(plot, frame)| (plot, *frame)).collect();
+    if svg_card_frames(&refs) {
+        return;
+    }
+    for ((_, label), (plot, frame)) in tiers.iter().zip(&cards) {
         println!("{label}");
-        println!(
-            "{}\n",
-            Plot::new().layer(Line::xy(&x[..], &y[..])).render(&frame)
-        );
+        println!("{}\n", plot.render(frame));
     }
 }

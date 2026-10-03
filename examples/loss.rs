@@ -3,6 +3,7 @@
 //! bigram limit as a target rule. No synthetic data — this training actually ran.
 
 use malevich::{Dash, Frame, Line, Plot, Rule};
+include!("support/svg_card.rs");
 
 fn main() {
     let (steps, losses): (Vec<f64>, Vec<f64>) = include_str!("data/topos_loss.csv")
@@ -27,5 +28,9 @@ fn main() {
         .title("topos: bigram training on 32k names")
         .x_label("step")
         .y_label("loss");
-    println!("{}", plot.render_best(&Frame::plain(76, 19)));
+    let frame = Frame::plain(76, 19);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render_best(&frame));
 }

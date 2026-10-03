@@ -2,6 +2,7 @@
 //! Gentoo's separation is a shape, not just a summary.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let names = ["Adelie", "Chinstrap", "Gentoo"];
@@ -18,5 +19,9 @@ fn main() {
     let chart = malevich::violin(names, refs)
         .title("flipper length by species, as densities")
         .y_label("mm");
-    println!("{}", chart.render_best(&Frame::plain(60, 16)));
+    let frame = Frame::plain(60, 16);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

@@ -6,17 +6,22 @@
 //! height. `Grid` is for equal panes; unequal panes are just `println!`.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let (species, groups) = penguin_flippers();
     let refs: Vec<&[f64]> = groups.iter().map(Vec::as_slice).collect();
     let chart =
         malevich::box_plot(species.clone(), refs.clone()).title("flipper length by species (mm)");
-    println!("{}", chart.render_best(&Frame::portable(72, 13)));
     // The table sits directly below at the tight-table height (rows + 2,
     // untitled), sharing the frame width so the two read as one figure.
     let table = malevich::describe(species, refs);
-    println!("{}", table.render_best(&Frame::portable(72, 5)));
+    let (chart_frame, table_frame) = (Frame::portable(72, 13), Frame::portable(72, 5));
+    if svg_cards(&[(&chart, chart_frame), (&table, table_frame)]) {
+        return;
+    }
+    println!("{}", chart.render_best(&chart_frame));
+    println!("{}", table.render_best(&table_frame));
 }
 
 fn penguin_flippers() -> (Vec<&'static str>, [Vec<f64>; 3]) {

@@ -6,6 +6,7 @@
 
 use malevich::stat::{Bins, Reducer, binned};
 use malevich::{Dash, Frame, Line, Plot, PointStyle, Points};
+include!("support/svg_card.rs");
 
 fn main() {
     // A deterministic overconfident classifier: predictions cluster near the
@@ -41,5 +42,9 @@ fn main() {
         .x_label("claimed confidence")
         .y_label("observed accuracy")
         .title("reliability");
-    println!("{}", plot.render(&Frame::plain(58, 22)));
+    let frame = Frame::plain(58, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

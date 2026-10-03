@@ -1,6 +1,7 @@
 //! Error bars: a Range interval around each measured point.
 
 use malevich::Frame;
+include!("support/svg_card.rs");
 
 fn main() {
     let x: Vec<f64> = (1..=8).map(|i| i as f64).collect();
@@ -11,5 +12,9 @@ fn main() {
         .collect();
     let chart = malevich::error_bars(&x[..], &y[..], &error[..])
         .title("measurements with uncertainty (synthetic)");
-    println!("{}", chart.render_best(&Frame::plain(52, 13)));
+    let frame = Frame::plain(52, 13);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }

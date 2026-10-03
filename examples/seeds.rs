@@ -6,6 +6,7 @@
 
 use malevich::stat::{Bins, Reducer, binned, ewma};
 use malevich::{Area, Frame, Line, LineStyle, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let steps_per_run = 400usize;
@@ -53,5 +54,9 @@ fn main() {
         .log_y()
         .x_label("step")
         .title("loss across 5 seeds");
-    println!("{}", plot.render(&Frame::plain(64, 22)));
+    let frame = Frame::plain(64, 22);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

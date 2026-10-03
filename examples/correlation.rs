@@ -9,6 +9,7 @@
 
 use malevich::scale::Colormap;
 use malevich::{Align, Cells, Color, Frame, Plot, Scale, Text};
+include!("support/svg_card.rs");
 
 fn main() {
     let features = ["age", "len", "dep", "mass", "veg", "kcal", "spd", "alt"];
@@ -48,5 +49,9 @@ fn main() {
                 .color(ink),
         );
     }
-    println!("{}", plot.render(&Frame::plain(56, 11)));
+    let frame = Frame::plain(56, 11);
+    if svg_card(&plot, &frame) {
+        return;
+    }
+    println!("{}", plot.render(&frame));
 }

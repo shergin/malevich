@@ -60,9 +60,9 @@ generator and diffed in CI like every text chart below, once per theme so it
 follows your color scheme:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/speedup.svg">
-  <source media="(prefers-color-scheme: light)" srcset="examples/speedup-light.svg">
-  <img alt="Horizontal grouped bars as an SVG terminal card" src="examples/speedup.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="examples/cards/speedup.svg">
+  <source media="(prefers-color-scheme: light)" srcset="examples/cards/speedup-light.svg">
+  <img alt="Horizontal grouped bars as an SVG terminal card" src="examples/cards/speedup.svg">
 </picture>
 
 And the charts no other terminal library ships — box plots, violins, densities, 2D

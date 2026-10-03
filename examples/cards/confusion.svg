@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390.8" height="280" viewBox="0 0 390.8 280" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="390.8" height="280" rx="8" fill="#0d1117"/>
+<text x="117.4" y="24.5" textLength="156" lengthAdjust="spacingAndGlyphs" xml:space="preserve">validation confusion</text>
+<text x="70.6" y="40.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="101.8" y="44" width="70.2" height="16" fill="#fafafa"/>
+<rect x="187.6" y="44" width="70.2" height="16" fill="#494949"/>
+<rect x="281.2" y="44" width="70.2" height="16" fill="#404040"/>
+<text x="70.6" y="56.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="125.2" y="60" width="15.6" height="16" fill="#fafafa"/>
+<rect x="226.6" y="60" width="7.8" height="16" fill="#494949"/>
+<rect x="312.4" y="60" width="7.8" height="16" fill="#404040"/>
+<rect x="101.8" y="60" width="23.4" height="16" fill="#fafafa"/>
+<rect x="140.8" y="60" width="31.2" height="16" fill="#fafafa"/>
+<rect x="187.6" y="60" width="39" height="16" fill="#494949"/>
+<rect x="234.4" y="60" width="23.4" height="16" fill="#494949"/>
+<rect x="281.2" y="60" width="31.2" height="16" fill="#404040"/>
+<rect x="320.2" y="60" width="31.2" height="16" fill="#404040"/>
+<text x="39.4" y="72.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">cat ┤</text>
+<text x="125.2" y="72.5" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">38</text>
+<text x="226.6" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">2</text>
+<text x="312.4" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0</text>
+<rect x="101.8" y="76" width="70.2" height="8" fill="#fafafa"/>
+<rect x="187.6" y="76" width="70.2" height="8" fill="#494949"/>
+<rect x="281.2" y="76" width="70.2" height="8" fill="#404040"/>
+<text x="70.6" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="101.8" y="100" width="70.2" height="8" fill="#4d4d4d"/>
+<rect x="187.6" y="100" width="70.2" height="8" fill="#dfdfdf"/>
+<rect x="281.2" y="100" width="70.2" height="8" fill="#515151"/>
+<text x="16" y="104.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">t      │</text>
+<rect x="101.8" y="108" width="70.2" height="16" fill="#4d4d4d"/>
+<rect x="187.6" y="108" width="70.2" height="16" fill="#dfdfdf"/>
+<rect x="281.2" y="108" width="70.2" height="16" fill="#515151"/>
+<text x="16" y="120.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">r      │</text>
+<rect x="133" y="124" width="7.8" height="16" fill="#4d4d4d"/>
+<rect x="218.8" y="124" width="15.6" height="16" fill="#dfdfdf"/>
+<rect x="312.4" y="124" width="7.8" height="16" fill="#515151"/>
+<rect x="101.8" y="124" width="31.2" height="16" fill="#4d4d4d"/>
+<rect x="140.8" y="124" width="31.2" height="16" fill="#4d4d4d"/>
+<rect x="187.6" y="124" width="31.2" height="16" fill="#dfdfdf"/>
+<rect x="234.4" y="124" width="23.4" height="16" fill="#dfdfdf"/>
+<rect x="281.2" y="124" width="31.2" height="16" fill="#515151"/>
+<rect x="320.2" y="124" width="31.2" height="16" fill="#515151"/>
+<text x="16" y="136.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">u  dog ┤</text>
+<text x="133" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">3</text>
+<text x="218.8" y="136.5" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">33</text>
+<text x="312.4" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">4</text>
+<text x="16" y="152.5" textLength="62.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">e      │</text>
+<rect x="101.8" y="156" width="70.2" height="16" fill="#444444"/>
+<rect x="187.6" y="156" width="70.2" height="16" fill="#565656"/>
+<rect x="281.2" y="156" width="70.2" height="16" fill="#e5e5e5"/>
+<text x="70.6" y="168.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="133" y="172" width="7.8" height="16" fill="#444444"/>
+<rect x="226.6" y="172" width="7.8" height="16" fill="#565656"/>
+<rect x="304.6" y="172" width="15.6" height="16" fill="#e5e5e5"/>
+<rect x="101.8" y="172" width="31.2" height="16" fill="#444444"/>
+<rect x="140.8" y="172" width="31.2" height="16" fill="#444444"/>
+<rect x="187.6" y="172" width="39" height="16" fill="#565656"/>
+<rect x="234.4" y="172" width="23.4" height="16" fill="#565656"/>
+<rect x="281.2" y="172" width="23.4" height="16" fill="#e5e5e5"/>
+<rect x="320.2" y="172" width="31.2" height="16" fill="#e5e5e5"/>
+<text x="31.6" y="184.5" textLength="46.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bird ┤</text>
+<text x="133" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">1</text>
+<text x="226.6" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">5</text>
+<text x="304.6" y="184.5" textLength="15.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">34</text>
+<rect x="101.8" y="188" width="70.2" height="8" fill="#444444"/>
+<rect x="187.6" y="188" width="70.2" height="8" fill="#565656"/>
+<rect x="281.2" y="188" width="70.2" height="8" fill="#e5e5e5"/>
+<text x="70.6" y="200.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="70.6" y="216.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="70.6" y="232.5" textLength="304.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└──────────────────────────────────────</text>
+<text x="125.2" y="248.5" textLength="202.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">cat         dog       bird</text>
+<text x="195.4" y="264.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">predicted</text>
+</svg>

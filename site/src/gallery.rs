@@ -106,19 +106,52 @@ pub fn source(context: &Context, name: &str) -> (String, String) {
     (doc.trim().to_string(), code.trim_end().to_string())
 }
 
-/// One entry as HTML: the story, the plate, and the source folded away.
+/// One entry as HTML: the story, the card (and the pipe text beside it), and
+/// the source folded away.
 pub fn entry_html(context: &Context, entry: &Entry, number: usize) -> String {
     let (doc, code) = source(context, &entry.name);
     let story = markdown::fragment(&entry.story, context);
     let doc = markdown::fragment(&doc, context);
+    let cards = load_cards(context, &entry.name);
+    let mut card_html = String::from("<div class=\"view-card card-set\">\n");
+    for (index, svg) in cards.iter().enumerate() {
+        let label = if cards.len() == 1 {
+            entry.name.clone()
+        } else {
+            format!("{}, pane {}", entry.name, index + 1)
+        };
+        card_html.push_str(&crate::figures::present_svg(svg, &label));
+        card_html.push('\n');
+    }
+    card_html.push_str("</div>\n");
     format!(
         "<section class=\"example\" id=\"{name}\">\n<h3><a class=\"anchor-name\" href=\"#{name}\">{name}</a></h3>\n{story}\
-         <figure class=\"plate\"><pre class=\"term\">{plate}</pre><figcaption>Plate {number}. <code>cargo run --example {name}</code></figcaption></figure>\n\
+         <figure class=\"plate\">\n{card_html}<pre class=\"term view-pipe\">{plate}</pre>\n<figcaption><span class=\"plate-number\">Plate {number}.</span> <code class=\"view-card\">cargo run --example {name} -- --svg</code><code class=\"view-pipe\">cargo run --example {name}</code></figcaption></figure>\n\
          <details class=\"source\"><summary>The source, <code>examples/{name}.rs</code></summary>\n<div class=\"source-doc\">{doc}</div>\n<div class=\"code\" data-lang=\"Rust\"><pre><code>{code}</code></pre></div>\n<p class=\"source-link\"><a href=\"https://github.com/shergin/malevich/blob/main/examples/{name}.rs\">On GitHub</a></p></details>\n</section>\n",
         name = escape(&entry.name),
         plate = escape(&entry.output),
         code = highlight("rust", &code),
     )
+}
+
+/// The `--svg` output of a gallery example: one card, or several split by a marker.
+fn load_cards(context: &Context, name: &str) -> Vec<String> {
+    let path = context
+        .site
+        .root
+        .join("examples/cards")
+        .join(format!("{name}.svg"));
+    let text = fs::read_to_string(&path).unwrap_or_else(|_| {
+        panic!(
+            "missing {} — run cargo run --example regen_docs",
+            path.display()
+        )
+    });
+    text.split("\n<!-- card -->\n")
+        .map(str::trim)
+        .filter(|card| !card.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 /// The gallery page.
@@ -127,8 +160,9 @@ pub fn render(context: &Context) -> Body {
     let mut html = String::new();
     let mut headings = Vec::new();
     let mut text = String::new();
-    html.push_str("<p>The showcase and the system test, one artifact, read as a ladder from the first plot to composition and style. Every plate below is the exact text <code>cargo run --example NAME</code> prints into a pipe. The frame is deterministic, and there is no color, so a log file, a diff, or a language model sees what you see. The doc generator writes each plate again, and CI fails when any is stale.</p>\n");
+    html.push_str("<p>The showcase and the system test, one artifact, read as a ladder from the first plot to composition and style. Each plate is the plot value drawn as the quadrant card. The pipe text — braille or quadrants, no color, the bytes <code>cargo run --example NAME</code> prints — is the other switch. The doc generator writes both, and CI fails when either is stale.</p>\n");
     html.push_str("<p>Colored, sized to your terminal, and with real pixels where the terminal speaks them: <code>cargo run --example showcase --features pixel</code>. The wasm build draws the same figures, cells beside pixels, <a href=\"live/\">in the browser</a>.</p>\n");
+    html.push_str("<div class=\"gallery-bar\">\n<div class=\"gallery-switch\" role=\"group\" aria-label=\"Plate rendering\"><button type=\"button\" data-view=\"card\" aria-pressed=\"true\">Cards</button><button type=\"button\" data-view=\"pipe\" aria-pressed=\"false\">What a pipe sees</button></div>\n");
     html.push_str("<nav class=\"gallery-index\" aria-label=\"Sections\"><ol>\n");
     for section in &sections {
         let id = section_id(&section.title);
@@ -138,7 +172,7 @@ pub fn render(context: &Context) -> Body {
             section.entries.len()
         ));
     }
-    html.push_str("</ol></nav>\n");
+    html.push_str("</ol></nav>\n</div>\n");
     let mut number = 0;
     for section in &sections {
         let id = section_id(&section.title);

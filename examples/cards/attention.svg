@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="546.8" height="344" viewBox="0 0 546.8 344" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="546.8" height="344" rx="8" fill="#0d1117"/>
+<text x="172" y="24.5" textLength="195" lengthAdjust="spacingAndGlyphs" xml:space="preserve">attention, layer 7 head 3</text>
+<rect x="101.8" y="36" width="39" height="8" fill="#fcfdbf"/>
+<rect x="484" y="28" width="7.8" height="16" fill="#fcfdbf"/>
+<text x="78.4" y="40.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="499.6" y="40.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">1</text>
+<rect x="101.8" y="44" width="39" height="16" fill="#fcfdbf"/>
+<rect x="484" y="44" width="7.8" height="16" fill="#ffdfa6"/>
+<text x="47.2" y="56.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">The ┤</text>
+<rect x="101.8" y="68" width="39" height="8" fill="#ffae7e"/>
+<rect x="156.4" y="68" width="39" height="8" fill="#fdf8ba"/>
+<rect x="484" y="60" width="7.8" height="16" fill="#ffc08d"/>
+<text x="78.4" y="72.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="101.8" y="76" width="39" height="16" fill="#ffae7e"/>
+<rect x="156.4" y="76" width="39" height="16" fill="#fdf8ba"/>
+<rect x="484" y="76" width="7.8" height="16" fill="#ffa174"/>
+<text x="31.6" y="88.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">robot ┤</text>
+<rect x="101.8" y="92" width="39" height="8" fill="#ffae7e"/>
+<rect x="156.4" y="92" width="39" height="8" fill="#fdf8ba"/>
+<text x="78.4" y="104.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="484" y="104.5" fill="#f78464" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▓</text>
+<rect x="101.8" y="108" width="39" height="16" fill="#e46f6d"/>
+<rect x="156.4" y="108" width="39" height="16" fill="#ffad7d"/>
+<rect x="203.2" y="108" width="39" height="16" fill="#fdf7ba"/>
+<text x="16" y="120.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">q   ate ┤</text>
+<text x="484" y="120.5" fill="#e56f6d" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▓</text>
+<rect x="101.8" y="124" width="39" height="8" fill="#e46f6d"/>
+<rect x="156.4" y="124" width="39" height="8" fill="#ffad7d"/>
+<rect x="203.2" y="124" width="39" height="8" fill="#fdf7ba"/>
+<text x="16" y="136.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">u       │</text>
+<text x="484" y="136.5" fill="#d25a74" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▓</text>
+<text x="499.6" y="136.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">10⁻²</text>
+<rect x="101.8" y="140" width="39" height="16" fill="#b83979"/>
+<rect x="156.4" y="140" width="39" height="16" fill="#e46f6d"/>
+<rect x="203.2" y="140" width="39" height="16" fill="#ffad7d"/>
+<rect x="257.8" y="140" width="39" height="16" fill="#fdf7ba"/>
+<text x="16" y="152.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">e       │</text>
+<text x="484" y="152.5" fill="#c04478" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▓</text>
+<rect x="101.8" y="156" width="39" height="8" fill="#b83979"/>
+<rect x="156.4" y="156" width="39" height="8" fill="#e46f6d"/>
+<rect x="203.2" y="156" width="39" height="8" fill="#ffad7d"/>
+<rect x="257.8" y="156" width="39" height="8" fill="#fdf7ba"/>
+<text x="16" y="168.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">r   the ┤</text>
+<text x="484" y="168.5" fill="#a8347a" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▒</text>
+<rect x="101.8" y="172" width="39" height="16" fill="#75267c"/>
+<rect x="156.4" y="172" width="39" height="16" fill="#b83979"/>
+<rect x="203.2" y="172" width="39" height="16" fill="#e46f6d"/>
+<rect x="257.8" y="172" width="39" height="16" fill="#ffad7d"/>
+<rect x="312.4" y="172" width="39" height="16" fill="#fdf7ba"/>
+<text x="16" y="184.5" textLength="70.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">y       │</text>
+<text x="484" y="184.5" fill="#8c2e7c" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▒</text>
+<rect x="101.8" y="188" width="39" height="8" fill="#75267c"/>
+<rect x="156.4" y="188" width="39" height="8" fill="#b83979"/>
+<rect x="203.2" y="188" width="39" height="8" fill="#e46f6d"/>
+<rect x="257.8" y="188" width="39" height="8" fill="#ffad7d"/>
+<rect x="312.4" y="188" width="39" height="8" fill="#fdf7ba"/>
+<text x="47.2" y="200.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">red ┤</text>
+<text x="484" y="200.5" fill="#71247d" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▒</text>
+<rect x="101.8" y="204" width="39" height="16" fill="#340a57"/>
+<rect x="156.4" y="204" width="39" height="16" fill="#75267c"/>
+<rect x="203.2" y="204" width="39" height="16" fill="#b83979"/>
+<rect x="257.8" y="204" width="39" height="16" fill="#e46f6d"/>
+<rect x="312.4" y="204" width="39" height="16" fill="#ffad7d"/>
+<rect x="367" y="204" width="39" height="16" fill="#fdf7ba"/>
+<text x="78.4" y="216.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="484" y="216.5" fill="#57177c" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▒</text>
+<rect x="101.8" y="220" width="39" height="16" fill="#340a57"/>
+<rect x="156.4" y="220" width="39" height="16" fill="#75267c"/>
+<rect x="203.2" y="220" width="39" height="16" fill="#b83979"/>
+<rect x="257.8" y="220" width="39" height="16" fill="#e46f6d"/>
+<rect x="312.4" y="220" width="39" height="16" fill="#ffad7d"/>
+<rect x="367" y="220" width="39" height="16" fill="#fdf7ba"/>
+<text x="31.6" y="232.5" textLength="54.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">apple ┤</text>
+<text x="484" y="232.5" fill="#3c0c60" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">░</text>
+<text x="499.6" y="232.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">10⁻⁴</text>
+<rect x="101.8" y="244" width="39" height="8" fill="#000004"/>
+<rect x="156.4" y="244" width="39" height="8" fill="#ffc490"/>
+<rect x="203.2" y="244" width="39" height="8" fill="#6c227d"/>
+<rect x="257.8" y="244" width="39" height="8" fill="#af367a"/>
+<rect x="312.4" y="244" width="39" height="8" fill="#de6870"/>
+<rect x="367" y="244" width="39" height="8" fill="#ffa375"/>
+<rect x="421.6" y="244" width="39" height="8" fill="#feedb1"/>
+<text x="78.4" y="248.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="484" y="248.5" fill="#21053e" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">░</text>
+<rect x="101.8" y="252" width="39" height="16" fill="#000004"/>
+<rect x="156.4" y="252" width="39" height="16" fill="#ffc490"/>
+<rect x="203.2" y="252" width="39" height="16" fill="#6c227d"/>
+<rect x="257.8" y="252" width="39" height="16" fill="#af367a"/>
+<rect x="312.4" y="252" width="39" height="16" fill="#de6870"/>
+<rect x="367" y="252" width="39" height="16" fill="#ffa375"/>
+<rect x="421.6" y="252" width="39" height="16" fill="#feedb1"/>
+<text x="62.8" y="264.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">. ┤</text>
+<text x="484" y="264.5" fill="#09011e" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">░</text>
+<text x="78.4" y="280.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<text x="484" y="280.5" fill="#000004" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">░</text>
+<text x="78.4" y="296.5" textLength="397.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└──────────────────────────────────────────────────</text>
+<text x="109.6" y="312.5" textLength="335.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">The   robot   ate    the    red  apple    .</text>
+<text x="273.4" y="328.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">key</text>
+</svg>

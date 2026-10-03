@@ -2,6 +2,7 @@
 //! domain — see examples/data/README.md), on a calendar axis.
 
 use malevich::{Frame, Line, Plot};
+include!("support/svg_card.rs");
 
 fn main() {
     let (stamps, ppm): (Vec<f64>, Vec<f64>) = include_str!("data/co2_monthly.csv")
@@ -20,7 +21,11 @@ fn main() {
         .title("atmospheric CO2 at Mauna Loa (NOAA)")
         .y_label("ppm")
         .time_x();
-    println!("{}", chart.render_best(&Frame::plain(76, 18)));
+    let frame = Frame::plain(76, 18);
+    if svg_card(&chart, &frame) {
+        return;
+    }
+    println!("{}", chart.render_best(&frame));
 }
 
 /// The first of the month as unix seconds (Hinnant's civil-date arithmetic).

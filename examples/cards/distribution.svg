@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="531.2" height="264" viewBox="0 0 531.2 264" font-family="ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace" font-size="13" fill="#e6edf3" shape-rendering="crispEdges">
+<rect width="531.2" height="264" rx="8" fill="#0d1117"/>
+<text x="195.4" y="24.5" textLength="132.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">penguin body mass</text>
+<rect x="172" y="42" width="54.6" height="2" fill="#e6edf3"/>
+<text x="16" y="40.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">100 ┤</text>
+<rect x="172" y="44" width="54.6" height="16" fill="#e6edf3"/>
+<text x="47.2" y="56.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="172" y="60" width="54.6" height="16" fill="#e6edf3"/>
+<text x="23.8" y="72.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">75 ┤</text>
+<rect x="109.6" y="86" width="62.4" height="6" fill="#e6edf3"/>
+<rect x="172" y="76" width="54.6" height="16" fill="#e6edf3"/>
+<text x="47.2" y="88.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="109.6" y="92" width="117" height="16" fill="#e6edf3"/>
+<rect x="226.6" y="104" width="54.6" height="4" fill="#e6edf3"/>
+<text x="47.2" y="104.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="109.6" y="108" width="234" height="16" fill="#e6edf3"/>
+<text x="23.8" y="120.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">50 ┤</text>
+<rect x="109.6" y="124" width="234" height="16" fill="#e6edf3"/>
+<text x="47.2" y="136.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="109.6" y="140" width="234" height="16" fill="#e6edf3"/>
+<rect x="343.6" y="146" width="54.6" height="10" fill="#e6edf3"/>
+<text x="47.2" y="152.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="109.6" y="156" width="288.6" height="16" fill="#e6edf3"/>
+<rect x="398.2" y="158" width="54.6" height="14" fill="#e6edf3"/>
+<text x="23.8" y="168.5" textLength="31.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">25 ┤</text>
+<rect x="55" y="184" width="54.6" height="4" fill="#e6edf3"/>
+<rect x="109.6" y="172" width="343.2" height="16" fill="#e6edf3"/>
+<text x="47.2" y="184.5" textLength="7.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│</text>
+<rect x="55" y="188" width="397.8" height="16" fill="#e6edf3"/>
+<rect x="452.8" y="200" width="62.4" height="4" fill="#e6edf3"/>
+<text x="31.6" y="200.5" textLength="23.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">0 ┤</text>
+<text x="47.2" y="216.5" textLength="468" lengthAdjust="spacingAndGlyphs" xml:space="preserve">└┬──────┬──────┬───────┬──────┬──────┬───────┬──────┬──────┬</text>
+<text x="39.4" y="232.5" textLength="475.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">2500   3000   3500    4000   4500   5000    5500   6000  6500</text>
+<text x="265.6" y="248.5" textLength="39" lengthAdjust="spacingAndGlyphs" xml:space="preserve">grams</text>
+</svg>
