@@ -20,6 +20,14 @@ freely, without apology.
   `EXAMPLES.md`, and the site's gallery shows the card with the pipe text one
   switch away. The README's SVG figure lives there too. `regen_docs` builds
   every example once, in parallel, and runs the binaries directly.
+- The site has a masthead with its four sections, a front page that leads
+  with what the library draws, and a "Which chart" page from a shape of data
+  to its preset. The principles are reached through Vision. The fonts are
+  served with the site, so a page makes no third-party request. Pages carry
+  social preview tags, search results land on their heading, and each concept
+  links to its item on docs.rs. The build checks those links against a local
+  rustdoc, and reads the crate version, minimum Rust, and dependencies from
+  the manifest.
 
 ## 1.23.1 — 2026-10-02
 

@@ -25,7 +25,9 @@ A `{{directive}}` on a line of its own in any page becomes a figure:
 `to_svg_pixels`), `{{json name}}`, `{{example gallery_name}}`,
 and the wasm-driven `{{explorer}}` and `{{resizer}}`. A caption follows a `|`.
 `SITE_CONTACT_SHEET=1 cargo run -p malevich-site` also writes `dist/contact/`,
-every figure on one page, for proofing.
+every figure on one page, for proofing. `--api-docs target/doc`, after
+`cargo doc --no-deps --all-features`, fails the build on any docs.rs link into
+the API that names no item, as CI does.
 
 The pages that draw in the browser — the gallery plates, the ladder explorer,
 the playground — use the wasm build of the JS rim (`js/native`) through the

@@ -1,0 +1,7 @@
+Source Serif 4 and IBM Plex Mono are bundled with this site under the
+SIL Open Font License, Version 1.1.
+
+The license text for Source Serif 4 is source-serif-4-OFL.txt.
+The license text for IBM Plex Mono is ibm-plex-mono-OFL.txt.
+
+Source is a trademark of Adobe. Plex is a reserved font name of IBM.

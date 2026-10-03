@@ -34,6 +34,10 @@ pub struct Site {
     pub out: PathBuf,
     /// The crate version, from the root manifest.
     pub version: String,
+    /// The minimum Rust, from the root manifest.
+    pub rust_version: String,
+    /// The crate's required dependencies, from the root manifest, in order.
+    pub dependencies: Vec<String>,
     /// The CLI version, from its manifest.
     pub cli_version: String,
     /// The npm version, from `js/package.json`.
@@ -46,8 +50,15 @@ struct SearchEntry {
     url: String,
     title: String,
     section: String,
-    headings: Vec<String>,
+    headings: Vec<HeadingHit>,
     text: String,
+}
+
+/// A heading the search box can jump to. The id is the page's own anchor.
+#[derive(serde::Serialize)]
+struct HeadingHit {
+    text: String,
+    id: String,
 }
 
 fn main() {
@@ -57,16 +68,26 @@ fn main() {
         .expect("site sits inside the repo")
         .to_path_buf();
     let mut out = manifest.join("dist");
+    let mut api_docs = None;
     let mut arguments = std::env::args().skip(1);
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
             "--out" => out = PathBuf::from(arguments.next().expect("--out takes a directory")),
+            "--api-docs" => {
+                api_docs = Some(PathBuf::from(
+                    arguments
+                        .next()
+                        .expect("--api-docs takes a rustdoc directory"),
+                ));
+            }
             other => panic!("unknown argument {other}"),
         }
     }
 
     let site = Site {
         version: manifest_version(&root.join("Cargo.toml")),
+        rust_version: manifest_field(&root.join("Cargo.toml"), "rust-version"),
+        dependencies: required_dependencies(&root.join("Cargo.toml")),
         cli_version: manifest_version(&root.join("cli/Cargo.toml")),
         js_version: package_version(&root.join("js/package.json")),
         root,
@@ -78,9 +99,17 @@ fn main() {
     let figures = figures::Registry::new();
     let mut index = Vec::new();
     let mut written = 0;
+    let mut broken_api_links = Vec::new();
     for section in pages::SECTIONS {
         for page in section.pages {
             let rendered = render_page(&site, &figures, section.title, page);
+            if let Some(docs) = &api_docs {
+                broken_api_links.extend(
+                    broken_api_links_in(docs, &rendered.html)
+                        .into_iter()
+                        .map(|link| format!("{} → {link}", page.url)),
+                );
+            }
             write(&site.out.join(page.path()), &rendered.html);
             written += 1;
             if page.searchable() {
@@ -118,6 +147,11 @@ fn main() {
             &layout::page(&site, "Proofing", &page, &body),
         );
     }
+    assert!(
+        broken_api_links.is_empty(),
+        "docs.rs links with no matching item in the local rustdoc:\n{}",
+        broken_api_links.join("\n")
+    );
     let index = serde_json::to_string(&index).expect("search index serializes");
     write(&site.out.join("search.json"), &index);
     write(&site.out.join(".nojekyll"), "");
@@ -141,7 +175,7 @@ fn main() {
 /// A rendered page plus what the search index keeps of it.
 struct RenderedPage {
     html: String,
-    headings: Vec<String>,
+    headings: Vec<HeadingHit>,
     summary: String,
 }
 
@@ -176,7 +210,10 @@ fn render_page(
         headings: body
             .headings
             .iter()
-            .map(|heading| heading.text.clone())
+            .map(|heading| HeadingHit {
+                text: heading.text.clone(),
+                id: heading.id.clone(),
+            })
             .collect(),
         summary: body.summary,
     }
@@ -252,15 +289,64 @@ fn write(path: &Path, content: &str) {
     fs::write(path, content).unwrap_or_else(|error| panic!("writing {}: {error}", path.display()));
 }
 
+/// The links in `html` into this crate's API on docs.rs that a local
+/// `cargo doc --no-deps --all-features` build does not have: no such page, or
+/// no element with the link's anchor on it.
+fn broken_api_links_in(docs: &Path, html: &str) -> Vec<String> {
+    const PREFIX: &str = "https://docs.rs/malevich/latest/malevich/";
+    assert!(
+        docs.join("malevich/index.html").is_file(),
+        "no rustdoc in {}: run cargo doc --no-deps --all-features",
+        docs.display()
+    );
+    let mut broken = Vec::new();
+    for rest in html.split("href=\"").skip(1) {
+        let Some(link) = rest
+            .split('"')
+            .next()
+            .and_then(|href| href.strip_prefix(PREFIX))
+        else {
+            continue;
+        };
+        let (path, anchor) = match link.split_once('#') {
+            Some((path, anchor)) => (path, Some(anchor)),
+            None => (link, None),
+        };
+        let found = fs::read_to_string(docs.join("malevich").join(path)).is_ok_and(|page| {
+            anchor.is_none_or(|anchor| page.contains(&format!("id=\"{anchor}\"")))
+        });
+        if !found && !broken.iter().any(|seen| seen == link) {
+            broken.push(link.to_string());
+        }
+    }
+    broken
+}
+
 fn manifest_version(path: &Path) -> String {
+    manifest_field(path, "version")
+}
+
+/// The first `key = "value"` line of a manifest.
+fn manifest_field(path: &Path, key: &str) -> String {
+    let prefix = format!("{key} = \"");
     read(path)
         .lines()
-        .find_map(|line| {
-            line.strip_prefix("version = \"")
-                .and_then(|rest| rest.strip_suffix('"'))
-        })
-        .expect("manifest has a version")
+        .find_map(|line| line.strip_prefix(&prefix)?.strip_suffix('"'))
+        .unwrap_or_else(|| panic!("{} has no {key}", path.display()))
         .to_string()
+}
+
+/// The names under `[dependencies]` that are not `optional`.
+fn required_dependencies(path: &Path) -> Vec<String> {
+    read(path)
+        .lines()
+        .skip_while(|line| line.trim() != "[dependencies]")
+        .skip(1)
+        .take_while(|line| !line.starts_with('['))
+        .filter(|line| !line.trim_start().starts_with('#') && !line.contains("optional = true"))
+        .filter_map(|line| Some(line.split_once('=')?.0.trim().to_string()))
+        .filter(|name| !name.is_empty())
+        .collect()
 }
 
 fn package_version(path: &Path) -> String {

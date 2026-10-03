@@ -89,7 +89,10 @@ jobs:
           components: rustfmt, clippy
       - run: cargo fmt -p malevich-site --check
       - run: cargo clippy -p malevich-site --all-targets -- -D warnings
-      - run: cargo run -p malevich-site
+      # The pages link into the API on docs.rs; the local rustdoc proves each
+      # link names an item that exists.
+      - run: cargo doc --no-deps --all-features
+      - run: cargo run -p malevich-site -- --api-docs target/doc
 
   # Demos are workspace members but intentionally not default members. Keep
   # their data shaping and ratatui integration under an explicit gate instead

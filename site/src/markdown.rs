@@ -168,7 +168,6 @@ fn render_markdown(source: &str, context: &Context) -> Body {
     let mut html = String::with_capacity(source.len() * 2);
     pulldown_cmark::html::push_html(&mut html, events.into_iter());
     let summary: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    let summary = summary.chars().take(1500).collect();
     Body {
         html,
         headings,

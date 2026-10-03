@@ -128,7 +128,7 @@
     if (title === query) return 100;
     if (title.startsWith(query)) return 60;
     if (title.includes(query)) return 40;
-    const heading = entry.headings.find((h) => h.toLowerCase().includes(query));
+    const heading = entry.headings.find((h) => h.text.toLowerCase().includes(query));
     if (heading) return 25;
     if (entry.text.toLowerCase().includes(query)) return 10;
     return 0;
@@ -154,20 +154,15 @@
     }
     results.innerHTML = hits
       .map(({ entry }) => {
-        const heading = entry.headings.find((h) => h.toLowerCase().includes(query));
-        const anchor = heading ? `#${slug(heading)}` : "";
+        const heading = entry.headings.find((h) => h.text.toLowerCase().includes(query));
+        const anchor = heading ? `#${heading.id}` : "";
         const where = heading ? `${entry.section} › ${escape(entry.title)}` : entry.section;
-        const label = heading ? escape(heading) : escape(entry.title);
+        const label = heading ? escape(heading.text) : escape(entry.title);
         return `<a href="${root}${entry.url.replace(/^\//, "")}${anchor}"><span class="where">${where}</span>${label}<span class="snippet">${escape(snippet(entry.text, query))}</span></a>`;
       })
       .join("");
     results.hidden = false;
   };
-  const slug = (text) =>
-    text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N} -]/gu, "")
-      .replace(/[ ]/g, "-");
   input.addEventListener("input", render);
   input.addEventListener("focus", render);
   input.addEventListener("keydown", (event) => {

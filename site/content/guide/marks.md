@@ -6,6 +6,8 @@ Marks draw onto a subpixel surface — 2×4 dots per cell in braille, 2×4 block
 
 ## Line
 
+[`Line` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Line.html).
+
 Points in order, paired series, or a sampled function. `Line::y(values)` plots against the index. `Line::xy(x, y)` pairs two series. `Line::function(domain, f)` samples a closure once per subpixel column, so there is no resolution to choose.
 
 {{figure mark_line_styles}}
@@ -22,6 +24,8 @@ Large lines reduce automatically. Past four points per rendered column, the plot
 
 ## Points
 
+[`Points` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Points.html).
+
 A scatter. `Points::y` and `Points::xy` mirror `Line`. `style` picks a marker. `opacity` fades dense clouds. `density`, on the pixel canvas, shades by count.
 
 {{figure mark_points_styles}}
@@ -31,6 +35,8 @@ The five styles are also the shapes `color_by` cycles through when the output ha
 {{figure mark_points_color_by}}
 
 ## Bars
+
+[`Bars` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Bars.html).
 
 Bars rise from the zero baseline, or from a per-bar `base`. Four placements: bands (one bar per category), contiguous spans on a numeric axis, free positions, and explicit intervals.
 
@@ -54,6 +60,8 @@ Bars rise from the zero baseline, or from a per-bar `base`. Four placements: ban
 
 ## Area
 
+[`Area` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Area.html).
+
 A fill. `Area::y` and `Area::xy` fill from the baseline. `Area::between(x, low, high)` fills a band between two series — a confidence band, a p10–p90 envelope, one layer of a stacked area. `opacity` is a pixel-target channel. On a sixel, kitty, or iTerm2 panel it scales the fill's coverage, so the background and the layers beneath read through. On cells the fill stays solid, so a wash under a line is a dark explicit color there.
 
 {{figure mark_area}}
@@ -63,6 +71,8 @@ A fill. `Area::y` and `Area::xy` fill from the baseline. `Area::between(x, low, 
 {{figure mark_area_horizontal}}
 
 ## Cells
+
+[`Cells` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Cells.html).
 
 One geometry, three color readings: a value grid under a colormap, an RGB image, or categorical class regions. A heatmap is not a mark. It is `Cells` under a colormap, and the `heatmap` preset says so.
 
@@ -84,6 +94,8 @@ One geometry, three color readings: a value grid under a colormap, an RGB image,
 
 ## Range
 
+[`Range` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Range.html).
+
 An interval per position, with two optional channels inside it: a thick `body` sub-interval and a `marker` crossbar. `Range::xy(x, low, high)` is an error bar at each x. `Range::y(low, high)` uses the index. `Range::over(categories, low, high)` puts one interval per band.
 
 {{figure mark_range_xy}}
@@ -94,6 +106,8 @@ Whiskers plus a body from the first to the third quartile plus a marker at the m
 
 ## Rule
 
+[`Rule` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Rule.html).
+
 A reference line at one value: `Rule::h(y)` or `Rule::v(x)`, optionally dashed and labeled. And a span: `Rule::h_span(y0, y1)` or `Rule::v_span(x0, x1)` washes the band between two values across the plot — a recession, a warm-up phase, a tolerance window — behind the layers drawn after it.
 
 {{figure mark_rule}}
@@ -101,6 +115,8 @@ A reference line at one value: `Rule::h(y)` or `Rule::v(x)`, optionally dashed a
 Rules take part in the domain: a target at 0.5 is on the axis even when no data reaches it. On a log axis a span that starts at or below zero washes its visible part from the axis floor up.
 
 ## Text
+
+[`Text` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/struct.Text.html).
 
 A string at data coordinates. `Text::at(x, y, text)` starts at the anchor and extends right. `align(Align::Center)` sets it on the anchor. `Align::Right` ends it there. On a `Bands` x axis, the band nearest the anchor becomes the text's box, with exactly the geometry the band's own header label uses — its rounded center, its step-wide budget — so aligned text and band labels land in lockstep. Text wider than its box clips to it with a truncation `.`. Digits from a neighboring column are never mixed into a number.
 

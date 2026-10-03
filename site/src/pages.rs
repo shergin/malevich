@@ -72,6 +72,8 @@ impl Page {
 /// A navigation section.
 pub struct Section {
     pub title: &'static str,
+    /// Built, searched, and paged. Left out of the sidebar when false.
+    pub in_nav: bool,
     pub pages: &'static [Page],
 }
 
@@ -84,10 +86,12 @@ const fn page(url: &'static str, title: &'static str, blurb: &'static str, sourc
     }
 }
 
-/// The navigation, in order.
+/// The navigation, in order. Principles stay published at their URLs and out of
+/// the sidebar: Vision links them.
 pub const SECTIONS: &[Section] = &[
     Section {
         title: "Start here",
+        in_nav: true,
         pages: &[
             page(
                 "/",
@@ -102,6 +106,12 @@ pub const SECTIONS: &[Section] = &[
                 Source::Content("guide/start.md"),
             ),
             page(
+                "/guide/choose/",
+                "Which chart",
+                "You have a shape of data. Here is the preset, the plate, and the page that explains it.",
+                Source::Content("guide/choose.md"),
+            ),
+            page(
                 "/playground/",
                 "Playground",
                 "Paste numbers, pick a chart, resize the terminal, and read the Rust that would draw it.",
@@ -110,7 +120,8 @@ pub const SECTIONS: &[Section] = &[
         ],
     },
     Section {
-        title: "The guide",
+        title: "Learn",
+        in_nav: true,
         pages: &[
             page(
                 "/guide/grammar/",
@@ -118,6 +129,47 @@ pub const SECTIONS: &[Section] = &[
                 "One chart, built up mark by mark, on scales the layers share.",
                 Source::Content("guide/grammar.md"),
             ),
+            page(
+                "/guide/composition/",
+                "Composition",
+                "Small multiples, tables beside charts, shared windows, and the honest forms of a pie.",
+                Source::Content("guide/composition.md"),
+            ),
+            page(
+                "/guide/streaming/",
+                "Live charts",
+                "A sliding window, a repaint in place, and a CLI that plots forever.",
+                Source::Content("guide/streaming.md"),
+            ),
+            page(
+                "/guide/recipes/",
+                "Recipes",
+                "Benchmarks piped through jq, the pie, tornado bars, two scales, and out-of-range rules.",
+                Source::RepoWith(
+                    "docs/recipes.md",
+                    &[
+                        (
+                            "## Tornado and breakdown bars",
+                            "{{figure comp_tornado nocode}}",
+                        ),
+                        (
+                            "## Two series, two scales: a `Grid` and a shared window",
+                            "{{pair comp_shared_a comp_shared_b}}",
+                        ),
+                        (
+                            "## Positions clip, colors squish",
+                            "{{pair scale_domain_fixed scale_colormap_domain | Positions clip on the left: the curve leaves the fixed window and is drawn nowhere. Colors squish on the right: values past the fixed color domain take the `under` and `over` colors, and the colorbar shows the range.}}",
+                        ),
+                        ("## Plain text is agent-legible", "{{plain hero}}"),
+                    ],
+                ),
+            ),
+        ],
+    },
+    Section {
+        title: "Look up",
+        in_nav: true,
+        pages: &[
             page(
                 "/guide/marks/",
                 "The eight marks",
@@ -160,12 +212,6 @@ pub const SECTIONS: &[Section] = &[
                         ("## Small frames", "{{resizer}}"),
                     ],
                 ),
-            ),
-            page(
-                "/guide/composition/",
-                "Composition",
-                "Small multiples, tables beside charts, shared windows, and the honest forms of a pie.",
-                Source::Content("guide/composition.md"),
             ),
             page(
                 "/guide/interaction/",
@@ -220,12 +266,6 @@ pub const SECTIONS: &[Section] = &[
                 ),
             ),
             page(
-                "/guide/streaming/",
-                "Live charts",
-                "A sliding window, a repaint in place, and a CLI that plots forever.",
-                Source::Content("guide/streaming.md"),
-            ),
-            page(
                 "/guide/serde/",
                 "Specs as data",
                 "A document: the versioned envelope a plot travels in.",
@@ -256,29 +296,6 @@ pub const SECTIONS: &[Section] = &[
                 ),
             ),
             page(
-                "/guide/recipes/",
-                "Recipes",
-                "Benchmarks piped through jq, the pie, tornado bars, two scales, and out-of-range rules.",
-                Source::RepoWith(
-                    "docs/recipes.md",
-                    &[
-                        (
-                            "## Tornado and breakdown bars",
-                            "{{figure comp_tornado nocode}}",
-                        ),
-                        (
-                            "## Two series, two scales: a `Grid` and a shared window",
-                            "{{pair comp_shared_a comp_shared_b}}",
-                        ),
-                        (
-                            "## Positions clip, colors squish",
-                            "{{pair scale_domain_fixed scale_colormap_domain | Positions clip on the left: the curve leaves the fixed window and is drawn nowhere. Colors squish on the right: values past the fixed color domain take the `under` and `over` colors, and the colorbar shows the range.}}",
-                        ),
-                        ("## Plain text is agent-legible", "{{plain hero}}"),
-                    ],
-                ),
-            ),
-            page(
                 "/guide/refusals/",
                 "What it will not be",
                 "The requests it declines, each with the reason, and the answer that already exists.",
@@ -288,11 +305,12 @@ pub const SECTIONS: &[Section] = &[
     },
     Section {
         title: "Gallery",
+        in_nav: true,
         pages: &[
             page(
                 "/gallery/",
                 "The gallery",
-                "Fifty-odd charts in a ladder, every one of them real program output with its source.",
+                "Fifty-odd charts, each drawn as a card, with the pipe text one switch away and the source folded under it.",
                 Source::Gallery,
             ),
             page(
@@ -305,13 +323,18 @@ pub const SECTIONS: &[Section] = &[
     },
     Section {
         title: "Why it is shaped this way",
+        in_nav: true,
+        pages: &[page(
+            "/principles/",
+            "Vision",
+            "The argument, and the five rules.",
+            Source::Repo("docs/vision.md"),
+        )],
+    },
+    Section {
+        title: "Principles",
+        in_nav: false,
         pages: &[
-            page(
-                "/principles/",
-                "Vision",
-                "The argument, and the five rules.",
-                Source::Repo("docs/vision.md"),
-            ),
             page(
                 "/principles/presets-are-packaging/",
                 "Presets are packaging",
@@ -358,6 +381,7 @@ pub const SECTIONS: &[Section] = &[
     },
     Section {
         title: "Reference",
+        in_nav: true,
         pages: &[
             page(
                 "/concepts/",
@@ -366,28 +390,79 @@ pub const SECTIONS: &[Section] = &[
                 Source::RepoWith(
                     "docs/terminology.md",
                     &[
-                        ("## Plot", "{{figure hero nocode}}"),
-                        ("## Layer", "{{figure grammar_3 nocode}}"),
-                        ("## Mark", "{{figure mark_rule nocode}}"),
+                        (
+                            "## Plot",
+                            "[`Plot` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Plot.html).\n\n{{figure hero nocode}}",
+                        ),
+                        (
+                            "## Layer",
+                            "[`Plot::layer` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Plot.html#method.layer).\n\n{{figure grammar_3 nocode}}",
+                        ),
+                        (
+                            "## Mark",
+                            "[`Mark` on docs.rs](https://docs.rs/malevich/latest/malevich/mark/enum.Mark.html).\n\n{{figure mark_rule nocode}}",
+                        ),
                         ("## Channel", "{{figure mark_points_color_by nocode}}"),
-                        ("## Series", "{{figure start_gap nocode}}"),
-                        ("## Stat", "{{figure stat_window nocode}}"),
-                        ("## Reducer", "{{figure stat_binned nocode}}"),
-                        ("## Scale", "{{figure scale_log nocode}}"),
-                        ("## Ticks", "{{figure scale_context nocode}}"),
+                        (
+                            "## Series",
+                            "[`Series` on docs.rs](https://docs.rs/malevich/latest/malevich/data/struct.Series.html).\n\n{{figure start_gap nocode}}",
+                        ),
+                        (
+                            "## Stat",
+                            "[`stat` on docs.rs](https://docs.rs/malevich/latest/malevich/stat/index.html).\n\n{{figure stat_window nocode}}",
+                        ),
+                        (
+                            "## Reducer",
+                            "[`Reducer` on docs.rs](https://docs.rs/malevich/latest/malevich/stat/enum.Reducer.html).\n\n{{figure stat_binned nocode}}",
+                        ),
+                        (
+                            "## Scale",
+                            "[`Scale` on docs.rs](https://docs.rs/malevich/latest/malevich/scale/enum.Scale.html).\n\n{{figure scale_log nocode}}",
+                        ),
+                        (
+                            "## Ticks",
+                            "[`Ticks` on docs.rs](https://docs.rs/malevich/latest/malevich/scale/struct.Ticks.html).\n\n{{figure scale_context nocode}}",
+                        ),
                         (
                             "## Frame",
-                            "{{sizes start_layers 60x12 36x8 | One plot, two frames.}}",
+                            "[`Frame` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Frame.html).\n\n{{sizes start_layers 60x12 36x8 | One plot, two frames.}}",
                         ),
-                        ("## Viewport", "{{pair inter_full inter_zoomed}}"),
-                        ("## Card", "{{light hero}}"),
-                        ("## Charset", "{{charsets start_line}}"),
+                        (
+                            "## Viewport",
+                            "[`Viewport` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Viewport.html).\n\n{{pair inter_full inter_zoomed}}",
+                        ),
+                        (
+                            "## Card",
+                            "[`Plot::to_svg` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Plot.html#method.to_svg).\n\n{{light hero}}",
+                        ),
+                        (
+                            "## Charset",
+                            "[`Charset` on docs.rs](https://docs.rs/malevich/latest/malevich/render/enum.Charset.html).\n\n{{charsets start_line}}",
+                        ),
                         (
                             "## Theme",
-                            "{{pair palette_okabe_ito palette_muted | The categorical `Palette` lives in the spec. The `Theme` belongs to the frame.}}",
+                            "[`Theme` on docs.rs](https://docs.rs/malevich/latest/malevich/struct.Theme.html).\n\n{{pair palette_okabe_ito palette_muted | The categorical `Palette` lives in the spec. The `Theme` belongs to the frame.}}",
                         ),
-                        ("## Preset", "{{figure grammar_preset nocode}}"),
-                        ("## Stream", "{{figure stream_tail nocode}}"),
+                        (
+                            "## Preset",
+                            "[`line` on docs.rs](https://docs.rs/malevich/latest/malevich/fn.line.html).\n\n{{figure grammar_preset nocode}}",
+                        ),
+                        (
+                            "## Stream",
+                            "[`stream` on docs.rs](https://docs.rs/malevich/latest/malevich/stream/index.html).\n\n{{figure stream_tail nocode}}",
+                        ),
+                        (
+                            "## Mapping",
+                            "[`Mapping` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Mapping.html).",
+                        ),
+                        (
+                            "## Widget",
+                            "[`PlotWidget` on docs.rs](https://docs.rs/malevich/latest/malevich/struct.PlotWidget.html).",
+                        ),
+                        (
+                            "## Grid",
+                            "[`Grid` on docs.rs](https://docs.rs/malevich/latest/malevich/plot/struct.Grid.html).",
+                        ),
                     ],
                 ),
             ),

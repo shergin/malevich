@@ -193,12 +193,17 @@ pub fn render(context: &Context) -> Body {
             text.push(' ');
             text.push_str(&entry.story);
             text.push(' ');
+            headings.push(markdown::Heading {
+                level: 3,
+                id: entry.name.clone(),
+                text: entry.name.clone(),
+            });
         }
     }
     Body {
         html,
         headings,
-        summary: text.chars().take(1500).collect(),
+        summary: text,
         scripts: Vec::new(),
     }
 }

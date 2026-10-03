@@ -7,6 +7,7 @@ use crate::markdown::Body;
 use crate::pages::{self, Page, SECTIONS, Source};
 
 const REPO: &str = "https://github.com/shergin/malevich";
+const ORIGIN: &str = "https://shergin.github.io/malevich";
 
 /// Wraps a rendered body in the site shell.
 pub fn page(site: &Site, section: &str, page: &Page, body: &Body) -> String {
@@ -26,14 +27,29 @@ pub fn page(site: &Site, section: &str, page: &Page, body: &Body) -> String {
         escape(page.blurb)
     ));
     out.push_str("<meta name=\"color-scheme\" content=\"light dark\">\n");
+    let canonical = format!("{ORIGIN}{}", page.url);
+    let image = format!("{ORIGIN}/assets/examples/suprematist-composition.png");
     out.push_str(&format!(
         "<link rel=\"icon\" href=\"{root}favicon.svg\" type=\"image/svg+xml\">\n"
     ));
     out.push_str(&format!(
         "<link rel=\"stylesheet\" href=\"{root}site.css\">\n"
     ));
-    out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n");
-    out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap\" rel=\"stylesheet\">\n");
+    out.push_str(&format!(
+        "<link rel=\"canonical\" href=\"{}\">\n",
+        escape(&canonical)
+    ));
+    out.push_str(&format!(
+        "<meta property=\"og:title\" content=\"{}\">\n<meta property=\"og:description\" content=\"{}\">\n<meta property=\"og:url\" content=\"{}\">\n<meta property=\"og:image\" content=\"{image}\">\n<meta property=\"og:type\" content=\"website\">\n",
+        escape(&title),
+        escape(page.blurb),
+        escape(&canonical),
+    ));
+    out.push_str(&format!(
+        "<meta name=\"twitter:card\" content=\"summary_large_image\">\n<meta name=\"twitter:title\" content=\"{}\">\n<meta name=\"twitter:description\" content=\"{}\">\n<meta name=\"twitter:image\" content=\"{image}\">\n",
+        escape(&title),
+        escape(page.blurb),
+    ));
     out.push_str(&format!(
         "<script>window.MALEVICH_ROOT = \"{root}\";</script>\n"
     ));
@@ -49,8 +65,23 @@ pub fn page(site: &Site, section: &str, page: &Page, body: &Body) -> String {
     out.push_str(&format!(
         "<a class=\"brand\" href=\"{root}\" aria-label=\"malevich, home\"><span class=\"square\" aria-hidden=\"true\"></span>malevich</a>\n"
     ));
+    out.push_str("<nav class=\"primary\" aria-label=\"Sections\">\n");
+    for (url, label) in [
+        ("/guide/start/", "Guide"),
+        ("/gallery/", "Gallery"),
+        ("/playground/", "Playground"),
+        ("/principles/", "Vision"),
+    ] {
+        out.push_str(&format!(
+            "<a href=\"{}\"{}>{}</a>\n",
+            href(url),
+            primary_current(page.url, url),
+            label
+        ));
+    }
+    out.push_str("</nav>\n");
     out.push_str("<button class=\"nav-toggle\" type=\"button\" aria-controls=\"sidebar\" aria-expanded=\"false\">Contents</button>\n");
-    out.push_str("<div class=\"search\"><input id=\"search\" type=\"search\" placeholder=\"Search the docs\" aria-label=\"Search the docs\" autocomplete=\"off\"><div class=\"results\" id=\"results\" hidden></div></div>\n");
+    out.push_str("<div class=\"search\"><input id=\"search\" type=\"search\" placeholder=\"Search the docs (/)\" aria-label=\"Search the docs\" autocomplete=\"off\"><div class=\"results\" id=\"results\" hidden></div></div>\n");
     out.push_str(&format!(
         "<nav class=\"links\" aria-label=\"Elsewhere\"><a href=\"{REPO}\">GitHub</a><a href=\"https://docs.rs/malevich\">docs.rs</a><a href=\"https://crates.io/crates/malevich\">crates.io</a><a href=\"https://www.npmjs.com/package/malevich\">npm</a></nav>\n"
     ));
@@ -60,10 +91,15 @@ pub fn page(site: &Site, section: &str, page: &Page, body: &Body) -> String {
     // Sidebar.
     out.push_str("<nav class=\"sidebar\" id=\"sidebar\" aria-label=\"Documentation\">\n");
     for group in SECTIONS {
+        if !group.in_nav {
+            continue;
+        }
         out.push_str(&format!("<section><h2>{}</h2><ul>\n", escape(group.title)));
         for entry in group.pages {
             let current = if entry.url == page.url {
                 " aria-current=\"page\""
+            } else if entry.url == "/principles/" && page.url.starts_with("/principles/") {
+                " aria-current=\"true\""
             } else {
                 ""
             };
@@ -177,6 +213,18 @@ pub fn page(site: &Site, section: &str, page: &Page, body: &Body) -> String {
     }
     out.push_str("</body>\n</html>\n");
     out
+}
+
+/// Marks the masthead link for the section the reader is in.
+fn primary_current(page_url: &str, href: &str) -> &'static str {
+    let on = match href {
+        "/guide/start/" => page_url.starts_with("/guide/"),
+        "/gallery/" => page_url.starts_with("/gallery/"),
+        "/playground/" => page_url == "/playground/",
+        "/principles/" => page_url.starts_with("/principles/"),
+        _ => false,
+    };
+    if on { " aria-current=\"true\"" } else { "" }
 }
 
 fn source_link(page: &Page) -> Option<String> {

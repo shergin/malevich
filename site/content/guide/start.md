@@ -81,7 +81,7 @@ The three environment-reading conveniences are `Display`, `Frame::detect`, and `
 
 ## What is in the box
 
-The presets, re-exported at the crate root and each provably equal to its expansion:
+The presets, re-exported at the crate root and each provably equal to its expansion. The shape of data you have, and the preset that draws it, is [which chart](../choose/).
 
 | preset | chart |
 |---|---|
