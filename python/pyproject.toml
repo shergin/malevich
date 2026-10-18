@@ -1,0 +1,82 @@
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[project]
+name = "supremus"
+version = "0.1.0"
+description = "Terminal plotting for Python: a small grammar of marks, honest axes, millions of points. The malevich engine, in a wheel."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSES/*"]
+authors = [{ name = "Valentin Shergin" }]
+keywords = [
+  "plot",
+  "chart",
+  "terminal",
+  "ascii",
+  "braille",
+  "visualization",
+  "rich",
+  "textual",
+  "jupyter",
+  "malevich",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Topic :: Terminals",
+  "Typing :: Typed",
+]
+# No runtime dependencies. numpy, pandas, polars, and pyarrow are read through
+# the buffer protocol and `to_numpy()` when they are present; none is imported
+# by the package itself.
+dependencies = []
+
+[project.optional-dependencies]
+rich = ["rich>=13"]
+textual = ["textual>=1.0"]
+pandas = ["pandas>=2"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "numpy>=1.26",
+  "rich>=13",
+  "textual>=1.0",
+  "pandas>=2",
+  "polars>=1",
+  "pyarrow>=15",
+]
+
+[project.urls]
+Homepage = "https://shergin.github.io/malevich/python/"
+Repository = "https://github.com/shergin/malevich"
+Changelog = "https://github.com/shergin/malevich/blob/main/python/CHANGELOG.md"
+Engine = "https://crates.io/crates/malevich"
+
+# `uvx supremus` — a tour sized to the terminal, or `line` / `hist` / `bar`
+# from stdin. The script is named after the package so `uvx` needs no `--from`.
+[project.scripts]
+supremus = "supremus._cli:main"
+
+# `pd.set_option("plotting.backend", "supremus")`; `df.plot()` then draws in
+# the terminal. The module maps pandas' `kind` onto presets.
+[project.entry-points.pandas_plotting_backends]
+supremus = "supremus._pandas"
+
+[tool.maturin]
+manifest-path = "native/Cargo.toml"
+python-source = "."
+module-name = "supremus._native"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
