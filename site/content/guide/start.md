@@ -124,6 +124,13 @@ import { line } from "malevich";
 console.log(line([1, 5, 2, 8]));
 ```
 
+And in a wheel, on [PyPI](../../python/) as `supremus`: the same one-liner, the HTML card in a notebook, a Rich renderable, a Textual widget, a pandas backend:
+
+```python
+from supremus import line
+print(line([1, 5, 2, 8]))
+```
+
 ## Where next
 
 - [The grammar](../grammar/) — one chart, built up mark by mark.

@@ -90,6 +90,14 @@ What a host may rely on, for the HTML card and the SVG cell card
   an axis with labels, marks in rows. No card carries information that the
   plain grid lacks except color, and color never carries a value alone.
 
+## From Python
+
+The same card, from a Python kernel: `pip install supremus`, then end a cell
+with a plot. The package implements `_repr_mimebundle_` (`text/plain` and the
+HTML card), `_repr_html_`, and marimo's `_mime_`; `plot.to_html(frame)` and
+`plot.to_svg(frame)` are the pure forms, with the same 100×26 quadrant default.
+See [python/README.md](../python/README.md).
+
 ## The terminal REPL
 
 The same cell renders in the `evcxr` terminal REPL through a `text/plain`

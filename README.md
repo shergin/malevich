@@ -352,6 +352,33 @@ tours (`example:zoom`, `example:linked`):
 cd js && npm run build && npm run showcase
 ```
 
+## Python
+
+The same engine, in a wheel. [`python/`](python/) publishes
+[`supremus`](https://pypi.org/project/supremus/) on PyPI: no runtime
+dependencies, nothing compiled on install, `print(line([1, 5, 2, 8]))`, the
+HTML card in Jupyter and marimo, a Rich renderable, a Textual widget with the
+same interaction grammar as the ratatui adapter, and a pandas plotting
+backend. Lists, numpy, pandas, polars, and pyarrow columns enter through one
+rim; detection stays in Python; render is still a pure function of a plot
+and a frame. Details in [python/README.md](python/README.md).
+
+```python
+from supremus import line
+print(line([1, 5, 2, 8]))
+```
+
+```python
+from supremus.textual import PlotState, PlotWidget
+# hover crosshair, wheel zoom, drag pan, rubber-band — the widget never
+# reads the terminal; Textual's events feed PlotState.on_mouse.
+```
+
+```sh
+uvx supremus                     # the tour
+printf '1 5 2 8' | uvx supremus line
+```
+
 ## What it will not be
 
 Not a TUI framework (it never owns the terminal or handles input). No animations. No

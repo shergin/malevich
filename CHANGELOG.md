@@ -6,6 +6,18 @@ freely, without apology.
 
 ## Unreleased
 
+- The Python rim (`python/`, PyPI `supremus`) is public. 0.1 covers the
+  eight-mark grammar, every preset the crate documents, shared goldens
+  against this crate, `Mapping`/`Viewport` as Python values, the HTML card
+  for Jupyter and marimo, a Rich renderable, a Textual widget, a pandas
+  plotting backend, and `uvx supremus`. See
+  [python/CHANGELOG.md](python/CHANGELOG.md) and
+  [python/README.md](python/README.md). The request decoding the wasm and
+  Python bindings share — a document with `{ "col": N }` columns, presets by
+  name, packed rasters — moved into an unpublished workspace crate, `rim/`;
+  the published crate is unchanged, and `python/` and `rim/` are excluded
+  from the package like `js/`.
+
 ## 1.24.1 — 2026-10-03
 
 A fix to the pixel card that 1.24.0 introduced.
