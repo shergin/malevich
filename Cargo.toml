@@ -22,7 +22,7 @@ exclude = ["examples/*.png", "examples/*.jpg", "examples/cards/", "fuzz/", "js/"
 # unpublished request decoder the wasm (`js/native`) and Python (`python/native`)
 # bindings share.
 [workspace]
-members = ["cli", "demos/fred", "demos/learn", "demos/sysmon", "js/native", "rim", "site"]
+members = ["cli", "demos/fred", "demos/learn", "demos/sysmon", "js/native", "python/native", "rim", "site"]
 # Keep the default build/test/lint set to malevich alone, so CI and `cargo test`
 # never pull the demos' or the CLI's deps. Build a member explicitly with `-p`.
 default-members = ["."]

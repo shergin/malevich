@@ -1,0 +1,24 @@
+[package]
+name = "malevich-py"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/shergin/malevich"
+description = "PyO3 bindings for malevich: the native module of the supremus Python package"
+
+# The compiled module is `supremus._native`; maturin names the artifact from
+# `module-name` in ../pyproject.toml, so the Cargo lib name only has to match
+# the `#[pymodule]` function.
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+malevich = { path = "../..", features = ["serde", "pixel"] }
+malevich-rim = { path = "../../rim" }
+# `abi3-py311`: one wheel per platform for every CPython from 3.11 on. The
+# floor is 3.11 because the buffer protocol joined the stable ABI there, and
+# that protocol is how numpy, array('d'), and `to_numpy()` columns arrive.
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py311"] }
