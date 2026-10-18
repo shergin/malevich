@@ -1043,9 +1043,17 @@ version = "0.4.0"
 dependencies = [
  "js-sys",
  "malevich",
+ "malevich-rim",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "malevich-rim"
+version = "0.1.0"
+dependencies = [
+ "malevich",
  "serde",
  "serde_json",
- "wasm-bindgen",
 ]
 
 [[package]]
