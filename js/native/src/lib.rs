@@ -2,11 +2,12 @@
 //!
 //! TypeScript owns the builder. This crate rasterizes and encodes: a versioned
 //! `Document` plus a `Frame`, with optional out-of-band `Float64Array` columns
-//! bound through `{ "col": N }` series fields.
+//! bound through `{ "col": N }` series fields. Request decoding, preset
+//! expansion, and raster packing are `malevich-rim`, shared with the Python
+//! binding; this file is the JS glue around it.
 
-use malevich::data::with_columns;
-use malevich::render::{Color, Raster};
-use malevich::{Document, Frame, Mapping, Viewport};
+use malevich::{Mapping, Viewport};
+use malevich_rim as rim;
 use wasm_bindgen::prelude::*;
 
 fn js_error(error: impl std::fmt::Display) -> JsError {
@@ -28,18 +29,12 @@ fn js_columns(value: &JsValue) -> Result<Vec<Vec<f64>>, JsError> {
     Ok(columns)
 }
 
-fn decode_document(document: &str, columns: Vec<Vec<f64>>) -> Result<Document, JsError> {
-    with_columns(columns, || serde_json::from_str(document)).map_err(js_error)
-}
-
-fn decode_frame(frame: &str) -> Result<Frame, JsError> {
-    serde_json::from_str(frame).map_err(js_error)
-}
-
-fn document_plot(document: &Document) -> Result<&malevich::Plot<'static>, JsError> {
-    document
-        .as_plot()
-        .ok_or_else(|| JsError::new("raster and mapping are plot-only; render a grid as a string"))
+fn decode(
+    document: &str,
+    frame: &str,
+    columns: &JsValue,
+) -> Result<(malevich::Document, malevich::Frame), JsError> {
+    rim::decode_request(document, frame, js_columns(columns)?).map_err(js_error)
 }
 
 /// Small plots and goldens. `document` and `frame` are JSON. Series are inline
@@ -53,8 +48,7 @@ pub fn render_document(document: &str, frame: &str) -> Result<String, JsError> {
 /// use `{ "col": N }` in place of an inline array on any series field.
 #[wasm_bindgen]
 pub fn render_columns(document: &str, frame: &str, columns: &JsValue) -> Result<String, JsError> {
-    let document = decode_document(document, js_columns(columns)?)?;
-    let frame = decode_frame(frame)?;
+    let (document, frame) = decode(document, frame, columns)?;
     document.try_render(&frame).map_err(js_error)
 }
 
@@ -69,17 +63,10 @@ pub fn render_pixels_columns(
     cell_width: u16,
     cell_height: u16,
 ) -> Result<String, JsError> {
-    let document = decode_document(document, js_columns(columns)?)?;
-    let frame = decode_frame(frame)?;
-    let plot = document_plot(&document)?;
-    let protocol = match protocol {
-        "sixel" | "Sixel" => malevich::pixel::Protocol::Sixel,
-        "kitty" | "Kitty" => malevich::pixel::Protocol::Kitty,
-        "iterm2" | "iTerm2" | "ITerm2" => malevich::pixel::Protocol::ITerm2,
-        other => {
-            return Err(JsError::new(&format!("unknown pixel protocol '{other}'")));
-        }
-    };
+    let (document, frame) = decode(document, frame, columns)?;
+    let plot = rim::plot_of(&document).map_err(js_error)?;
+    let protocol = rim::parse_protocol(protocol)
+        .ok_or_else(|| JsError::new(&format!("unknown pixel protocol '{protocol}'")))?;
     let graphics = malevich::pixel::Graphics::new(protocol).cell_size(cell_width, cell_height);
     plot.try_render_pixels(&frame, &graphics).map_err(js_error)
 }
@@ -89,10 +76,35 @@ pub fn render_pixels_columns(
 /// colors (4 bytes/cell) and `columns` is one byte per cell.
 #[wasm_bindgen]
 pub fn raster_columns(document: &str, frame: &str, columns: &JsValue) -> Result<JsValue, JsError> {
-    let document = decode_document(document, js_columns(columns)?)?;
-    let frame = decode_frame(frame)?;
-    let plot = document_plot(&document)?;
-    raster_to_js(&plot.try_raster(&frame).map_err(js_error)?)
+    let (document, frame) = decode(document, frame, columns)?;
+    let plot = rim::plot_of(&document).map_err(js_error)?;
+    let packed = rim::pack_raster(&plot.try_raster(&frame).map_err(js_error)?);
+    let object = js_sys::Object::new();
+    set(&object, "width", &(packed.width as f64).into())?;
+    set(&object, "height", &(packed.height as f64).into())?;
+    set(&object, "glyphs", &packed.glyphs.into())?;
+    set(
+        &object,
+        "fg",
+        &js_sys::Uint8Array::from(packed.foreground.as_slice()).into(),
+    )?;
+    set(
+        &object,
+        "bg",
+        &js_sys::Uint8Array::from(packed.background.as_slice()).into(),
+    )?;
+    set(
+        &object,
+        "columns",
+        &js_sys::Uint8Array::from(packed.columns.as_slice()).into(),
+    )?;
+    Ok(object.into())
+}
+
+fn set(object: &js_sys::Object, key: &str, value: &JsValue) -> Result<(), JsError> {
+    js_sys::Reflect::set(object, &key.into(), value)
+        .map(|_| ())
+        .map_err(|_| JsError::new(&format!("failed to set raster {key}")))
 }
 
 /// Same inputs as [`render_columns`]; returns a [`JsMapping`] wrapping the
@@ -103,9 +115,8 @@ pub fn mapping_columns(
     frame: &str,
     columns: &JsValue,
 ) -> Result<JsMapping, JsError> {
-    let document = decode_document(document, js_columns(columns)?)?;
-    let frame = decode_frame(frame)?;
-    let plot = document_plot(&document)?;
+    let (document, frame) = decode(document, frame, columns)?;
+    let plot = rim::plot_of(&document).map_err(js_error)?;
     Ok(JsMapping {
         inner: plot.mapping(&frame),
     })
@@ -116,111 +127,8 @@ pub fn mapping_columns(
 /// a title is applied in TypeScript after this call.
 #[wasm_bindgen]
 pub fn expand_preset(name: &str, options: &str, columns: &JsValue) -> Result<String, JsError> {
-    let columns = js_columns(columns)?;
-    let plot = match name {
-        "hist" => {
-            let options: HistOptions =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            let values = column(&columns, 0)?;
-            malevich::hist_with(
-                values,
-                malevich::HistogramOptions::new(options.max_bins.unwrap_or(60))
-                    .normalization(options.normalization.unwrap_or_default())
-                    .cumulative(options.cumulative.unwrap_or(false)),
-            )
-            .map_err(js_error)?
-        }
-        "stairs" => malevich::stairs(column(&columns, 0)?),
-        "ecdf" => malevich::ecdf(column(&columns, 0)?),
-        "density" => malevich::density(column(&columns, 0)?),
-        "trend" => malevich::trend(column(&columns, 0)?, column(&columns, 1)?),
-        "hist2d" => malevich::hist2d(column(&columns, 0)?, column(&columns, 1)?),
-        "heatmap" => {
-            let options: HeatmapOptions =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            malevich::heatmap(options.columns, column(&columns, 0)?)
-        }
-        "box_plot" | "boxPlot" => {
-            let options: NamedGroups =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            malevich::box_plot(options.categories, columns)
-        }
-        "violin" => {
-            let options: NamedGroups =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            malevich::violin(options.categories, columns)
-        }
-        "describe" => {
-            let options: DescribeOptions =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            malevich::describe(options.names, columns)
-        }
-        "table" => {
-            let options: TableOptions =
-                serde_json::from_str(empty_as_object(options)).map_err(js_error)?;
-            let mut table = malevich::TableOptions::new();
-            if let Some(colormap) = options.colormap {
-                table = table.colormap(colormap);
-            }
-            malevich::table_with(options.rows, options.columns, column(&columns, 0)?, table)
-                .map_err(js_error)?
-        }
-        "error_bars" | "errorBars" => malevich::error_bars(
-            column(&columns, 0)?,
-            column(&columns, 1)?,
-            column(&columns, 2)?,
-        ),
-        other => {
-            return Err(JsError::new(&format!("unknown preset '{other}'")));
-        }
-    };
-    let document = Document::plot(plot).map_err(js_error)?;
-    serde_json::to_string(&document).map_err(js_error)
-}
-
-fn empty_as_object(options: &str) -> &str {
-    if options.trim().is_empty() {
-        "{}"
-    } else {
-        options
-    }
-}
-
-fn column(columns: &[Vec<f64>], index: usize) -> Result<&[f64], JsError> {
-    columns
-        .get(index)
-        .map(Vec::as_slice)
-        .ok_or_else(|| JsError::new(&format!("preset is missing column {index}")))
-}
-
-#[derive(serde::Deserialize)]
-struct HistOptions {
-    max_bins: Option<usize>,
-    normalization: Option<malevich::stat::Normalization>,
-    cumulative: Option<bool>,
-}
-
-#[derive(serde::Deserialize)]
-struct HeatmapOptions {
-    columns: usize,
-}
-
-#[derive(serde::Deserialize)]
-struct NamedGroups {
-    categories: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct DescribeOptions {
-    names: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct TableOptions {
-    rows: Vec<String>,
-    columns: Vec<String>,
-    #[serde(default)]
-    colormap: Option<malevich::scale::Colormap>,
+    let document = rim::expand_preset(name, options, js_columns(columns)?).map_err(js_error)?;
+    rim::document_json(&document).map_err(js_error)
 }
 
 /// Resolved geometry of one render, queryable from JavaScript.
@@ -451,67 +359,4 @@ fn pair(a: f64, b: f64) -> JsValue {
     array.push(&JsValue::from(a));
     array.push(&JsValue::from(b));
     array.into()
-}
-
-fn pack_color(color: Color, out: &mut Vec<u8>) {
-    match color {
-        Color::Default => out.extend_from_slice(&[0, 0, 0, 0]),
-        Color::Black => out.extend_from_slice(&[1, 0, 0, 0]),
-        Color::Red => out.extend_from_slice(&[1, 1, 0, 0]),
-        Color::Green => out.extend_from_slice(&[1, 2, 0, 0]),
-        Color::Yellow => out.extend_from_slice(&[1, 3, 0, 0]),
-        Color::Blue => out.extend_from_slice(&[1, 4, 0, 0]),
-        Color::Magenta => out.extend_from_slice(&[1, 5, 0, 0]),
-        Color::Cyan => out.extend_from_slice(&[1, 6, 0, 0]),
-        Color::White => out.extend_from_slice(&[1, 7, 0, 0]),
-        Color::BrightBlack => out.extend_from_slice(&[1, 8, 0, 0]),
-        Color::BrightRed => out.extend_from_slice(&[1, 9, 0, 0]),
-        Color::BrightGreen => out.extend_from_slice(&[1, 10, 0, 0]),
-        Color::BrightYellow => out.extend_from_slice(&[1, 11, 0, 0]),
-        Color::BrightBlue => out.extend_from_slice(&[1, 12, 0, 0]),
-        Color::BrightMagenta => out.extend_from_slice(&[1, 13, 0, 0]),
-        Color::BrightCyan => out.extend_from_slice(&[1, 14, 0, 0]),
-        Color::BrightWhite => out.extend_from_slice(&[1, 15, 0, 0]),
-        Color::Ansi256(index) => out.extend_from_slice(&[2, index, 0, 0]),
-        Color::Rgb(r, g, b) => out.extend_from_slice(&[3, r, g, b]),
-    }
-}
-
-fn raster_to_js(raster: &Raster) -> Result<JsValue, JsError> {
-    let object = js_sys::Object::new();
-    js_sys::Reflect::set(&object, &"width".into(), &(raster.width() as f64).into())
-        .map_err(|_| JsError::new("failed to set raster width"))?;
-    js_sys::Reflect::set(&object, &"height".into(), &(raster.height() as f64).into())
-        .map_err(|_| JsError::new("failed to set raster height"))?;
-    let mut glyphs = String::with_capacity(raster.cells().len());
-    let mut foreground = Vec::with_capacity(raster.cells().len() * 4);
-    let mut background = Vec::with_capacity(raster.cells().len() * 4);
-    let mut columns = Vec::with_capacity(raster.cells().len());
-    for cell in raster.cells() {
-        glyphs.push(cell.glyph);
-        pack_color(cell.foreground, &mut foreground);
-        pack_color(cell.background, &mut background);
-        columns.push(cell.columns);
-    }
-    js_sys::Reflect::set(&object, &"glyphs".into(), &glyphs.into())
-        .map_err(|_| JsError::new("failed to set raster glyphs"))?;
-    js_sys::Reflect::set(
-        &object,
-        &"fg".into(),
-        &js_sys::Uint8Array::from(foreground.as_slice()).into(),
-    )
-    .map_err(|_| JsError::new("failed to set raster fg"))?;
-    js_sys::Reflect::set(
-        &object,
-        &"bg".into(),
-        &js_sys::Uint8Array::from(background.as_slice()).into(),
-    )
-    .map_err(|_| JsError::new("failed to set raster bg"))?;
-    js_sys::Reflect::set(
-        &object,
-        &"columns".into(),
-        &js_sys::Uint8Array::from(columns.as_slice()).into(),
-    )
-    .map_err(|_| JsError::new("failed to set raster columns"))?;
-    Ok(object.into())
 }

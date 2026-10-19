@@ -7,3 +7,8 @@ js/native/target
 js/*.tgz
 site/dist
 
+python/supremus/*.so
+python/supremus/*.pyd
+python/**/__pycache__/
+python/dist
+python/.venv

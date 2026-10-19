@@ -479,6 +479,12 @@ pub const SECTIONS: &[Section] = &[
                 Source::Repo("js/README.md"),
             ),
             page(
+                "/python/",
+                "Python",
+                "The same engine in a wheel on PyPI: notebooks, Rich, Textual, pandas.",
+                Source::Repo("python/README.md"),
+            ),
+            page(
                 "/benchmarks/",
                 "Benchmarks",
                 "The dated record behind every number these docs quote.",
@@ -521,6 +527,7 @@ pub fn url_for(repo_path: &str) -> Option<&'static str> {
         "gallery/README.md" | "site/README.md" => return Some("/gallery/live/"),
         "demos/README.md" | "demos" | "demos/" => return Some("/guide/interaction/"),
         "js/examples" | "js/examples/" => return Some("/js/"),
+        "python" | "python/" => return Some("/python/"),
         "cli" | "cli/" => return Some("/cli/"),
         _ => {}
     }

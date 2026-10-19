@@ -102,3 +102,38 @@ rebuilds wasm and reruns tests. 2FA is required by npm for publish. Bump
 `js/package.json` independently of the crate (0.x until the JS API settles);
 keep `engineVersion` equal to the crate it was built against. Record the
 release in `js/CHANGELOG.md`.
+
+## 6. PyPI (`supremus@0.x`)
+
+The Python rim is versioned independently of crates.io until the API is 1.x.
+Wheels are built by the `python-wheels` workflow, one `abi3` wheel per platform
+plus the sdist, and published through PyPI trusted publishing when a
+`python-v<version>` tag is pushed. The `pypi` environment must exist on PyPI
+(project `supremus`, publisher `shergin/malevich`, workflow
+`python-wheels.yml`, environment `pypi`) and in the repository settings.
+
+Before tagging:
+
+```sh
+cargo test -p malevich-rim
+cd python
+maturin build --release --out dist
+pip install dist/*.whl
+cd .. && python -m pytest python/tests -q
+printf '1 5 2 8' | supremus line
+```
+
+Bump `version` in `python/pyproject.toml` independently of the crate (0.x
+until the Python API settles); keep `ENGINE_VERSION` in
+`python/supremus/_engine.py` and `__version__` in `python/supremus/__init__.py`
+equal to what the tests expect (they are checked). Record the release in
+`python/CHANGELOG.md`, then:
+
+```sh
+git tag python-v<version>
+git push origin python-v<version>
+```
+
+`workflow_dispatch` on the same workflow builds the artifacts without
+publishing. Free-threaded (`cp314t`, `abi3t`) wheels are not built yet; a
+free-threaded interpreter falls back to the sdist.

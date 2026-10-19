@@ -60,6 +60,32 @@ jobs:
         working-directory: js
       - run: cargo run --example js_goldens --features serde -- --check
 
+  # The Python package (`python/`, PyPI `supremus`) and the request decoder the
+  # two bindings share (`rim/`). Both are workspace members outside the default
+  # set. The wheel is built the way a release builds it, installed, and the
+  # suite runs from the repository root so the installed module is the one
+  # under test and the shared goldens are found.
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cargo fmt -p malevich-rim -p malevich-py --check
+      - run: cargo clippy -p malevich-rim -p malevich-py --all-targets -- -D warnings
+      - run: cargo test -p malevich-rim
+      - run: pip install maturin pytest numpy rich textual pandas polars pyarrow
+      - run: maturin build --release --out dist
+        working-directory: python
+      - run: pip install python/dist/*.whl
+      - run: python -m pytest python/tests -q
+      - run: printf '1 5 2 8' | supremus line
+      - run: cargo run --example js_goldens --features serde -- --check
+
   # The published CLI crate (`kaz`) is a workspace member kept out of the default
   # set, so every job above builds the library alone. This job is its own gate —
   # additive, so core CI stays exactly as it was.
