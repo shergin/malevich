@@ -1,5 +1,6 @@
 //! The rule mark: a reference line across the whole plot.
 
+use super::MarkKind;
 use super::line::Dash;
 use crate::render::Color;
 
@@ -131,9 +132,13 @@ impl Rule {
         self.label = Some(label.into());
         self
     }
+}
+
+impl MarkKind for Rule {
+    type Owned = Rule;
 
     /// Checks the rule position after any construction path.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         let finite = match self.orientation {
             Orientation::Horizontal(value) | Orientation::Vertical(value) => value.is_finite(),
             Orientation::HorizontalSpan(a, b) | Orientation::VerticalSpan(a, b) => {
@@ -147,6 +152,10 @@ impl Rule {
                 detail: "a Rule position must be finite",
             })
         }
+    }
+
+    fn into_owned(self) -> Rule {
+        self
     }
 }
 

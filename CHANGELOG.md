@@ -6,6 +6,10 @@ freely, without apology.
 
 ## Unreleased
 
+- `Mark` forwards its per-mark contract — `validate` and `into_owned` — to
+  whichever mark it holds through the `whichever` proc macro, which also
+  writes the `From<mark>` impls. A ninth mark can no longer miss an arm. The
+  public API is unchanged. New dependency: `whichever`, a proc macro.
 - The Python rim (`python/`, PyPI `supremus`) is public. 0.1 covers the
   eight-mark grammar, every preset the crate documents, shared goldens
   against this crate, `Mapping`/`Viewport` as Python values, the HTML card

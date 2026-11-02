@@ -1,7 +1,7 @@
 //! The points mark: unconnected markers at data positions.
 
 use crate::data::{IntoSeries, Series};
-use crate::mark::Categories;
+use crate::mark::{Categories, MarkKind};
 use crate::render::Color;
 
 /// The shape used for a [`Points`] layer.
@@ -161,8 +161,26 @@ impl<'a> Points<'a> {
         self
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Points<'static> {
+        Points {
+            x: self.x.map(Series::into_owned),
+            y: self.y.into_owned(),
+            color: self.color,
+            label: self.label,
+            style: self.style,
+            color_by: self.color_by,
+            opacity: self.opacity,
+            density: self.density,
+        }
+    }
+}
+
+impl MarkKind for Points<'_> {
+    type Owned = Points<'static>;
+
     /// Checks the paired channels, including values decoded without a constructor.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         if let Some(x) = &self.x {
             super::pair("Points: x and y", x.len(), self.y.len())?;
         }
@@ -179,18 +197,8 @@ impl<'a> Points<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Points<'static> {
-        Points {
-            x: self.x.map(Series::into_owned),
-            y: self.y.into_owned(),
-            color: self.color,
-            label: self.label,
-            style: self.style,
-            color_by: self.color_by,
-            opacity: self.opacity,
-            density: self.density,
-        }
+    fn into_owned(self) -> Points<'static> {
+        Points::into_owned(self)
     }
 }
 

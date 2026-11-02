@@ -29,12 +29,29 @@ pub(crate) use rule::Orientation;
 pub use rule::Rule;
 pub use text::{Align, Text};
 
+/// What every mark answers for itself; [`Mark`] forwards to whichever it holds.
+#[whichever::dispatchable]
+pub(crate) trait MarkKind {
+    /// The mark detached from any borrowed storage.
+    type Owned;
+
+    /// Checks the mark's channel invariants, returning the first violation.
+    ///
+    /// The constructors enforce these already; this re-checks a mark that arrived
+    /// another way (deserialization) so the fallible API can report bad specs.
+    fn validate(&self) -> crate::Result<()>;
+
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    fn into_owned(self) -> Self::Owned;
+}
+
 /// Any mark, ready to be layered onto a plot.
 ///
 /// Constructed via `From` — `plot.layer(Line::y(&data))` works directly.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[whichever::dispatch(MarkKind, Owned = Mark<'static>)]
 pub enum Mark<'a> {
     /// A polyline through ordered points.
     Line(Line<'a>),
@@ -57,33 +74,7 @@ pub enum Mark<'a> {
 impl<'a> Mark<'a> {
     /// Detaches from any borrowed storage, making the mark `'static`.
     pub fn into_owned(self) -> Mark<'static> {
-        match self {
-            Mark::Line(line) => Mark::Line(line.into_owned()),
-            Mark::Points(points) => Mark::Points(points.into_owned()),
-            Mark::Bars(bars) => Mark::Bars(bars.into_owned()),
-            Mark::Area(area) => Mark::Area(area.into_owned()),
-            Mark::Cells(cells) => Mark::Cells(cells.into_owned()),
-            Mark::Range(range) => Mark::Range(range.into_owned()),
-            Mark::Rule(rule) => Mark::Rule(rule),
-            Mark::Text(text) => Mark::Text(text),
-        }
-    }
-
-    /// Checks this mark's channel invariants, returning the first violation.
-    ///
-    /// The constructors enforce these already; this re-checks a mark that arrived
-    /// another way (deserialization) so the fallible API can report bad specs.
-    pub(crate) fn validate(&self) -> Result<(), crate::Error> {
-        match self {
-            Mark::Line(mark) => mark.validate(),
-            Mark::Points(mark) => mark.validate(),
-            Mark::Bars(mark) => mark.validate(),
-            Mark::Area(mark) => mark.validate(),
-            Mark::Cells(mark) => mark.validate(),
-            Mark::Range(mark) => mark.validate(),
-            Mark::Rule(mark) => mark.validate(),
-            Mark::Text(mark) => mark.validate(),
-        }
+        MarkKind::into_owned(self)
     }
 }
 
@@ -96,54 +87,6 @@ pub(crate) fn pair(mark: &'static str, a: usize, b: usize) -> Result<(), crate::
             mark,
             lengths: (a, b),
         })
-    }
-}
-
-impl<'a> From<Line<'a>> for Mark<'a> {
-    fn from(line: Line<'a>) -> Mark<'a> {
-        Mark::Line(line)
-    }
-}
-
-impl<'a> From<Points<'a>> for Mark<'a> {
-    fn from(points: Points<'a>) -> Mark<'a> {
-        Mark::Points(points)
-    }
-}
-
-impl<'a> From<Bars<'a>> for Mark<'a> {
-    fn from(bars: Bars<'a>) -> Mark<'a> {
-        Mark::Bars(bars)
-    }
-}
-
-impl<'a> From<Area<'a>> for Mark<'a> {
-    fn from(area: Area<'a>) -> Mark<'a> {
-        Mark::Area(area)
-    }
-}
-
-impl<'a> From<Rule> for Mark<'a> {
-    fn from(rule: Rule) -> Mark<'a> {
-        Mark::Rule(rule)
-    }
-}
-
-impl<'a> From<Text> for Mark<'a> {
-    fn from(text: Text) -> Mark<'a> {
-        Mark::Text(text)
-    }
-}
-
-impl<'a> From<Cells<'a>> for Mark<'a> {
-    fn from(cells: Cells<'a>) -> Mark<'a> {
-        Mark::Cells(cells)
-    }
-}
-
-impl<'a> From<Range<'a>> for Mark<'a> {
-    fn from(range: Range<'a>) -> Mark<'a> {
-        Mark::Range(range)
     }
 }
 

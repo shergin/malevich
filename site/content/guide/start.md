@@ -6,7 +6,7 @@
 cargo add malevich
 ```
 
-Two tiny required dependencies, `terminal_size` and `unicode-width`. No build script. `#![forbid(unsafe_code)]`. The crate is 1.x: the public API follows semver, guarded in CI by `cargo-semver-checks` against the last published release. Features are opt-in and named later on this page.
+Two tiny runtime dependencies, `terminal_size` and `unicode-width`, and one proc macro, `whichever`. No build script. `#![forbid(unsafe_code)]`. The crate is 1.x: the public API follows semver, guarded in CI by `cargo-semver-checks` against the last published release. Features are opt-in and named later on this page.
 
 ## The first plot
 

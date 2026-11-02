@@ -1,4 +1,4 @@
-use super::{Line, Source};
+use super::{Line, MarkKind, Source};
 use crate::render::Color;
 
 const fn assert_send_sync<T: Send + Sync>() {}

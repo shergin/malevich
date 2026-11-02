@@ -1,4 +1,4 @@
-use super::Cells;
+use super::{Cells, MarkKind};
 
 const fn assert_send_sync<T: Send + Sync>() {}
 const _: () = assert_send_sync::<Cells<'static>>();

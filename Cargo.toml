@@ -34,6 +34,9 @@ ndarray = { version = "0.17", optional = true }
 serde = { version = "1", optional = true, features = ["derive"] }
 terminal_size = "0.4"
 unicode-width = "0.2"
+# A proc macro: `Mark` implements the per-mark contract by forwarding to whichever
+# mark it holds, and gets its `From` impls, without a hand-written arm per variant.
+whichever = "0.2"
 
 # Already in the tree via terminal_size; the direct dependency only reads the
 # terminal's cell size in device pixels for Graphics::detect.

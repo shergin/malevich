@@ -1,5 +1,6 @@
 //! The text mark: an annotation anchored at data coordinates.
 
+use crate::mark::MarkKind;
 use crate::render::Color;
 
 /// How a [`Text`] annotation sits relative to its anchor.
@@ -89,9 +90,13 @@ impl Text {
         self.align = align;
         self
     }
+}
+
+impl MarkKind for Text {
+    type Owned = Text;
 
     /// Checks the annotation anchor after any construction path.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         if self.x.is_finite() && self.y.is_finite() {
             Ok(())
         } else {
@@ -99,5 +104,9 @@ impl Text {
                 detail: "a Text anchor must be finite",
             })
         }
+    }
+
+    fn into_owned(self) -> Text {
+        self
     }
 }

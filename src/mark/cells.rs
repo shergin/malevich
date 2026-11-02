@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use crate::data::{IntoSeries, Series};
-use crate::mark::Categories;
+use crate::mark::{Categories, MarkKind};
 use crate::scale::Colormap;
 use crate::stat::Reducer;
 
@@ -260,8 +260,26 @@ impl<'a> Cells<'a> {
         count / self.columns.max(1)
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Cells<'static> {
+        Cells {
+            columns: self.columns,
+            values: self.values.into_owned(),
+            extents: self.extents,
+            colormap: self.colormap,
+            rgb: self.rgb.map(|pixels| Cow::Owned(pixels.into_owned())),
+            classes: self.classes,
+            reduce: self.reduce,
+            smooth: self.smooth,
+        }
+    }
+}
+
+impl MarkKind for Cells<'_> {
+    type Owned = Cells<'static>;
+
     /// Checks grid, extent, and colormap invariants after any construction path.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         if self.columns == 0 {
             return Err(crate::Error::EmptyDimension {
                 what: "Cells columns",
@@ -322,18 +340,8 @@ impl<'a> Cells<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Cells<'static> {
-        Cells {
-            columns: self.columns,
-            values: self.values.into_owned(),
-            extents: self.extents,
-            colormap: self.colormap,
-            rgb: self.rgb.map(|pixels| Cow::Owned(pixels.into_owned())),
-            classes: self.classes,
-            reduce: self.reduce,
-            smooth: self.smooth,
-        }
+    fn into_owned(self) -> Cells<'static> {
+        Cells::into_owned(self)
     }
 }
 

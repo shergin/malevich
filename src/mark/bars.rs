@@ -1,7 +1,7 @@
 //! The bars mark: values as filled columns over a categorical axis.
 
 use crate::data::{IntoSeries, Series};
-use crate::mark::Categories;
+use crate::mark::{Categories, MarkKind};
 use crate::render::Color;
 
 /// Filled vertical bars rising (or falling) from a zero baseline — the y domain
@@ -247,8 +247,36 @@ impl<'a> Bars<'a> {
         self
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Bars<'static> {
+        Bars {
+            placement: match self.placement {
+                Placement::Bands(categories) => Placement::Bands(categories),
+                Placement::Spans { start, width } => Placement::Spans { start, width },
+                Placement::At { x, width } => Placement::At {
+                    x: x.into_owned(),
+                    width,
+                },
+                Placement::Intervals { starts, ends } => Placement::Intervals {
+                    starts: starts.into_owned(),
+                    ends: ends.into_owned(),
+                },
+            },
+            values: self.values.into_owned(),
+            base: self.base.map(Series::into_owned),
+            color: self.color,
+            label: self.label,
+            color_by: self.color_by,
+            horizontal: self.horizontal,
+        }
+    }
+}
+
+impl MarkKind for Bars<'_> {
+    type Owned = Bars<'static>;
+
     /// Checks placement and channel invariants, including deserialized values.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         match &self.placement {
             Placement::Bands(categories) => {
                 super::pair(
@@ -297,28 +325,8 @@ impl<'a> Bars<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Bars<'static> {
-        Bars {
-            placement: match self.placement {
-                Placement::Bands(categories) => Placement::Bands(categories),
-                Placement::Spans { start, width } => Placement::Spans { start, width },
-                Placement::At { x, width } => Placement::At {
-                    x: x.into_owned(),
-                    width,
-                },
-                Placement::Intervals { starts, ends } => Placement::Intervals {
-                    starts: starts.into_owned(),
-                    ends: ends.into_owned(),
-                },
-            },
-            values: self.values.into_owned(),
-            base: self.base.map(Series::into_owned),
-            color: self.color,
-            label: self.label,
-            color_by: self.color_by,
-            horizontal: self.horizontal,
-        }
+    fn into_owned(self) -> Bars<'static> {
+        Bars::into_owned(self)
     }
 }
 

@@ -297,8 +297,8 @@ assumes live in [docs/principles/](docs/principles/). The short version:
   `to_html`, `to_svg`, and `render_with_capabilities` are pure functions of explicit
   values — build on one thread, render on another, snapshot-test the strings.
   `Display`, `Frame::detect`, and `render_best` are the documented
-  conveniences that read the environment. Two tiny required dependencies
-  (`terminal_size`, `unicode-width`).
+  conveniences that read the environment. Two tiny runtime dependencies
+  (`terminal_size`, `unicode-width`) and one proc macro (`whichever`).
 
 **Stability**: the crate is 1.x — the public API follows semver (breaking changes
 mean a 2.0), guarded in CI by `cargo-semver-checks` against the last published

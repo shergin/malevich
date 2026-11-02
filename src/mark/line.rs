@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::data::{IntoSeries, Series};
-use crate::mark::Categories;
+use crate::mark::{Categories, MarkKind};
 use crate::render::Color;
 use crate::scale::Colormap;
 
@@ -232,8 +232,34 @@ impl<'a> Line<'a> {
         self
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Line<'static> {
+        Line {
+            source: match self.source {
+                Source::Points { x, y } => Source::Points {
+                    x: x.map(Series::into_owned),
+                    y: y.into_owned(),
+                },
+                Source::Function { domain, function } => Source::Function { domain, function },
+            },
+            color: self.color,
+            label: self.label,
+            style: self.style,
+            color_by: self.color_by,
+            glow: self.glow,
+            dash: self.dash,
+            grade: self
+                .grade
+                .map(|(values, colormap)| (values.into_owned(), colormap)),
+        }
+    }
+}
+
+impl MarkKind for Line<'_> {
+    type Owned = Line<'static>;
+
     /// Checks source and channel invariants, including deserialized values.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         match &self.source {
             Source::Points { x, y } => {
                 if let Some(x) = x {
@@ -273,26 +299,8 @@ impl<'a> Line<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Line<'static> {
-        Line {
-            source: match self.source {
-                Source::Points { x, y } => Source::Points {
-                    x: x.map(Series::into_owned),
-                    y: y.into_owned(),
-                },
-                Source::Function { domain, function } => Source::Function { domain, function },
-            },
-            color: self.color,
-            label: self.label,
-            style: self.style,
-            color_by: self.color_by,
-            glow: self.glow,
-            dash: self.dash,
-            grade: self
-                .grade
-                .map(|(values, colormap)| (values.into_owned(), colormap)),
-        }
+    fn into_owned(self) -> Line<'static> {
+        Line::into_owned(self)
     }
 }
 

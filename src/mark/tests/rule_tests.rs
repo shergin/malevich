@@ -1,4 +1,4 @@
-use super::{Orientation, Rule};
+use super::{MarkKind, Orientation, Rule};
 
 #[test]
 #[should_panic(expected = "finite position")]

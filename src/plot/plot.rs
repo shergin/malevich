@@ -6,7 +6,7 @@ use super::frame::Frame;
 use super::layout::{Domains, Layout};
 use super::mapping::Mapping;
 use super::resolve::{Kind, Reduce, ResolvedLayer};
-use crate::mark::{LineStyle, Mark};
+use crate::mark::{LineStyle, Mark, MarkKind};
 use crate::render::{Raster, Surface};
 use crate::scale::Scale;
 

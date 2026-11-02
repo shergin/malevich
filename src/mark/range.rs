@@ -1,7 +1,7 @@
 //! The range mark: vertical intervals, with optional body and marker channels.
 
 use crate::data::{IntoSeries, Series};
-use crate::mark::Categories;
+use crate::mark::{Categories, MarkKind};
 use crate::render::Color;
 
 /// Vertical intervals at positions: error bars, box plots, candles, event ticks —
@@ -185,8 +185,31 @@ impl<'a> Range<'a> {
         self
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Range<'static> {
+        Range {
+            placement: match self.placement {
+                RangePlacement::Numeric(x) => RangePlacement::Numeric(x.map(Series::into_owned)),
+                RangePlacement::Bands(categories) => RangePlacement::Bands(categories),
+            },
+            low: self.low.into_owned(),
+            high: self.high.into_owned(),
+            body: self
+                .body
+                .map(|(low, high)| (low.into_owned(), high.into_owned())),
+            marker: self.marker.map(Series::into_owned),
+            color_by: self.color_by,
+            color: self.color,
+            label: self.label,
+        }
+    }
+}
+
+impl MarkKind for Range<'_> {
+    type Owned = Range<'static>;
+
     /// Checks placement and optional-channel invariants after any construction path.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         let count = self.low.len();
         super::pair("Range: low and high", count, self.high.len())?;
         match &self.placement {
@@ -211,23 +234,8 @@ impl<'a> Range<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Range<'static> {
-        Range {
-            placement: match self.placement {
-                RangePlacement::Numeric(x) => RangePlacement::Numeric(x.map(Series::into_owned)),
-                RangePlacement::Bands(categories) => RangePlacement::Bands(categories),
-            },
-            low: self.low.into_owned(),
-            high: self.high.into_owned(),
-            body: self
-                .body
-                .map(|(low, high)| (low.into_owned(), high.into_owned())),
-            marker: self.marker.map(Series::into_owned),
-            color_by: self.color_by,
-            color: self.color,
-            label: self.label,
-        }
+    fn into_owned(self) -> Range<'static> {
+        Range::into_owned(self)
     }
 }
 

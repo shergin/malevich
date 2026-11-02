@@ -1,6 +1,7 @@
 //! The area mark: a filled region between two edges.
 
 use crate::data::{IntoSeries, Series};
+use crate::mark::MarkKind;
 use crate::render::Color;
 
 /// A filled region: from the zero baseline up to a series, or between two series.
@@ -145,8 +146,25 @@ impl<'a> Area<'a> {
         self
     }
 
+    /// Detaches from any borrowed storage, making the mark `'static`.
+    pub fn into_owned(self) -> Area<'static> {
+        Area {
+            x: self.x.map(Series::into_owned),
+            low: self.low.map(Series::into_owned),
+            high: self.high.into_owned(),
+            horizontal: self.horizontal,
+            color: self.color,
+            label: self.label,
+            opacity: self.opacity,
+        }
+    }
+}
+
+impl MarkKind for Area<'_> {
+    type Owned = Area<'static>;
+
     /// Checks the paired channels, including values decoded without a constructor.
-    pub(crate) fn validate(&self) -> crate::Result<()> {
+    fn validate(&self) -> crate::Result<()> {
         if let Some(x) = &self.x {
             super::pair("Area: x and high", x.len(), self.high.len())?;
         }
@@ -163,17 +181,8 @@ impl<'a> Area<'a> {
         Ok(())
     }
 
-    /// Detaches from any borrowed storage, making the mark `'static`.
-    pub fn into_owned(self) -> Area<'static> {
-        Area {
-            x: self.x.map(Series::into_owned),
-            low: self.low.map(Series::into_owned),
-            high: self.high.into_owned(),
-            horizontal: self.horizontal,
-            color: self.color,
-            label: self.label,
-            opacity: self.opacity,
-        }
+    fn into_owned(self) -> Area<'static> {
+        Area::into_owned(self)
     }
 }
 
