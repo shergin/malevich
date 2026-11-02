@@ -6,10 +6,14 @@ freely, without apology.
 
 ## Unreleased
 
-- `Mark` forwards its per-mark contract — `validate` and `into_owned` — to
-  whichever mark it holds through the `whichever` proc macro, which also
-  writes the `From<mark>` impls. A ninth mark can no longer miss an arm. The
-  public API is unchanged. New dependency: `whichever`, a proc macro.
+## 1.25.0 (Supremus No. 58) — 2026-11-01
+
+The grammar reaches Python. `supremus`, the Python rim, carries the eight
+marks, every preset the crate documents, and the goldens this crate checks
+itself against into notebooks, Rich, Textual, and pandas. Inside the crate,
+`Mark` stopped spelling out its variants: one trait says what every mark
+answers for itself, and the enum forwards to whichever it holds.
+
 - The Python rim (`python/`, PyPI `supremus`) is public. 0.1 covers the
   eight-mark grammar, every preset the crate documents, shared goldens
   against this crate, `Mapping`/`Viewport` as Python values, the HTML card
@@ -21,6 +25,10 @@ freely, without apology.
   name, packed rasters — moved into an unpublished workspace crate, `rim/`;
   the published crate is unchanged, and `python/` and `rim/` are excluded
   from the package like `js/`.
+- `Mark` forwards its per-mark contract — `validate` and `into_owned` — to
+  whichever mark it holds through the `whichever` proc macro, which also
+  writes the `From<mark>` impls. A ninth mark can no longer miss an arm. The
+  public API is unchanged. New dependency: `whichever`, a proc macro.
 
 ## 1.24.1 — 2026-10-03
 

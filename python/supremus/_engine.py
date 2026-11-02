@@ -15,7 +15,7 @@ from typing import Any, TypeVar
 from . import _native
 
 #: The malevich crate this build renders with.
-ENGINE_VERSION = "1.24.1"
+ENGINE_VERSION = "1.25.0"
 
 T = TypeVar("T")
 
